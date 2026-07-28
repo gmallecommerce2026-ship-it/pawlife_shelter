@@ -26,6 +26,12 @@ export default function LoginPage() {
       if (!res?.success) {
         setError(res?.error || "Đã xảy ra lỗi");
       } else {
+        // LƯU TOKEN VÀO BỘ NHỚ TRÌNH DUYỆT
+        if (res.token && typeof window !== 'undefined') {
+          localStorage.setItem('token', res.token);
+          localStorage.setItem('accessToken', res.token);
+        }
+        
         window.location.assign("/shelter/dashboard");
       }
     });

@@ -55,21 +55,17 @@ export const AuthService = {
     throw new Error('Xác thực thất bại');
   },
   async login(email: string, password: string) {
-    // Backend API endpoint: /auth/login
     const res = await apiClient.post('/auth/login', { email, password });
 
-    if (res?.access_token) {
-      // 1. Lưu Token
+    // SỬA Ở ĐÂY: access_token -> accessToken
+    if (res?.accessToken) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('token', res.access_token);
-        // Lưu cookie để middleware hoạt động (quan trọng)
-        document.cookie = `token=${res.access_token}; path=/; max-age=86400;`;
+        // Lưu đồng thời 2 key để ApiClient và axiosClient đều đọc được
+        localStorage.setItem('token', res.accessToken);
+        localStorage.setItem('accessToken', res.accessToken);
+        document.cookie = `token=${res.accessToken}; path=/; max-age=86400;`;
       }
-
-      // 2. Lưu User vào Store
       useUserStore.getState().setUser(res.user);
-
-      // 3. Trả về data để Client xử lý redirect
       return res;
     }
     throw new Error('Đăng nhập thất bại');

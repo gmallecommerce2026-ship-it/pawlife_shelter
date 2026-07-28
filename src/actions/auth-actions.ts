@@ -16,7 +16,7 @@ export async function loginWebAction(values: z.infer<typeof LoginSchema>) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-client-type': 'web',
+                // ĐÃ XÓA 'x-client-type': 'web' ĐỂ BACKEND KHÔNG CẮT MẤT TOKEN NỮA
                 'x-device-name': 'NextJS Web App',
             },
             body: JSON.stringify(values),
@@ -42,24 +42,27 @@ export async function loginWebAction(values: z.infer<typeof LoginSchema>) {
             return { success: false, requires2FA: true, tempToken: data.tempToken, error: data.message };
         }
 
-        const setCookieHeader = res.headers.get('set-cookie');
-        if (setCookieHeader) {
-            const tokenMatch = setCookieHeader.match(/accessToken=([^;]+)/);
-            if (tokenMatch) {
-                const rememberMe = (values as any).rememberMe ?? false;
-                const cookieStore = await cookies();
-                cookieStore.set({
-                    name: 'accessToken',
-                    value: tokenMatch[1],
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    path: '/',
-                    maxAge: rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
-                });
-            }
+        // Lấy token trực tiếp từ JSON do Backend trả về
+        const token = data.accessToken;
+
+        if (token) {
+            const rememberMe = (values as any).rememberMe ?? false;
+            const cookieStore = await cookies();
+            
+            // Set Cookie nội bộ cho môi trường SSR của Next.js
+            cookieStore.set({
+                name: 'accessToken',
+                value: token,
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                path: '/',
+                maxAge: rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
+            });
         }
 
-        return { success: true, redirectTo: '/' };
+        // Trả token về cho Client Component (LoginPage)
+        return { success: true, token: token, redirectTo: '/shelter/dashboard' };
+
     } catch (error: any) {
         const causeCode = error?.cause?.code;
         const causeMessage = error?.cause?.message || error?.cause;
