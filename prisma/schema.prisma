@@ -1,0 +1,198 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" // Hoặc "postgresql" tùy database bạn dùng
+  url      = env("DATABASE_URL")
+}
+
+// --- ENUMS (Định nghĩa các tập giá trị cố định) ---
+
+enum Role {
+  ADMIN
+  SHELTER_ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING     // Chờ xác nhận
+  PROCESSING  // Đang pha chế (Mới thêm)
+  COMPLETED   // Hoàn thành/Đã giao
+  CANCELLED   // Đã hủy
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+// --- MODELS ---
+
+// 1. user (Bảng Người dùng)
+model User {
+  id              String   @id @default(cuid())
+  userName        String   @unique @map("user_name") // Tên đăng nhập (email/username)
+  passwordHash    String   @map("password_hash")
+  role            Role     @default(CUSTOMER)
+  
+  fullName        String?  @map("full_name")
+  phoneNumber     String?  @map("phone_number")
+  shippingAddress String?  @map("shipping_address")
+  points          Int      @default(0) @map("points")       
+  totalSpent      Decimal  @default(0) @map("total_spent")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  orders          Order[]
+
+  @@map("user") // Tên bảng trong DB là "user"
+}
+
+// 2. category (Bảng Danh mục)
+model Category {
+  id           Int       @id @default(autoincrement())
+  name         String
+  imageUrl     String?   @map("image_url")
+  displayOrder Int       @default(0) @map("display_order")
+  
+  products     Product[]
+
+  @@map("category")
+}
+
+// 3. product (Bảng Sản phẩm/Đồ uống)
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  basePrice   Decimal  @map("base_price") // Dùng Decimal cho tiền tệ để chính xác
+  imageUrl    String?  @map("image_url")
+  description String?  @db.Text
+  isAvailable Boolean  @default(true) @map("is_available")
+  
+  categoryId  Int      @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  productOptions ProductOption[]
+  orderItems     OrderItem[]
+
+  @@map("product")
+}
+
+// 4. option_group (Bảng Nhóm tùy chọn: Size, Topping...)
+model OptionGroup {
+  id         Int     @id @default(autoincrement())
+  name       String
+  isRequired Boolean @default(false) @map("is_required")
+  isMultiple Boolean @default(false) @map("is_multiple")
+
+  optionValues   OptionValue[]
+  productOptions ProductOption[]
+
+  @@map("option_group")
+}
+
+// 5. option_value (Bảng Giá trị tùy chọn: Size L, Trân châu...)
+model OptionValue {
+  id              Int     @id @default(autoincrement())
+  name            String
+  priceAdjustment Decimal @default(0) @map("price_adjustment")
+  
+  groupId         Int     @map("group_id")
+  group           OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("option_value")
+}
+
+// 6. product_option (Bảng trung gian: Sản phẩm có những nhóm tùy chọn nào)
+model ProductOption {
+  id            Int @id @default(autoincrement())
+  
+  productId     Int @map("product_id")
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  optionGroupId Int @map("option_group_id")
+  optionGroup   OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+
+  @@map("product_option")
+}
+
+// 7. order (Bảng Đơn hàng tổng)
+model Order {
+  id            String        @id
+  
+  userId        String?       @map("user_id") // Nullable cho khách vãng lai
+  user          User?         @relation(fields: [userId], references: [id])
+  
+  totalAmount   Decimal       @map("total_amount")
+  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+  orderStatus   OrderStatus   @default(PENDING) @map("order_status")
+  cancelReason  String?       @map("cancel_reason") @db.Text
+  customerName  String?       @map("customer_name")
+  phoneNumber   String?       @map("phone_number")
+  note          String?       @db.Text
+
+  shippingAddress String? @map("shipping_address") 
+  receiverName    String? @map("receiver_name")    
+  receiverPhone   String? @map("receiver_phone")
+  
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  orderItems    OrderItem[]
+
+  @@map("order")
+}
+
+// 8. order_item (Chi tiết món trong đơn)
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  
+  orderId   String  @map("order_id")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId Int     @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  unitPrice Decimal @map("unit_price") // Giá snapshot tại thời điểm đặt
+
+  options   OrderItemOption[]
+
+  @@map("order_item")
+}
+
+// 9. order_item_option (Lưu tùy chọn cụ thể của món trong đơn)
+// Dùng để lưu vết (snapshot) những gì khách đã chọn
+model OrderItemOption {
+  id              Int     @id @default(autoincrement())
+  
+  orderItemId     Int     @map("order_item_id")
+  orderItem       OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  
+  optionValueName String  @map("option_value_name") // Lưu tên (VD: "Trân châu đen") phòng khi menu bị xóa/sửa
+  priceAdjustment Decimal @map("price_adjustment")  // Lưu giá (VD: 5000) tại thời điểm đặt
+
+  @@map("order_item_option")
+}
+
+// 10. store_setting (Bảng Cài đặt cửa hàng & Thông báo)
+model StoreSetting {
+  id                Int      @id @default(1) // Luôn chỉ có 1 bản ghi ID=1
+  storeName         String?  @default("Coffee House") @map("store_name")
+  hotline           String?
+  address           String?
+  openTime          String?  @default("07:00") @map("open_time")
+  closeTime         String?  @default("22:00") @map("close_time")
+  wifiPass          String?  @map("wifi_pass")
+  
+  // Field quan trọng bạn yêu cầu
+  staffNotification String?  @db.Text @map("staff_notification") 
+  
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("store_setting")
+}
