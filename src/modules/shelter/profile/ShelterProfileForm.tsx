@@ -29,7 +29,7 @@ import {
 } from '@/types/shelter';
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   ssr: false,
-  loading: () => 
+  loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />
 });
 
 const inputClass =
