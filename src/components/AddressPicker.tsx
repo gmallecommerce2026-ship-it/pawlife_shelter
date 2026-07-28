@@ -408,10 +408,4 @@ function AddressPickerInner({ onSelect, initialCenter, initialAddress = "", disa
     </>
   );
 }
-
-const AddressPicker = dynamic(() => Promise.resolve(AddressPickerInner), {
-  ssr: false,
-  loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />,
-});
-
-export default AddressPicker;
+export default AddressPickerInner;

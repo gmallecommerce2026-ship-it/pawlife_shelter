@@ -19,7 +19,7 @@ import {
   PawPrint,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import AddressPicker from '@/components/AddressPicker';
+import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
 import {
   OpeningHour,
@@ -27,6 +27,10 @@ import {
   WEEKDAY_LABEL,
   defaultOpeningHours,
 } from '@/types/shelter';
+const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
+  ssr: false,
+  loading: () => 
+});
 
 const inputClass =
   'w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-[#123832] placeholder-gray-400 focus:border-[#E89B5A] focus:ring-2 focus:ring-[#E89B5A]/20 focus:outline-none transition-colors font-sans text-[15px]';
