@@ -338,12 +338,12 @@ function calculateAgeString(dobStr?: string): string {
   const today = new Date();
   let years = today.getFullYear() - birthDate.getFullYear();
   let months = today.getMonth() - birthDate.getMonth();
-  
+
   if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
     years--;
     months += 12;
   }
-  
+
   if (years > 0) return `${years} tuổi`;
   if (months > 0) return `${months} tháng`;
   return '< 1 tháng';
@@ -442,20 +442,20 @@ const MobilePreview = ({ values, images, isBusy, isUploadingMedicalImages, isLoc
 
   return (
     <div className="w-[320px] h-[680px] bg-[#F9FAFB] rounded-[45px] border-[10px] border-gray-900 shadow-[0_20px_50px_rgb(0,0,0,0.15)] relative overflow-hidden flex flex-col shrink-0 mx-auto select-none font-sans">
-      
+
       {/* Dynamic Island / Notch */}
       <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-50 pointer-events-none">
         <div className={`bg-black rounded-[24px] transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] flex items-center shadow-lg overflow-hidden ${isBusy ? 'w-[160px] h-[36px] px-4 justify-between mt-2' : 'w-[110px] h-6 justify-end px-3'}`}>
-             {isBusy ? (
-               <>
-                 <span className="text-white text-xs font-semibold animate-pulse tracking-wide">
-                   {isUploadingMedicalImages ? 'Uploading...' : isLocalizing ? 'Translating...' : 'Saving...'}
-                 </span>
-                 <div className="w-4 h-4 border-2 border-[#E89B5A] border-t-transparent rounded-full animate-spin"></div>
-               </>
-             ) : (
-                <div className="w-3 h-3 rounded-full bg-[#141414] shadow-inner ring-1 ring-white/10 flex items-center justify-center opacity-0"></div>
-             )}
+          {isBusy ? (
+            <>
+              <span className="text-white text-xs font-semibold animate-pulse tracking-wide">
+                {isUploadingMedicalImages ? 'Uploading...' : isLocalizing ? 'Translating...' : 'Saving...'}
+              </span>
+              <div className="w-4 h-4 border-2 border-[#E89B5A] border-t-transparent rounded-full animate-spin"></div>
+            </>
+          ) : (
+            <div className="w-3 h-3 rounded-full bg-[#141414] shadow-inner ring-1 ring-white/10 flex items-center justify-center opacity-0"></div>
+          )}
         </div>
       </div>
 
@@ -467,7 +467,7 @@ const MobilePreview = ({ values, images, isBusy, isUploadingMedicalImages, isLoc
       </div>
 
       {/* Scrollable Container (Drag to scroll) */}
-      <div 
+      <div
         ref={scrollRef}
         onMouseDown={onMouseDown}
         onMouseLeave={onMouseLeave}
@@ -477,7 +477,7 @@ const MobilePreview = ({ values, images, isBusy, isUploadingMedicalImages, isLoc
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Ẩn scrollbar
       >
         <style dangerouslySetInnerHTML={{ __html: `::-webkit-scrollbar { display: none; }` }} />
-        
+
         {/* Cover Image / Carousel — cao ~48% giống màn chi tiết thật */}
         <div className="h-[326px] relative bg-gray-200 w-full shrink-0 pointer-events-none">
           {displayImages[0] ? (
@@ -686,7 +686,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [customBreedMode, setCustomBreedMode] = useState(false);
   const [originalBilingual, setOriginalBilingual] = useState({ description: { vi: '', en: '' }, color: { vi: '', en: '' }, breed: { vi: '', en: '' } });
   const [isLocalizing, setIsLocalizing] = useState(false);
-  
+
   const [medicalDraft, setMedicalDraft] = useState<MedicalRecordDraft | null>(null);
   const [isUploadingMedicalImages, setIsUploadingMedicalImages] = useState(false);
 
@@ -712,31 +712,103 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       const colorBi = parseBilingual(initialPet.color);
       const breedBi = parseBilingual(initialPet.breed);
       const matchedBreed = BREED_OPTIONS[initialSpeciesKey].find((b) => b.vi === breedBi.vi);
-      
+
       setCustomBreedMode(!!breedBi.vi && !matchedBreed);
       setOriginalBilingual({ description: descriptionBi, color: colorBi, breed: breedBi });
-
-      const normalizeTag = (raw: any): TagValue => {
-        const bi = parseBilingual(raw);
-        return { ...bi, isCustom: !bi.en || bi.en === bi.vi };
+      const extractText = (val: any, lang: 'vi' | 'en'): string => {
+        if (!val) return '';
+        if (typeof val === 'string') return val;
+        if (Array.isArray(val)) return val.length > 0 ? extractText(val[0], lang) : '';
+        if (typeof val === 'object') {
+          // Nếu có ngôn ngữ tương ứng, tiếp tục đào sâu vào trong
+          if (val[lang] !== undefined) return extractText(val[lang], lang);
+          // Fallback: nếu mất key ngôn ngữ, lấy đại value đầu tiên cứu vớt data
+          const keys = Object.keys(val);
+          if (keys.length > 0) return extractText(val[keys[0]], lang);
+        }
+        return String(val);
       };
 
-      setValues({
-        name: initialPet.name, species: initialPet.species, breed: breedBi.vi, gender: initialPet.gender, status: initialPet.status,
-        description: descriptionBi.vi, healthStatus: initialPet.healthStatus ?? [], weight: initialPet.weight, isVaccinated: initialPet.isVaccinated ?? false,
-        isSpayedNeutered: initialPet.isSpayedNeutered ?? false, dob: initialPet.dob ? String(initialPet.dob).slice(0, 10) : '',
-        size: initialPet.size || SIZE_OPTIONS[0].value, color: colorBi.vi, microchipNumber: initialPet.microchipNumber || '',
-        traits: (initialPet.traitsList || initialPet.traits || []).map(normalizeTag),
-        goodWith: (Array.isArray(initialPet.goodWith) ? initialPet.goodWith : []).map(normalizeTag),
-        badWith: (Array.isArray(initialPet.badWith) ? initialPet.badWith : []).map(normalizeTag),
-        adoptionRequirements: (initialPet.adoptionRequirements || []).map((r: any) => ({ iconKey: r.iconKey, label: parseBilingual(r.label) })),
-        medicalRecords: (initialPet.medicalRecords || []).map((r: any) => ({
+      // 2. Thay thế hàm normalizeTag cũ bằng đoạn này
+      const normalizeTag = (raw: any): TagValue => {
+        // Dùng hàm extractText để ép ép kiểu lấy đúng chuỗi String, bất chấp DB bị lồng bao nhiêu lớp object
+        const viStr = extractText(raw, 'vi');
+        const enStr = extractText(raw, 'en');
+        return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
+      };
+      console.log("=== RAW INITIAL PET DATA ===", JSON.stringify(initialPet, null, 2));
+      // Helper an toàn để parse JSON Array
+      const safeParseArray = (val: any) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch { return []; }
+        }
+        return [];
+      };
+
+      // 1. Map Traits (Truy cập vào thuộc tính .name do Prisma trả về từ relation PetTrait)
+      const mappedTraits = (initialPet.traitsList || []).map((t: any) => normalizeTag(t.name));
+
+      // 2. Map Yêu cầu nhận nuôi (Truy cập vào relation .requirement)
+      const mappedAdoptionReqs = (initialPet.adoptionRequirements || []).map((r: any) => ({
+        iconKey: r.requirement?.key || r.requirement?.iconKey || r.iconKey,
+        label: parseBilingual(r.requirement?.label || r.label)
+      }));
+
+      // 3. Reverse-match (Dịch ngược) Vaccine Type từ tên (vì DB không lưu trường vaccineType)
+      const allVaccines = [...VACCINE_OPTIONS.Dog, ...VACCINE_OPTIONS.Cat];
+      const mappedMedical = (initialPet.medicalRecords || []).map((r: any) => {
+        const recNameBi = parseBilingual(r.recordName);
+        let inferredVaccineType = r.vaccineType || '';
+
+        // Nếu là vaccine mà không có vaccineType, tìm ngược lại ID dựa vào tên Tiếng Việt hoặc Tiếng Anh
+        if (r.type === 'vaccination' && !inferredVaccineType) {
+          const match = allVaccines.find(v => v.vi === recNameBi.vi || v.en === recNameBi.en);
+          if (match) inferredVaccineType = match.id;
+        }
+
+        return {
           localId: r.id || `existing_${Math.random().toString(36).slice(2, 8)}`,
-          type: r.type, recordName: parseBilingual(r.recordName), vaccineType: r.vaccineType || '', doseNumber: r.doseNumber || 1,
-          recordDate: r.recordDate ? String(r.recordDate).slice(0, 10) : '', hasNextDueDate: !!r.hasNextDueDate, nextDueName: parseBilingual(r.nextDueName),
-          nextDueDate: r.nextDueDate ? String(r.nextDueDate).slice(0, 10) : '', images: Array.isArray(r.images) ? r.images.filter(Boolean) : [], newImageFiles: [],
-        })),
+          type: r.type,
+          recordName: recNameBi,
+          vaccineType: inferredVaccineType,
+          doseNumber: r.doseNumber || 1,
+          recordDate: r.recordDate ? String(r.recordDate).slice(0, 10) : '',
+          hasNextDueDate: !!r.hasNextDueDate,
+          nextDueName: parseBilingual(r.nextDueName),
+          nextDueDate: r.nextDueDate ? String(r.nextDueDate).slice(0, 10) : '',
+          images: Array.isArray(r.images) ? r.images.filter(Boolean) : [],
+          newImageFiles: [],
+        };
+      });
+
+      setValues({
+        name: initialPet.name,
+        species: initialPet.species,
+        breed: breedBi.vi,
+        gender: initialPet.gender,
+        status: initialPet.status,
+        description: descriptionBi.vi,
+        healthStatus: initialPet.healthStatus ?? [],
+        weight: initialPet.weight,
+        isVaccinated: initialPet.isVaccinated ?? false,
+        isSpayedNeutered: initialPet.isSpayedNeutered ?? false,
+        dob: initialPet.dob ? String(initialPet.dob).slice(0, 10) : '',
+        size: initialPet.size || SIZE_OPTIONS[0].value,
+        color: colorBi.vi,
+        microchipNumber: initialPet.microchipNumber || '',
+
+        // Gán các mảng đã được mapping an toàn ở trên
+        traits: mappedTraits,
+        goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag),
+        badWith: safeParseArray(initialPet.badWith).map(normalizeTag),
+        adoptionRequirements: mappedAdoptionReqs,
+        medicalRecords: mappedMedical,
       } as FormValues);
+
       setExistingImages((initialPet.images ?? []).map((url: string) => ({ url, removed: false })));
     }
   }, [initialPet]);
@@ -754,7 +826,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
   const toggleExistingImage = (url: string) => setExistingImages((prev) => prev.map((img) => (img.url === url ? { ...img, removed: !img.removed } : img)));
-  
+
   // -- YÊU CẦU NHẬN NUÔI --
   const toggleRequirement = (opt: { iconKey: string; vi: string; en: string }) => {
     setValues((prev) => {
@@ -781,7 +853,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   };
   const removeMedicalExistingImage = (url: string) => setMedicalDraft((d) => (d ? { ...d, images: d.images.filter((img) => img !== url) } : d));
   const removeMedicalNewImageFile = (index: number) => setMedicalDraft((d) => (d ? { ...d, newImageFiles: d.newImageFiles.filter((_, i) => i !== index) } : d));
-  
+
   const saveMedicalDraft = async () => {
     if (!medicalDraft) return;
     if (medicalDraft.type === 'vaccination' && !medicalDraft.vaccineType) return;
@@ -844,8 +916,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       const [traitsBi, goodWithBi, badWithBi] = await Promise.all([
         localizeTags(values.traits || []), localizeTags(values.goodWith || []), localizeTags(values.badWith || []),
       ]);
-      
-      const { healthStatus, ...restValues } = values; 
+
+      const { healthStatus, ...restValues } = values;
       payload = { ...restValues, description: descriptionBi, color: colorBi, breed: breedBi, traits: traitsBi, goodWith: goodWithBi, badWith: badWithBi };
     } catch (err) {
       alert('Không thể xử lý song ngữ, vui lòng thử lại.');
@@ -865,7 +937,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   return (
     <div className="relative min-h-screen bg-[#FDFDFD] font-sans flex flex-col lg:flex-row gap-12 lg:p-12 p-6 max-w-[1600px] mx-auto">
-      
+
       {/* ================= LEFT PANE: FORM ================= */}
       <div className="flex-1 max-w-3xl">
         <div className="mb-10">
@@ -876,7 +948,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          
+
           {/* HÌNH ẢNH */}
           <h3 className={sectionHeaderClass}>Thư viện ảnh</h3>
           <div className="flex flex-wrap gap-4 mb-4">
@@ -950,7 +1022,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               <label className={labelClass}>Cân nặng (kg)</label>
               <input type="number" min={0} step={0.1} value={values.weight ?? ''} onChange={(e) => setValues((p) => ({ ...p, weight: e.target.value ? Number(e.target.value) : undefined }))} className={inputClass} placeholder="VD: 5.5" />
             </div>
-            
+
             <div>
               <label className={labelClass}>Kích thước</label>
               <select value={values.size} onChange={(e) => setValues((p) => ({ ...p, size: e.target.value }))} className={inputClass}>
@@ -969,12 +1041,12 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           <div className="flex gap-8 mt-6 mb-4">
             <label className="flex items-center gap-3 cursor-pointer group">
               <input type="checkbox" checked={values.isVaccinated} onChange={(e) => setValues((p) => ({ ...p, isVaccinated: e.target.checked }))} className="sr-only peer" />
-              <div className="w-5 h-5 border border-gray-300 rounded flex items-center justify-center peer-checked:bg-[#E89B5A] peer-checked:border-[#E89B5A] transition-colors"><FiCheckCircle className="text-white opacity-0 peer-checked:opacity-100" size={12}/></div>
+              <div className="w-5 h-5 border border-gray-300 rounded flex items-center justify-center peer-checked:bg-[#E89B5A] peer-checked:border-[#E89B5A] transition-colors"><FiCheckCircle className="text-white opacity-0 peer-checked:opacity-100" size={12} /></div>
               <span className="text-sm font-medium text-gray-700">Đã tiêm phòng</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer group">
               <input type="checkbox" checked={values.isSpayedNeutered} onChange={(e) => setValues((p) => ({ ...p, isSpayedNeutered: e.target.checked }))} className="sr-only peer" />
-              <div className="w-5 h-5 border border-gray-300 rounded flex items-center justify-center peer-checked:bg-[#E89B5A] peer-checked:border-[#E89B5A] transition-colors"><FiCheckCircle className="text-white opacity-0 peer-checked:opacity-100" size={12}/></div>
+              <div className="w-5 h-5 border border-gray-300 rounded flex items-center justify-center peer-checked:bg-[#E89B5A] peer-checked:border-[#E89B5A] transition-colors"><FiCheckCircle className="text-white opacity-0 peer-checked:opacity-100" size={12} /></div>
               <span className="text-sm font-medium text-gray-700">Đã triệt sản</span>
             </label>
           </div>
@@ -986,7 +1058,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               <label className={labelClass}>Đặc điểm tính cách</label>
               <TagInput value={values.traits || []} onChange={(next) => setValues((p) => ({ ...p, traits: next }))} suggestions={TRAIT_OPTIONS} placeholder="Thêm đặc điểm..." />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <label className={labelClass}>Thân thiện với</label>
@@ -1014,9 +1086,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   type="button"
                   key={opt.iconKey}
                   onClick={() => toggleRequirement(opt)}
-                  className={`px-4 py-2 rounded-full text-sm transition-all border ${
-                    active ? 'bg-[#E89B5A]/10 border-[#E89B5A] text-[#E89B5A] font-semibold' : 'bg-transparent border-gray-300 text-gray-500 hover:border-gray-400'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-sm transition-all border ${active ? 'bg-[#E89B5A]/10 border-[#E89B5A] text-[#E89B5A] font-semibold' : 'bg-transparent border-gray-300 text-gray-500 hover:border-gray-400'
+                    }`}
                 >
                   {opt.vi}
                 </button>
@@ -1033,7 +1104,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               </button>
             )}
           </h3>
-          
+
           <div className="flex flex-col gap-3">
             {(values.medicalRecords || []).map((r) => (
               <div key={r.localId} className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-3">
@@ -1043,9 +1114,9 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       <Image src={r.images[0]} alt="medical" fill className="object-cover" />
                     </div>
                   ) : (
-                     <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                       <FiClock className="text-gray-400" size={18} />
-                     </div>
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                      <FiClock className="text-gray-400" size={18} />
+                    </div>
                   )}
                   <div>
                     <p className="text-[14px] font-bold text-gray-800">
@@ -1132,7 +1203,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 <input type="checkbox" checked={medicalDraft.hasNextDueDate} onChange={(e) => setMedicalDraft((d) => (d ? { ...d, hasNextDueDate: e.target.checked } : d))} className="accent-[#E89B5A] w-4 h-4" />
                 <span className="text-[14px] font-bold text-gray-700">Có lịch hẹn tiếp theo</span>
               </div>
-              
+
               {medicalDraft.hasNextDueDate && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input value={medicalDraft.nextDueName?.vi || ''} onChange={(e) => setMedicalDraft((d) => d ? { ...d, nextDueName: { vi: e.target.value, en: d.nextDueName?.en || '' } } : d)} placeholder="Ghi chú nhắc lịch..." className={inputClass} />
