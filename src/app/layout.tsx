@@ -23,7 +23,7 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="vi" className={`${beVietnamPro.variable}`}>
-      <body className="font-sans antialiased bg-gray-50 text-gray-900">
+      <body className="font-sans antialiased bg-white text-gray-900">
         {children}
       </body>
     </html>
