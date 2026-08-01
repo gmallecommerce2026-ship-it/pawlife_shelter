@@ -285,7 +285,7 @@ async function uploadImageToStorage(file: File): Promise<string> {
 type FormValues = Omit<PetFormValues, 'age' | 'weightKg' | 'isSterilized'> & {
   dob?: string; size?: string; color?: string; microchipNumber?: string; traits?: TagValue[];
   goodWith?: TagValue[]; badWith?: TagValue[]; adoptionRequirements?: { iconKey: string; label: Bilingual }[];
-  medicalRecords?: MedicalRecordDraft[]; weight?: number; isSpayedNeutered?: boolean;
+  medicalRecords?: MedicalRecordDraft[]; weight?: number; isSpayedNeutered?: boolean; tagId?: string;
 };
 
 const emptyFormValues: FormValues = {
@@ -803,7 +803,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           newImageFiles: [],
         };
       });
-
+      const activeTag = (initialPet.tags || []).find((t: any) => t.status !== 'INACTIVE') || (initialPet.tags || [])[0];
       // 6. ĐỔ DỮ LIỆU VÀO FORM
       setValues({
         name: initialPet.name,
@@ -820,12 +820,13 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         size: initialPet.size || SIZE_OPTIONS[0].value,
         color: colorBi.vi,
         microchipNumber: initialPet.microchipNumber || '',
-        
+
         traits: mappedTraits,
         goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
         badWith: safeParseArray(initialPet.badWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
         adoptionRequirements: mappedAdoptionReqs,
         medicalRecords: mappedMedical,
+        tagId: activeTag ? activeTag.id : '',
       } as FormValues);
 
       setExistingImages((initialPet.images ?? []).map((url: string) => ({ url, removed: false })));
@@ -1036,7 +1037,25 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               <label className={labelClass}>Ngày sinh</label>
               <input type="date" value={values.dob || ''} onChange={(e) => setValues((p) => ({ ...p, dob: e.target.value }))} max={new Date().toISOString().slice(0, 10)} className={inputClass} />
             </div>
+            <div>
+              <label className={labelClass}>Mã vòng cổ (PawLife Tag)</label>
+              <input
+                type="text"
+                value={values.tagId || ''}
+                onChange={(e) => {
+                  // Áp dụng bộ lọc Regex làm sạch tuyệt đối giống hệt bên App
+                  let val = e.target.value.replace(/[\u2012\u2013\u2014\u2015\u2212]/g, '-');
+                  val = val.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase();
 
+                  setValues((p) => ({ ...p, tagId: val }));
+                }}
+                placeholder="VD: PLT-0001"
+                className={inputClass}
+                maxLength={15}
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+            </div>
             <div>
               <label className={labelClass}>Cân nặng (kg)</label>
               <input type="number" min={0} step={0.1} value={values.weight ?? ''} onChange={(e) => setValues((p) => ({ ...p, weight: e.target.value ? Number(e.target.value) : undefined }))} className={inputClass} placeholder="VD: 5.5" />
