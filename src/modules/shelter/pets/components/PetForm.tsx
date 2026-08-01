@@ -290,7 +290,7 @@ type FormValues = Omit<PetFormValues, 'age' | 'weightKg' | 'isSterilized'> & {
 
 const emptyFormValues: FormValues = {
   ...(emptyPetFormValues as any), dob: '', size: SIZE_OPTIONS[0].value, color: '', microchipNumber: '',
-  traits: [], goodWith: [], badWith: [], adoptionRequirements: [], medicalRecords: [], weight: undefined, isSpayedNeutered: false,
+  traits: [], goodWith: [], badWith: [], adoptionRequirements: [], medicalRecords: [], weight: undefined, isSpayedNeutered: false, tagId: '',
 };
 delete (emptyFormValues as any).age; delete (emptyFormValues as any).weightKg; delete (emptyFormValues as any).isSterilized;
 

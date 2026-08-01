@@ -155,18 +155,20 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
   createPet: async (values, images) => {
     set({ isSubmitting: true });
     try {
-      // 1. Upload toàn bộ ảnh lên R2 trước, lấy về mảng URL
-      const imageUrls = await Promise.all(
-        images.map((file) => uploadOne(file, 'pet-images')),
-      );
-
-      // 2. Gửi JSON thuần (không FormData) kèm mảng URL ảnh
-      await apiClient.post('/shelter-dashboard/pets', {
+      const imageUrls = await Promise.all(images.map((file) => uploadOne(file, 'pet-images')));
+      
+      // 1. Lưu form Pet bình thường
+      const newPet = await apiClient.post('/shelter-dashboard/pets', {
         ...preparePayload(values),
         images: imageUrls,
       });
 
-      toast.success('Đã thêm pet mới!');
+      // 2. GỌI KÉ API GẮN MÃ QR CỦA APP
+      if (values.tagId) {
+        await apiClient.post(`/pets/${newPet.id}/link-qr`, { tagId: values.tagId });
+      }
+
+      toast.success('Thêm pet mới thành công!');
       await get().fetchPets({ page: 1 });
       return true;
     } catch (error) {
@@ -181,20 +183,22 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
   updatePet: async (id, values, newImages, keepImageUrls) => {
     set({ isSubmitting: true });
     try {
-      // 1. Upload ảnh mới (nếu có) lên R2
-      const newImageUrls = await Promise.all(
-        newImages.map((file) => uploadOne(file, 'pet-images')),
-      );
-
-      // 2. Gộp ảnh cũ được giữ lại + ảnh mới vừa upload xong
+      const newImageUrls = await Promise.all(newImages.map((file) => uploadOne(file, 'pet-images')));
       const images = [...keepImageUrls, ...newImageUrls];
-
+      
+      // 1. Update form Pet bình thường
       await apiClient.patch(`/shelter-dashboard/pets/${id}`, {
         ...preparePayload(values),
         images,
       });
 
-      toast.success('Đã cập nhật thông tin pet!');
+      // 2. GỌI KÉ API ĐỔI MÃ QR CỦA APP
+      if (values.tagId) {
+        // App gửi lên newTagId thì Web cũng gửi y hệt vậy
+        await apiClient.patch(`/pets/${id}/replace-qr`, { newTagId: values.tagId });
+      }
+
+      toast.success('Cập nhật thông tin pet thành công!');
       await get().fetchPets();
       return true;
     } catch (error) {
