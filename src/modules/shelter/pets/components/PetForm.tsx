@@ -174,16 +174,18 @@ const COMPANION_OPTIONS: Bilingual[] = [
 ];
 
 const ADOPTION_REQUIREMENT_OPTIONS: { iconKey: string; vi: string; en: string; Icon: React.ElementType }[] = [
-  { iconKey: 'home', vi: 'Có nhà riêng / sân vườn', en: 'Has a house / yard', Icon: FiHome },
-  { iconKey: 'experience', vi: 'Có kinh nghiệm nuôi thú cưng', en: 'Has pet-raising experience', Icon: FiAward },
-  { iconKey: 'income', vi: 'Thu nhập ổn định', en: 'Stable income', Icon: FiDollarSign },
-  { iconKey: 'time', vi: 'Có thời gian chăm sóc', en: 'Has time to care for the pet', Icon: FiClock },
-  { iconKey: 'family', vi: 'Được gia đình đồng ý', en: 'Family agreement required', Icon: FiUsers },
-  { iconKey: 'sterilize', vi: 'Cam kết triệt sản nếu chưa', en: 'Commits to sterilization if not done yet', Icon: FiAward },
-  { iconKey: 'no_cage', vi: 'Không nhốt lồng cả ngày', en: 'Will not cage the pet all day', Icon: FiHome },
-  { iconKey: 'home_visit', vi: 'Đồng ý cho thăm nhà sau nhận', en: 'Allows a home visit after adoption', Icon: FiUsers },
-  { iconKey: 'vet_checkup', vi: 'Đưa thú cưng đi khám định kỳ', en: 'Takes the pet for regular vet checkups', Icon: FiClock },
-  { iconKey: 'other', vi: 'Khác', en: 'Other', Icon: FiMoreHorizontal },
+  { iconKey: 'house_with_yard', vi: 'Có sân vườn', en: 'House with yard', Icon: FiHome },
+  { iconKey: 'daily_walk', vi: 'Đi dạo thường xuyên', en: 'Daily Walk', Icon: FiHeart },
+  { iconKey: 'advance_experience', vi: 'Chủ có kinh nghiệm', en: 'Advance Experience', Icon: FiAward },
+  { iconKey: 'no_cat', vi: 'Không có mèo khác', en: 'No cat', Icon: FiAlertCircle },
+  { iconKey: 'no_dog', vi: 'Không có chó khác', en: 'No dog', Icon: FiAlertCircle },
+  { iconKey: 'no_other_pet', vi: 'Không có thú cưng khác', en: 'No other pet', Icon: FiX },
+  { iconKey: 'no_small_animal', vi: 'Không có động vật nhỏ', en: 'No small animal', Icon: FiX },
+  { iconKey: 'indoor_raise', vi: 'Nuôi trong nhà', en: 'Indoor raise', Icon: FiHome },
+  { iconKey: 'spacious_living', vi: 'Không gian sống rộng rãi', en: 'Spacious Living', Icon: FiHome },
+  { iconKey: 'quiet_home', vi: 'Nhà yên tĩnh', en: 'Quiet Home', Icon: FiHome },
+  { iconKey: 'often_at_home', vi: 'Có thời gian ở nhà', en: 'Often at Home', Icon: FiClock },
+  { iconKey: 'stable_routine', vi: 'Lịch sinh hoạt ổn định', en: 'Stable Routine', Icon: FiClock },
 ];
 
 type MedicalRecordType = 'vaccination' | 'examination' | 'dental' | 'other';
@@ -707,52 +709,31 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   useEffect(() => {
     if (initialPet) {
-      // 1. CÔNG CỤ BÓC TÁCH: Tìm chuỗi String kể cả khi bị lồng object [object Object]
+      // 1. MÁY BÓC TÁCH TUYỆT ĐỐI (CHẶN [object Object])
       const extractText = (val: any, lang: 'vi' | 'en'): string => {
         if (!val) return '';
-
         if (typeof val === 'string') {
-          // Bỏ qua luôn nếu trong DB đang lưu cứng chuỗi lỗi này
-          if (val === '[object Object]') return ''; 
-          
+          if (val === '[object Object]') return '';
           try {
             const parsed = JSON.parse(val);
-            if (typeof parsed === 'object' && parsed !== null) {
-              return extractText(parsed, lang);
-            }
-          } catch {
-            return val;
-          }
+            if (typeof parsed === 'object' && parsed !== null) return extractText(parsed, lang);
+          } catch { return val; }
           return val;
         }
-
-        if (Array.isArray(val)) {
-          return val.length > 0 ? extractText(val[0], lang) : '';
-        }
-
+        if (Array.isArray(val)) return val.length > 0 ? extractText(val[0], lang) : '';
         if (typeof val === 'object') {
           if (val[lang]) return extractText(val[lang], lang);
-          
-          // Fallback: Vét cạn các value bên trong để tìm chữ
           const values = Object.values(val);
           for (const v of values) {
             const extracted = extractText(v, lang);
             if (extracted) return extracted;
           }
-          // TUYỆT ĐỐI KHÔNG dùng String(val) ở đây để tránh in ra [object Object]
-          return ''; 
+          return '';
         }
-
         return String(val);
       };
 
-
-      const normalizeTag = (raw: any): TagValue => {
-        const viStr = extractText(raw, 'vi');
-        const enStr = extractText(raw, 'en');
-        return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
-      };
-      // 2. MÁY LỌC RÁC: Vứt bỏ các mảng rỗng [[], []] từ Database
+      // 2. MÁY LỌC RÁC MẢNG
       const safeParseArray = (val: any) => {
         let arr = [];
         if (Array.isArray(val)) arr = val;
@@ -765,13 +746,19 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         return arr.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item) && Object.keys(item).length > 0);
       };
 
+      const normalizeTag = (raw: any): TagValue => {
+        const viStr = extractText(raw, 'vi');
+        const enStr = extractText(raw, 'en');
+        return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
+      };
 
+      // 3. BÓC TÁCH TEXT CƠ BẢN & LOÀI
       const descriptionBi = parseBilingual(initialPet.description);
       const colorBi = parseBilingual(initialPet.color);
       const breedBi = parseBilingual(initialPet.breed);
 
       let mappedSpecies: PetSpecies = 'DOG';
-      const speciesText = `${extractText(initialPet.species, 'vi')} ${extractText(initialPet.species, 'en')}`.toUpperCase();
+      const speciesText = `${extractText(initialPet.species, 'vi')} ${extractText(initialPet.species, 'en')} ${typeof initialPet.species === 'string' ? initialPet.species : ''}`.toUpperCase();
       if (speciesText.includes('CAT') || speciesText.includes('MÈO')) mappedSpecies = 'CAT';
 
       const initialSpeciesKey = resolveVaccineSpeciesKey(mappedSpecies);
@@ -780,16 +767,20 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       setCustomBreedMode(!!breedBi.vi && !matchedBreed);
       setOriginalBilingual({ description: descriptionBi, color: colorBi, breed: breedBi });
 
-      // 3. FIX MISMATCH TÊN BIẾN Ở ĐÂY
+      // 4. MAPPING CÁC TRƯỜNG MẢNG / QUAN HỆ (CÓ BỘ LỌC .filter CHỐNG RỖNG)
       const mappedTraits = (initialPet.traitsList || [])
         .map((t: any) => normalizeTag(t.name))
         .filter((t: TagValue) => t.vi.trim() !== '');
 
-      const mappedAdoptionReqs = (initialPet.adoptionRequirements || []).map((r: any) => ({
-        iconKey: r.requirement?.key || r.requirement?.iconKey || r.iconKey,
-        label: parseBilingual(r.requirement?.label || r.label)
-      }));
+      const mappedAdoptionReqs = (initialPet.adoptionRequirements || []).map((r: any) => {
+        const req = r.requirement || r;
+        return {
+          iconKey: req.key || req.iconKey || r.iconKey,
+          label: parseBilingual(req.label || r.label)
+        };
+      });
 
+      // 5. MAPPING HỒ SƠ Y TẾ
       const allVaccines = [...VACCINE_OPTIONS.Dog, ...VACCINE_OPTIONS.Cat];
       const mappedMedical = (initialPet.medicalRecords || []).map((r: any) => {
         const recNameBi = parseBilingual(r.recordName);
@@ -813,6 +804,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         };
       });
 
+      // 6. ĐỔ DỮ LIỆU VÀO FORM
       setValues({
         name: initialPet.name,
         species: mappedSpecies,
@@ -828,7 +820,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         size: initialPet.size || SIZE_OPTIONS[0].value,
         color: colorBi.vi,
         microchipNumber: initialPet.microchipNumber || '',
-
+        
         traits: mappedTraits,
         goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
         badWith: safeParseArray(initialPet.badWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
