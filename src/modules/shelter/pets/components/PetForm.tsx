@@ -707,69 +707,67 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   useEffect(() => {
     if (initialPet) {
-      const initialSpeciesKey = resolveVaccineSpeciesKey(initialPet.species);
-      const descriptionBi = parseBilingual(initialPet.description);
-      const colorBi = parseBilingual(initialPet.color);
-      const breedBi = parseBilingual(initialPet.breed);
-      const matchedBreed = BREED_OPTIONS[initialSpeciesKey].find((b) => b.vi === breedBi.vi);
-
-      setCustomBreedMode(!!breedBi.vi && !matchedBreed);
-      setOriginalBilingual({ description: descriptionBi, color: colorBi, breed: breedBi });
+      // 1. CÔNG CỤ BÓC TÁCH: Tìm chuỗi String kể cả khi bị lồng object [object Object]
       const extractText = (val: any, lang: 'vi' | 'en'): string => {
         if (!val) return '';
         if (typeof val === 'string') return val;
         if (Array.isArray(val)) return val.length > 0 ? extractText(val[0], lang) : '';
         if (typeof val === 'object') {
-          // Nếu có ngôn ngữ tương ứng, tiếp tục đào sâu vào trong
           if (val[lang] !== undefined) return extractText(val[lang], lang);
-          // Fallback: nếu mất key ngôn ngữ, lấy đại value đầu tiên cứu vớt data
           const keys = Object.keys(val);
           if (keys.length > 0) return extractText(val[keys[0]], lang);
         }
         return String(val);
       };
 
-      // 2. Thay thế hàm normalizeTag cũ bằng đoạn này
+      // 2. MÁY LỌC RÁC: Vứt bỏ các mảng rỗng [[], []] từ Database
+      const safeParseArray = (val: any) => {
+        let arr = [];
+        if (Array.isArray(val)) arr = val;
+        else if (typeof val === 'string') {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) arr = parsed;
+          } catch { return []; }
+        }
+        return arr.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item) && Object.keys(item).length > 0);
+      };
+
       const normalizeTag = (raw: any): TagValue => {
-        // Dùng hàm extractText để ép ép kiểu lấy đúng chuỗi String, bất chấp DB bị lồng bao nhiêu lớp object
         const viStr = extractText(raw, 'vi');
         const enStr = extractText(raw, 'en');
         return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
       };
-      console.log("=== RAW INITIAL PET DATA ===", JSON.stringify(initialPet, null, 2));
-      // Helper an toàn để parse JSON Array
-      const safeParseArray = (val: any) => {
-        if (Array.isArray(val)) return val;
-        if (typeof val === 'string') {
-          try {
-            const parsed = JSON.parse(val);
-            return Array.isArray(parsed) ? parsed : [];
-          } catch { return []; }
-        }
-        return [];
-      };
 
-      // 1. Map Traits (Truy cập vào thuộc tính .name do Prisma trả về từ relation PetTrait)
+      const descriptionBi = parseBilingual(initialPet.description);
+      const colorBi = parseBilingual(initialPet.color);
+      const breedBi = parseBilingual(initialPet.breed);
+
+      let mappedSpecies: PetSpecies = 'DOG';
+      const speciesText = `${extractText(initialPet.species, 'vi')} ${extractText(initialPet.species, 'en')}`.toUpperCase();
+      if (speciesText.includes('CAT') || speciesText.includes('MÈO')) mappedSpecies = 'CAT';
+
+      const initialSpeciesKey = resolveVaccineSpeciesKey(mappedSpecies);
+      const matchedBreed = BREED_OPTIONS[initialSpeciesKey].find((b) => b.vi === breedBi.vi);
+
+      setCustomBreedMode(!!breedBi.vi && !matchedBreed);
+      setOriginalBilingual({ description: descriptionBi, color: colorBi, breed: breedBi });
+
+      // 3. FIX MISMATCH TÊN BIẾN Ở ĐÂY
       const mappedTraits = (initialPet.traitsList || []).map((t: any) => normalizeTag(t.name));
-
-      // 2. Map Yêu cầu nhận nuôi (Truy cập vào relation .requirement)
       const mappedAdoptionReqs = (initialPet.adoptionRequirements || []).map((r: any) => ({
         iconKey: r.requirement?.key || r.requirement?.iconKey || r.iconKey,
         label: parseBilingual(r.requirement?.label || r.label)
       }));
 
-      // 3. Reverse-match (Dịch ngược) Vaccine Type từ tên (vì DB không lưu trường vaccineType)
       const allVaccines = [...VACCINE_OPTIONS.Dog, ...VACCINE_OPTIONS.Cat];
       const mappedMedical = (initialPet.medicalRecords || []).map((r: any) => {
         const recNameBi = parseBilingual(r.recordName);
         let inferredVaccineType = r.vaccineType || '';
-
-        // Nếu là vaccine mà không có vaccineType, tìm ngược lại ID dựa vào tên Tiếng Việt hoặc Tiếng Anh
         if (r.type === 'vaccination' && !inferredVaccineType) {
-          const match = allVaccines.find(v => v.vi === recNameBi.vi || v.en === recNameBi.en);
+          const match = allVaccines.find(v => v.vi.trim() === recNameBi.vi.trim() || v.en.trim() === recNameBi.en.trim());
           if (match) inferredVaccineType = match.id;
         }
-
         return {
           localId: r.id || `existing_${Math.random().toString(36).slice(2, 8)}`,
           type: r.type,
@@ -787,10 +785,10 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
       setValues({
         name: initialPet.name,
-        species: initialPet.species,
+        species: mappedSpecies,
         breed: breedBi.vi,
-        gender: initialPet.gender,
-        status: initialPet.status,
+        gender: initialPet.gender || 'MALE',
+        status: initialPet.status || 'AVAILABLE',
         description: descriptionBi.vi,
         healthStatus: initialPet.healthStatus ?? [],
         weight: initialPet.weight,
@@ -801,7 +799,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         color: colorBi.vi,
         microchipNumber: initialPet.microchipNumber || '',
 
-        // Gán các mảng đã được mapping an toàn ở trên
         traits: mappedTraits,
         goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag),
         badWith: safeParseArray(initialPet.badWith).map(normalizeTag),
