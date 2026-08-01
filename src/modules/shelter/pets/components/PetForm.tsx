@@ -710,16 +710,48 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       // 1. CÔNG CỤ BÓC TÁCH: Tìm chuỗi String kể cả khi bị lồng object [object Object]
       const extractText = (val: any, lang: 'vi' | 'en'): string => {
         if (!val) return '';
-        if (typeof val === 'string') return val;
-        if (Array.isArray(val)) return val.length > 0 ? extractText(val[0], lang) : '';
-        if (typeof val === 'object') {
-          if (val[lang] !== undefined) return extractText(val[lang], lang);
-          const keys = Object.keys(val);
-          if (keys.length > 0) return extractText(val[keys[0]], lang);
+
+        if (typeof val === 'string') {
+          // Bỏ qua luôn nếu trong DB đang lưu cứng chuỗi lỗi này
+          if (val === '[object Object]') return ''; 
+          
+          try {
+            const parsed = JSON.parse(val);
+            if (typeof parsed === 'object' && parsed !== null) {
+              return extractText(parsed, lang);
+            }
+          } catch {
+            return val;
+          }
+          return val;
         }
+
+        if (Array.isArray(val)) {
+          return val.length > 0 ? extractText(val[0], lang) : '';
+        }
+
+        if (typeof val === 'object') {
+          if (val[lang]) return extractText(val[lang], lang);
+          
+          // Fallback: Vét cạn các value bên trong để tìm chữ
+          const values = Object.values(val);
+          for (const v of values) {
+            const extracted = extractText(v, lang);
+            if (extracted) return extracted;
+          }
+          // TUYỆT ĐỐI KHÔNG dùng String(val) ở đây để tránh in ra [object Object]
+          return ''; 
+        }
+
         return String(val);
       };
 
+
+      const normalizeTag = (raw: any): TagValue => {
+        const viStr = extractText(raw, 'vi');
+        const enStr = extractText(raw, 'en');
+        return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
+      };
       // 2. MÁY LỌC RÁC: Vứt bỏ các mảng rỗng [[], []] từ Database
       const safeParseArray = (val: any) => {
         let arr = [];
@@ -733,11 +765,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         return arr.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item) && Object.keys(item).length > 0);
       };
 
-      const normalizeTag = (raw: any): TagValue => {
-        const viStr = extractText(raw, 'vi');
-        const enStr = extractText(raw, 'en');
-        return { vi: viStr, en: enStr, isCustom: !enStr || enStr === viStr };
-      };
 
       const descriptionBi = parseBilingual(initialPet.description);
       const colorBi = parseBilingual(initialPet.color);
@@ -754,7 +781,10 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       setOriginalBilingual({ description: descriptionBi, color: colorBi, breed: breedBi });
 
       // 3. FIX MISMATCH TÊN BIẾN Ở ĐÂY
-      const mappedTraits = (initialPet.traitsList || []).map((t: any) => normalizeTag(t.name));
+      const mappedTraits = (initialPet.traitsList || [])
+        .map((t: any) => normalizeTag(t.name))
+        .filter((t: TagValue) => t.vi.trim() !== '');
+
       const mappedAdoptionReqs = (initialPet.adoptionRequirements || []).map((r: any) => ({
         iconKey: r.requirement?.key || r.requirement?.iconKey || r.iconKey,
         label: parseBilingual(r.requirement?.label || r.label)
@@ -800,8 +830,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         microchipNumber: initialPet.microchipNumber || '',
 
         traits: mappedTraits,
-        goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag),
-        badWith: safeParseArray(initialPet.badWith).map(normalizeTag),
+        goodWith: safeParseArray(initialPet.goodWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
+        badWith: safeParseArray(initialPet.badWith).map(normalizeTag).filter((t: TagValue) => t.vi.trim() !== ''),
         adoptionRequirements: mappedAdoptionReqs,
         medicalRecords: mappedMedical,
       } as FormValues);
