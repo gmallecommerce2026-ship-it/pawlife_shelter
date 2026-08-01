@@ -137,8 +137,11 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
   },
 
   getPetById: async (id) => {
-    const cached = get().items.find((p) => p.id === id);
-    if (cached) return cached;
+    // ❌ Xoá 2 dòng này để không lấy data thiếu từ Cache nữa
+    // const cached = get().items.find((p) => p.id === id);
+    // if (cached) return cached;
+
+    // ✅ Hệ thống sẽ luôn gọi API này (có chứa đầy đủ relations)
     try {
       const res = await apiClient.get(`/shelter-dashboard/pets/${id}`);
       return res as Pet;
