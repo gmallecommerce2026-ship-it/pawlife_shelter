@@ -16,6 +16,7 @@ import { ApplicationColumn } from './components/ApplicationColumn';
 import { ApplicationCard, ApplicationCardContent } from './components/ApplicationCard';
 import { ApplicationDetailModal } from './components/ApplicationDetailModal';
 import { ApplicationFilterBar } from './components/ApplicationFilterBar';
+import { ApplicantProfileModal } from '@/components/ApplicantProfileModal';
 
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
@@ -25,6 +26,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [selectedApp, setSelectedApp] = useState<AdoptionApplication | null>(null);
   const [openRejectFormOnSelect, setOpenRejectFormOnSelect] = useState(false);
   const [overColumn, setOverColumn] = useState<ApplicationStatus | null>(null);
+  const [profileApp, setProfileApp] = useState<AdoptionApplication | null>(null);
 
   useEffect(() => {
     fetchApplications();
@@ -76,22 +78,25 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h1 className="font-sans text-2xl text-[#123832] font-bold mb-1">Đơn nhận nuôi</h1>
-          <p className="text-sm text-gray-500">
-            Kéo thả thẻ đơn để chuyển trạng thái xử lý, hoặc bấm vào thẻ để xem chi tiết.
-          </p>
+    <div className="flex flex-col justify-start items-start gap-[40px] w-full max-w-[1318px]">
+      {/* Header đồng bộ UI mẫu */}
+      <div className="flex justify-start items-center w-full h-[48px]">
+        <div className="flex justify-center items-center h-[43px]">
+          <h1 className="font-['Urbanist',_sans-serif] text-[40px] whitespace-nowrap text-[#0D062D] leading-none capitalize font-semibold">
+            Quản lý Đơn Nhận Nuôi
+          </h1>
+        </div>
+
+        {/* Tích hợp Component ApplicationFilterBar của bạn vào style mới */}
+        <div className="ml-auto flex items-center gap-[12px]">
+          <ApplicationFilterBar />
         </div>
       </div>
 
-      <ApplicationFilterBar />
-
       {isLoading && items.length === 0 ? (
-        <div className="flex gap-4 pb-4" style={{ height: 'calc(100vh - 260px)' }}>
+        <div className="flex gap-[11px] w-full h-[741px]">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="w-[280px] flex-shrink-0 rounded-xl bg-gray-100 animate-pulse" />
+            <div key={i} className="w-[254px] h-full rounded-xl bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -101,10 +106,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div
-            className="flex gap-4 overflow-x-auto pb-4 items-stretch scroll-smooth"
-            style={{ height: 'calc(100vh - 260px)' }}
-          >
+          {/* Vùng chứa Columns - Giữ đúng width/gap của mẫu */}
+          <div className="flex gap-[11px] overflow-x-auto pb-4 items-stretch scroll-smooth w-full min-h-[741px]">
             {columns.map((col) => (
               <ApplicationColumn
                 key={col.status}
@@ -113,22 +116,24 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 applications={col.applications}
                 movingIds={movingIds}
                 isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
+                // Khi click vào Thẻ -> Mở Modal Duyệt Đơn
                 onCardClick={(app) => {
                   setOpenRejectFormOnSelect(false);
                   setSelectedApp(app);
+                }}
+                // Khi click vào Tên -> Mở Modal User Profile
+                onNameClick={(app) => {
+                  setProfileApp(app);
                 }}
               />
             ))}
           </div>
 
-          <DragOverlay
-            dropAnimation={{
-              duration: 220,
-              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-            }}
-          >
+          {/* Hiệu ứng khi kéo thẻ */}
+          <DragOverlay>
             {activeApp ? (
-              <div className="bg-white border border-gray-100 rounded-xl p-3.5 shadow-2xl w-[264px] rotate-[2deg] scale-[1.03] cursor-grabbing">
+              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] rotate-[2deg] scale-[1.03] cursor-grabbing">
+                {/* Truyền vào overlay để tránh bị lỗi undefined props */}
                 <ApplicationCardContent application={activeApp} />
               </div>
             ) : null}
@@ -141,6 +146,14 @@ export const ApplicationKanbanBoard: React.FC = () => {
           application={selectedApp}
           initialShowRejectForm={openRejectFormOnSelect}
           onClose={() => setSelectedApp(null)}
+        />
+      )}
+
+      {/* Modal Hồ Sơ Người Dùng Mới (ApplicantProfileModal) */}
+      {profileApp && (
+        <ApplicantProfileModal
+          application={profileApp}
+          onClose={() => setProfileApp(null)}
         />
       )}
     </div>

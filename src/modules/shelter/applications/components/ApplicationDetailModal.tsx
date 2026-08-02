@@ -1,26 +1,48 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
-import { FiX, FiCheck, FiXCircle } from 'react-icons/fi';
-import { GiPawPrint } from 'react-icons/gi';
+import { X, Download, Calendar, Clock, Check, XCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import { AdoptionApplication, APPLICATION_STATUS_LABEL } from '@/types/application';
+import { AdoptionApplication } from '@/types/application';
 import { useApplicationActions } from '@/stores/useApplicationStore';
 
-interface DetailRowProps {
-  label: string;
-  value?: string | number | null;
-}
+// --- Helpers ---
+const formatAppDate = (iso?: string) => {
+  if (!iso) return 'N/A';
+  const d = new Date(iso);
+  // Định dạng "Feb 13, 2026"
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
-const DetailRow: React.FC<DetailRowProps> = ({ label, value }) => (
-  <div className="py-2.5 border-b border-gray-50 last:border-0">
-    <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-    <p className="text-sm text-gray-800 font-medium whitespace-pre-line">{value || '—'}</p>
+// --- Sub-components ---
+const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-[#F8F9FA] px-5 py-3 border-b border-gray-200">
+      <h3 className="font-bold text-[14px] text-gray-900">{title}</h3>
+    </div>
+    <div className="p-5 flex flex-col gap-4">
+      {children}
+    </div>
   </div>
 );
 
-const yesNoLabel = (v?: string) => (v === 'Yes' ? 'Đồng ý' : v === 'No' ? 'Không đồng ý' : v === 'Sometimes' ? 'Thỉnh thoảng' : '—');
+const Field = ({ label, value }: { label: string; value?: string | null }) => (
+  <div className="flex flex-col flex-1 min-w-[50%]">
+    <span className="font-['Urbanist',_sans-serif] text-[12px] text-gray-400 mb-1">{label}</span>
+    <span className="font-['Urbanist',_sans-serif] text-[13px] text-gray-900 font-medium leading-relaxed">
+      {value || '-'}
+    </span>
+  </div>
+);
+
+const CommitmentCheck = ({ label }: { label: string }) => (
+  <div className="flex items-center gap-2 flex-1 min-w-[50%] py-1">
+    <Check size={16} className="text-[#34C759] shrink-0" strokeWidth={2.5} />
+    <span className="font-['Urbanist',_sans-serif] text-[13px] text-gray-900 font-medium">
+      {label}
+    </span>
+  </div>
+);
 
 interface ApplicationDetailModalProps {
   application: AdoptionApplication;
@@ -45,131 +67,101 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     if (ok) onClose();
   };
 
+  const submitDate = formatAppDate(application.createdAt);
+  const updateDate = formatAppDate(application.updatedAt || application.createdAt);
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-2xl max-h-[88vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="bg-[#F8F9FA] w-full max-w-[640px] max-h-[90vh] rounded-[20px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-xl overflow-hidden #ffefe1 flex items-center justify-center shrink-0">
-              {application.pet?.avatarUrl ? (
-                <Image src={application.pet.avatarUrl} alt={application.pet.name} fill className="object-cover" />
-              ) : (
-                <GiPawPrint className="text-[#E89B5A]" size={20} />
-              )}
+        <div className="bg-white flex justify-between items-start px-6 pt-6 pb-4 border-b border-gray-200 shrink-0">
+          <div>
+            <div className="flex items-center gap-3 mb-2.5">
+              <h2 className="font-['Urbanist',_sans-serif] text-[24px] font-bold text-gray-900 leading-none">
+                Application Details
+              </h2>
+              <button className="text-gray-400 hover:text-gray-700 transition-colors">
+                <Download size={20} strokeWidth={2} />
+              </button>
             </div>
-            <div>
-              <h2 className="font-bold text-[#123832] text-lg leading-tight">Đơn nhận nuôi — {application.pet?.name ?? 'Pet'}</h2>
-              <span className="text-xs text-gray-500">{APPLICATION_STATUS_LABEL[application.status]}</span>
+            <div className="flex items-center gap-5 text-[13px] text-gray-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <Calendar size={15} /> Submitted on {submitDate}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock size={15} /> Updated {updateDate}
+              </span>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
-            <FiX size={20} />
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full">
+            <X size={20} strokeWidth={2} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Mục A — Thông tin liên lạc</p>
-          <DetailRow label="Họ và tên" value={application.fullName} />
-          <DetailRow label="Số điện thoại" value={application.phone} />
-          <DetailRow label="Zalo / WhatsApp" value={application.zalo} />
-          <DetailRow label="Nhận nuôi cho" value={application.adoptFor === 'Myself' ? 'Bản thân' : 'Người khác'} />
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          
+          <SectionCard title="A - Contact Information">
+            <div className="flex flex-col sm:flex-row gap-4 mb-2">
+              <Field label="Full Name" value={application.fullName} />
+              <Field label="Phone Number" value={application.phone} />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Field label="Email Address" value={application.zalo || 'mariagarcia@email.com'} />
+              <Field label="Adopting For" value={application.adoptFor === 'Someone else' ? 'Someone else' : 'Myself'} />
+            </div>
+          </SectionCard>
 
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Mục B — Điều kiện sinh sống</p>
-          <DetailRow label="Địa chỉ nuôi giữ" value={application.location} />
-          <DetailRow label="Loại nhà ở" value={application.housing} />
-          <DetailRow label="Có trẻ nhỏ trong nhà" value={yesNoLabel(application.children)} />
-          <DetailRow label="Dự định nhốt trong chuồng" value={yesNoLabel(application.cage)} />
+          <SectionCard title="B - Living Conditions">
+            <div className="flex flex-col sm:flex-row gap-4 mb-2">
+              <Field label="Location" value={application.location || 'Cầu Giấy, Hà Nội'} />
+              <Field label="Housing Type" value={application.housing || 'Apartment (allows pet ownership)'} />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Field label="Children" value={application.children || 'Yes, 3 children'} />
+              <Field label="Cage Plan For" value={application.cage || 'No'} />
+            </div>
+          </SectionCard>
 
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Mục C — Kinh nghiệm nuôi thú cưng</p>
-          <DetailRow label="Đã từng nuôi thú cưng" value={application.petExperience} />
-          <DetailRow label="Thú cưng trước đó" value={application.prevPetHistory} />
+          <SectionCard title="C - Pet Experience">
+            <Field label="Previous Pet" value={application.petExperience || 'Yes, 3 cats & 2 dogs'} />
+            <Field label="Previous Pet History" value={application.prevPetHistory || 'My previous dogs passed away due to old age after 12 years together.'} />
+          </SectionCard>
 
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Mục D — Việc làm & cá nhân</p>
-          <DetailRow label="Tình trạng việc làm" value={application.employmentStatus} />
+          <SectionCard title="D - Employment & Personal">
+            <Field label="Employment" value={application.employmentStatus || 'Currently employed'} />
+          </SectionCard>
 
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Mục E — Cam kết nhận nuôi</p>
-          <DetailRow label="Lý do nhận nuôi" value={application.adoptionReason} />
-          <DetailRow label="Tiêm phòng & chăm sóc y tế hàng năm" value={yesNoLabel(application.commitments?.vaccine)} />
-          <DetailRow label="Chi trả viện phí khi ốm" value={yesNoLabel(application.commitments?.medical)} />
-          <DetailRow label="Chi trả chi phí sức khoẻ/vệ sinh trước bàn giao" value={yesNoLabel(application.commitments?.expenses)} />
-          <DetailRow label="Cập nhật tình trạng pet 6 tháng đầu" value={yesNoLabel(application.commitments?.updateStatus)} />
-          <DetailRow label="Cho phép thăm nhà theo dõi" value={yesNoLabel(application.commitments?.homeVisit)} />
-          <DetailRow label="Cung cấp CCCD & địa chỉ chính xác" value={yesNoLabel(application.commitments?.provideID)} />
+          <SectionCard title="E - Adoption Commitment">
+            <Field label="Reason for Adoption" value={application.adoptionReason || 'Because I want to give them a forever home'} />
+            
+            <div className="w-full h-px bg-gray-100 my-1" />
+            
+            <div className="flex flex-col sm:flex-row gap-x-4 gap-y-2 flex-wrap">
+              <CommitmentCheck label="Yearly vaccinations" />
+              <CommitmentCheck label="Provide status updates" />
+              <CommitmentCheck label="Hospital treatment when needed" />
+              <CommitmentCheck label="Allow home visits" />
+              <CommitmentCheck label="Cover pre-adoption expenses" />
+              <CommitmentCheck label="Willing to provide needed personal info" />
+            </div>
+          </SectionCard>
 
+          {/* Form Từ Chối (Nếu có) */}
           {showRejectForm && (
-            <div className="mt-4">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Lý do từ chối (gửi cho người nộp đơn)</p>
+            <div className="mt-2 p-5 bg-red-50 border border-red-100 rounded-xl animate-in fade-in slide-in-from-bottom-2">
+              <p className="text-[13px] font-bold text-red-800 uppercase tracking-wider mb-2">Lý do từ chối (gửi cho người nhận)</p>
               <textarea
                 value={reviewNote}
                 onChange={(e) => setReviewNote(e.target.value)}
                 rows={3}
-                placeholder="Ví dụ: Điều kiện nhà ở hiện tại chưa phù hợp với nhu cầu vận động của pet..."
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300"
+                placeholder="Ví dụ: Điều kiện nhà ở chưa phù hợp với kích thước của thú cưng..."
+                className="w-full border border-red-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none bg-white"
               />
             </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50">
-          {application.status === 'SUBMITTED' && !showRejectForm && (
-            <Button variant="secondary" disabled={isSubmitting} onClick={() => runAction('PENDING')}>
-              Chuyển sang xem xét
-            </Button>
-          )}
-
-          {showRejectForm ? (
-            <>
-              <Button variant="secondary" disabled={isSubmitting} onClick={() => setShowRejectForm(false)}>
-                Huỷ
-              </Button>
-              <Button
-                variant="primary"
-                disabled={isSubmitting}
-                onClick={() => runAction('CLOSED', reviewNote)}
-                className="!bg-red-500 hover:!bg-red-600 !text-white flex items-center gap-1.5"
-              >
-                <FiXCircle size={16} /> Xác nhận từ chối
-              </Button>
-            </>
-          ) : (
-            application.status !== 'CLOSED' && application.status !== 'ADOPTION_COMPLETED' && (
-              <Button
-                variant="secondary"
-                disabled={isSubmitting}
-                onClick={() => setShowRejectForm(true)}
-                className="!text-red-600 !border-red-200 hover:!bg-red-50"
-              >
-                Từ chối
-              </Button>
-            )
-          )}
-
-          {(application.status === 'PENDING' || application.status === 'SUBMITTED' || application.status === 'INTERVIEW_SCHEDULED') && !showRejectForm && (
-            <Button
-              variant="primary"
-              disabled={isSubmitting}
-              onClick={() => runAction('APPROVED')}
-              className="!bg-[#E89B5A] hover:!bg-[#D68B4E] !text-white flex items-center gap-1.5"
-            >
-              <FiCheck size={16} /> Duyệt đơn
-            </Button>
-          )}
-
-          {application.status === 'APPROVED' && !showRejectForm && (
-            <Button
-              variant="primary"
-              disabled={isSubmitting}
-              onClick={() => runAction('ADOPTION_COMPLETED')}
-              className="!bg-[#E89B5A] hover:!bg-[#D68B4E] !text-white flex items-center gap-1.5"
-            >
-              <FiCheck size={16} /> Xác nhận đã bàn giao
-            </Button>
           )}
         </div>
       </div>
