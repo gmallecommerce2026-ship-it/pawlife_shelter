@@ -24,7 +24,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
   const [activeApp, setActiveApp] = useState<AdoptionApplication | null>(null);
   const [selectedApp, setSelectedApp] = useState<AdoptionApplication | null>(null);
-  const [openRejectFormOnSelect, setOpenRejectFormOnSelect] = useState(false);
   const [overColumn, setOverColumn] = useState<ApplicationStatus | null>(null);
   const [profileApp, setProfileApp] = useState<AdoptionApplication | null>(null);
 
@@ -69,7 +68,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     if (!app || app.status === nextStatus) return;
 
     if (REQUIRES_CONFIRM.includes(nextStatus)) {
-      setOpenRejectFormOnSelect(true);
       setSelectedApp(app);
       return;
     }
@@ -78,20 +76,17 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col justify-start items-start gap-[40px] w-full max-w-[1318px]">
-      {/* Header đồng bộ UI mẫu */}
-      <div className="flex justify-start items-center w-full h-[48px]">
-        <div className="flex justify-center items-center h-[43px]">
-          <h1 className="font-['Urbanist',_sans-serif] text-[40px] whitespace-nowrap text-[#0D062D] leading-none capitalize font-semibold">
-            Quản lý Đơn Nhận Nuôi
-          </h1>
-        </div>
+    <div className="flex flex-col justify-start items-start gap-[40px] w-full max-w-[1318px] pt-4">
 
-        {/* Tích hợp Component ApplicationFilterBar của bạn vào style mới */}
-        <div className="ml-auto flex items-center gap-[12px]">
-          <ApplicationFilterBar />
-        </div>
+      {/* --- HEADER --- */}
+      <div className="flex justify-between items-center w-full mb-2">
+        <h1 className="font-['Urbanist',_sans-serif] text-[32px] text-[#0D062D] font-bold tracking-tight">
+          Application Management
+        </h1>
+
+        <ApplicationFilterBar />
       </div>
+      {/* -------------- */}
 
       {isLoading && items.length === 0 ? (
         <div className="flex gap-[11px] w-full h-[741px]">
@@ -106,7 +101,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {/* Vùng chứa Columns - Giữ đúng width/gap của mẫu */}
+          {/* Vùng chứa Columns */}
           <div className="flex gap-[11px] overflow-x-auto pb-4 items-stretch scroll-smooth w-full min-h-[741px]">
             {columns.map((col) => (
               <ApplicationColumn
@@ -116,12 +111,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 applications={col.applications}
                 movingIds={movingIds}
                 isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
-                // Khi click vào Thẻ -> Mở Modal Duyệt Đơn
                 onCardClick={(app) => {
-                  setOpenRejectFormOnSelect(false);
                   setSelectedApp(app);
                 }}
-                // Khi click vào Tên -> Mở Modal User Profile
                 onNameClick={(app) => {
                   setProfileApp(app);
                 }}
@@ -133,7 +125,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
           <DragOverlay>
             {activeApp ? (
               <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] rotate-[2deg] scale-[1.03] cursor-grabbing">
-                {/* Truyền vào overlay để tránh bị lỗi undefined props */}
                 <ApplicationCardContent application={activeApp} />
               </div>
             ) : null}
@@ -141,15 +132,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
         </DndContext>
       )}
 
+      {/* Modal Chi Tiết Đơn */}
       {selectedApp && (
         <ApplicationDetailModal
           application={selectedApp}
-          initialShowRejectForm={openRejectFormOnSelect}
           onClose={() => setSelectedApp(null)}
         />
       )}
 
-      {/* Modal Hồ Sơ Người Dùng Mới (ApplicantProfileModal) */}
+      {/* Modal Hồ Sơ Người Dùng Mới */}
       {profileApp && (
         <ApplicantProfileModal
           application={profileApp}

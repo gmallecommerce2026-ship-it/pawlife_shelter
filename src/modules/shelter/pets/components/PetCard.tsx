@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Mars, Venus, PawPrint } from 'lucide-react';
 import { Pet, PetViewMode, PET_STATUS_LABEL } from '@/types/pet';
+import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 
 // =============================================================================
 // SONG NGỮ (VI/EN) — breed/description/color hiện được lưu dạng { vi, en } sau
@@ -14,27 +15,6 @@ import { Pet, PetViewMode, PET_STATUS_LABEL } from '@/types/pet';
 // NẾU project đã có sẵn @/utils/bilingualField (displayBilingual), NÊN import
 // trực tiếp từ đó thay vì dùng bản rút gọn dưới đây để tránh lệch logic.
 // =============================================================================
-type MaybeBilingual = string | { vi?: string; en?: string } | null | undefined;
-
-const showText = (val: MaybeBilingual): string => {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  return val.vi || val.en || '';
-};
-
-// Rút gọn giống bên mobile: "Golden Retriever" giữ nguyên nếu ngắn, quá dài thì
-// viết tắt chữ đầu (VD: "Chó ta / Chó cỏ" -> "C. ta / Chó cỏ") — mirror formatBreed
-// trong search.tsx (mobile) để 2 nền tảng hiển thị đồng nhất.
-const formatBreed = (breed: MaybeBilingual): string => {
-  const breedStr = showText(breed);
-  if (!breedStr) return '';
-  if (breedStr.length <= 18) return breedStr;
-  const words = breedStr.split(' ');
-  if (words.length > 1) {
-    return `${words[0][0]}. ${words.slice(1).join(' ')}`;
-  }
-  return `${breedStr.substring(0, 18)}...`;
-};
 
 // Tính tuổi từ ngày sinh — mirror getAge() bên mobile search.tsx, chỉ giữ bản
 // tiếng Việt vì trang quản lý shelter hiện tại chưa có toggle ngôn ngữ.

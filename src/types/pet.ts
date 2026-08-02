@@ -6,12 +6,12 @@ export interface Pet {
   id: string;
   name: string;
   species: PetSpecies;
-  breed: string;
+  breed: string | { vi?: string; en?: string };
   age: number; // tính theo tháng tuổi
   gender: PetGender;
   status: PetStatus;
   images: string[]; // danh sách URL ảnh, ảnh đầu tiên là ảnh đại diện
-  description: string;
+  description: string | { vi?: string; en?: string };
   healthStatus: string[]; // vd: ["Đã tiêm phòng", "Đã triệt sản"]
   weightKg?: number;
   isSterilized?: boolean;

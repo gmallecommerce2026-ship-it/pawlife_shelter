@@ -13,6 +13,7 @@ import {
   FiLogOut,
   FiChevronDown,
   FiMessageCircle,
+  FiBox,
 } from 'react-icons/fi';
 import classNames from 'classnames';
 import { logout } from '@/actions/logout';
@@ -41,6 +42,12 @@ const SHELTER_MENU: MenuItem[] = [
     label: 'Hồ sơ nhận nuôi',
     icon: <FiClipboard size={22} />,
     path: '/shelter/applications',
+  },
+  {
+    id: 'post-adoption',
+    label: 'Đã nhận nuôi',
+    icon: <FiBox size={22} />,
+    path: '/shelter/post-adoption',
   },
   { id: 'profile', label: 'Cài đặt', icon: <FiUser size={22} />, path: '/shelter/profile' },
 ];

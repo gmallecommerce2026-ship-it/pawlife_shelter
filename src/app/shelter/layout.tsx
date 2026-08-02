@@ -13,8 +13,8 @@ export default function ShelterLayout({ children }: { children: React.ReactNode 
 
         {/* Main sử dụng flex-1 để TỰ ĐỘNG co giãn theo kích thước của Sidebar */}
         {/* Không cần dùng margin-left nữa, bố cục sẽ tự bung rộng ra khi sidebar thu hẹp */}
-        <main className="flex-1 p-[22px] min-w-0 transition-all duration-300 ease-in-out">
-          <div className="w-full h-full p-[32px] min-h-[calc(100vh-44px)] bg-white border border-[#D9D9D9] rounded-[30px] overflow-hidden relative z-20 shadow-sm">
+        <main className="flex-1 pt-[22px] min-w-0 transition-all duration-300 ease-in-out">
+          <div className="w-full h-full p-[32px] min-h-[calc(100vh-44px)] bg-white border border-[#D9D9D9] rounded-tl-[30px] overflow-hidden relative z-20 shadow-sm">
             {children}
           </div>
         </main>

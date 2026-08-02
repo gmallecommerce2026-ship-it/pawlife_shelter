@@ -1,30 +1,31 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiPlus } from 'react-icons/fi';
 import { usePetList, usePetFilter, usePetActions } from '@/stores/usePetStore';
-import { PetFilterBar } from './components/PetFilterBar';
 import { PetCard } from './components/PetCard';
+import { PetPageHeader } from './components/PetPageHeader';
 import { Pet, PetViewMode } from '@/types/pet';
-import PetDetailPhoneModal from './components/PetDetailPhoneModal';
+import PetTable from '@/components/PetTable';
+import { Link } from 'lucide-react';
 
 export const PetListPage = () => {
   const router = useRouter();
   const { items, total, isLoading } = usePetList();
   const { filter, setFilter } = usePetFilter();
-  // NOTE: `deletePet` giả định usePetActions đã/sẽ có action này (song song với
-  // createPet/updatePet đã có trong PetForm.tsx). Nếu store chưa có, cần bổ sung
-  // 1 action gọi `axiosClient.delete('/pets/{id}')` rồi tự loại pet đó khỏi
-  // `items` (hoặc gọi lại fetchPets()).
   const { fetchPets, deletePet } = usePetActions() as ReturnType<typeof usePetActions> & {
     deletePet?: (id: string) => Promise<boolean | void>;
   };
-  const [viewMode, setViewMode] = useState<PetViewMode>('grid');
+  const [viewMode, setViewMode] = useState<PetViewMode>('list'); // mặc định dạng bảng giống ảnh mẫu
+  const [searchInput, setSearchInput] = useState(filter.search);
 
-  // Pet đang được xem trong phone-preview modal (null = đang đóng)
-  const [previewPet, setPreviewPet] = useState<Pet | null>(null);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (searchInput !== filter.search) setFilter({ search: searchInput });
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   useEffect(() => {
     fetchPets();
@@ -33,10 +34,7 @@ export const PetListPage = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / filter.pageSize));
 
-  const handleView = (pet: Pet) => setPreviewPet(pet);
-
-  // NOTE: điều chỉnh path này cho khớp route sửa pet thật của bạn (nếu khác
-  // '/shelter/pets/[id]/edit').
+  const handleView = (pet: Pet) => router.push(`/shelter/pets/${pet.id}`);
   const handleEdit = (pet: Pet) => router.push(`/shelter/pets/${pet.id}/edit`);
 
   const handleDelete = async (pet: Pet) => {
@@ -49,8 +47,6 @@ export const PetListPage = () => {
       if (deletePet) {
         await deletePet(pet.id);
       }
-      // Refetch để đồng bộ lại total/pagination, phòng khi deletePet không tự
-      // cập nhật `items` trong store.
       await fetchPets();
     } catch (err) {
       console.error('[PetListPage] Xoá pet thất bại:', err);
@@ -60,24 +56,11 @@ export const PetListPage = () => {
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-sans text-2xl text-[#123832] font-bold">Quản lý Pets</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{total} pet đang được trạm quản lý</p>
-        </div>
-        <Link
-          href="/shelter/pets/create"
-          className="flex items-center gap-2 bg-[#E89B5A] hover:bg-[#D68B4E] text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-        >
-          <FiPlus size={16} /> Thêm Pet mới
-        </Link>
-      </div>
-
-      <PetFilterBar
+      <PetPageHeader
         filter={filter}
         onFilterChange={setFilter}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
       />
 
       {isLoading ? (
@@ -107,18 +90,7 @@ export const PetListPage = () => {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {items.map((pet) => (
-            <PetCard
-              key={pet.id}
-              pet={pet}
-              viewMode="list"
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        <PetTable pets={items} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
       {!isLoading && totalPages > 1 && (
@@ -129,11 +101,10 @@ export const PetListPage = () => {
               <button
                 key={page}
                 onClick={() => setFilter({ page })}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                  page === filter.page
-                    ? 'bg-[#E89B5A] text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:border-[#E89B5A]'
-                }`}
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${page === filter.page
+                  ? 'bg-[#E89B5A] text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-[#E89B5A]'
+                  }`}
               >
                 {page}
               </button>
@@ -141,19 +112,6 @@ export const PetListPage = () => {
           })}
         </div>
       )}
-
-      {/* Phone-preview: mở khi bấm vào 1 item pet, render lại UI PetProfileDetailScreen
-          (mobile) bên trong khung điện thoại — giống PhonePreview trong ShelterProfileForm. */}
-      <PetDetailPhoneModal
-        pet={previewPet}
-        onClose={() => setPreviewPet(null)}
-        onEditPress={() => {
-          if (previewPet) {
-            handleEdit(previewPet);
-            setPreviewPet(null);
-          }
-        }}
-      />
     </div>
   );
 };
