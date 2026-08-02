@@ -24,9 +24,9 @@ export const PetPageHeader: React.FC<PetPageHeaderProps> = ({
     showNewPetButton = true,
 }) => {
     return (
-        <div className="flex items-center gap-3 mb-6 flex-nowrap overflow-x-auto mt-2">
+        <div className="flex items-center gap-6 mb-[37px] flex-nowrap">
             {/* Title */}
-            <h2 className="font-sans text-[40px] leading-none text-[#0D062D] font-semibold shrink-0 whitespace-nowrap">
+            <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#0D062D] font-semibold tracking-tight">
                 {title}
             </h2>
 
@@ -60,7 +60,7 @@ export const PetPageHeader: React.FC<PetPageHeaderProps> = ({
                 <input
                     value={searchInput}
                     onChange={(e) => onSearchInputChange(e.target.value)}
-                    placeholder="Search by name, breed, or ID..."
+                    placeholder="Tìm kiếm bằng tên, giống hoặc ID..."
                     className="w-full bg-white border border-gray-200 rounded-full pl-9 pr-4 py-2.5 text-[13px] text-gray-500 placeholder:text-gray-400 focus:border-[#E89B5A] focus:ring-2 focus:ring-[#E89B5A]/20 focus:outline-none transition-colors"
                 />
             </div>
@@ -72,7 +72,7 @@ export const PetPageHeader: React.FC<PetPageHeaderProps> = ({
                     onChange={(e) => onFilterChange({ status: e.target.value as PetStatus | 'ALL' })}
                     className="appearance-none bg-white border border-gray-300 rounded-full pl-9 pr-9 py-2.5 text-sm text-gray-600 font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer whitespace-nowrap"
                 >
-                    <option value="ALL">All Statuses</option>
+                    <option value="ALL">Toàn bộ trạng thái</option>
                     {(Object.keys(PET_STATUS_LABEL) as PetStatus[]).map((s) => (
                         <option key={s} value={s}>{PET_STATUS_LABEL[s]}</option>
                     ))}
@@ -88,7 +88,7 @@ export const PetPageHeader: React.FC<PetPageHeaderProps> = ({
                     onChange={(e) => onFilterChange({ species: e.target.value as PetSpecies | 'ALL' })}
                     className="appearance-none bg-white border border-gray-300 rounded-full pl-9 pr-9 py-2.5 text-sm text-gray-600 font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer whitespace-nowrap"
                 >
-                    <option value="ALL">All Species</option>
+                    <option value="ALL">Toàn bộ loài</option>
                     {(Object.keys(PET_SPECIES_LABEL) as PetSpecies[]).map((s) => (
                         <option key={s} value={s}>{PET_SPECIES_LABEL[s]}</option>
                     ))}

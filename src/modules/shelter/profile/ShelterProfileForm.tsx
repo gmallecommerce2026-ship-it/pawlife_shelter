@@ -349,7 +349,7 @@ export const ShelterProfileForm = () => {
       <form onSubmit={handleSubmit} className="w-full max-w-[900px] flex flex-col gap-10">
         {/* Header */}
         <div>
-          <h2 className="font-sans text-2xl text-[#123832] font-bold mb-1">Hồ sơ trạm cứu hộ</h2>
+          <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#000000] font-semibold mb-1">Hồ sơ trạm cứu hộ</h2>
           <p className="text-sm text-gray-500">
             Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.
           </p>

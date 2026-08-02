@@ -5,7 +5,7 @@ import { FiHeart, FiUser, FiArrowRight, FiArchive } from 'react-icons/fi';
 export default function ShelterDashboardPage() {
   return (
     <div className="w-full max-w-[900px]">
-      <h1 className="font-sans text-2xl text-[#123832] font-bold mb-1">Chào mừng trở lại 👋</h1>
+      <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#000000] font-semibold mb-1">Chào mừng trở lại 👋</h1>
       <p className="text-sm text-gray-500 mb-8">Đây là nơi bạn quản lý hồ sơ trạm và danh sách pet đang chờ nhận nuôi.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -18,7 +18,7 @@ export default function ShelterDashboardPage() {
               <FiHeart size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-[#123832]">Quản lý Pets</h3>
+              <h3 className="font-bold text-[#000000]">Quản lý Pets</h3>
               <p className="text-sm text-gray-500">Thêm, sửa, cập nhật trạng thái pet</p>
             </div>
           </div>
@@ -34,7 +34,7 @@ export default function ShelterDashboardPage() {
               <FiUser size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-[#123832]">Hồ sơ trạm</h3>
+              <h3 className="font-bold text-[#000000]">Hồ sơ trạm</h3>
               <p className="text-sm text-gray-500">Cập nhật thông tin công khai của trạm</p>
             </div>
           </div>
@@ -49,7 +49,7 @@ export default function ShelterDashboardPage() {
               <FiArchive size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-[#123832]">Đơn nhận nuôi</h3>
+              <h3 className="font-bold text-[#000000]">Đơn nhận nuôi</h3>
               <p className="text-sm text-gray-500">Duyệt hồ sơ nhận nuôi</p>
             </div>
           </div>
