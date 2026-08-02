@@ -6,15 +6,15 @@ import { Plus } from 'lucide-react';
 import { AdoptionApplication, ApplicationStatus } from '@/types/application';
 import { ApplicationCard } from './ApplicationCard';
 
-// 1. Thêm onNameClick vào Interface
 interface ApplicationColumnProps {
   status: ApplicationStatus;
   label: string;
   applications: AdoptionApplication[];
   movingIds: string[];
   isDropTarget: boolean;
-  onCardClick: (app: AdoptionApplication) => void;
-  onNameClick?: (app: AdoptionApplication) => void; // <--- THÊM DÒNG NÀY
+  onOpenDetail: (app: AdoptionApplication) => void;
+  onOpenProfile: (app: AdoptionApplication) => void;
+  onRemove: (app: AdoptionApplication) => void;
 }
 
 const COLUMN_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -33,8 +33,9 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
   applications,
   movingIds,
   isDropTarget,
-  onCardClick,
-  onNameClick, // <--- NHẬN PROP TỪ CHA
+  onOpenDetail,
+  onOpenProfile,
+  onRemove,
 }) => {
   const { setNodeRef } = useDroppable({ id: status });
   const style = COLUMN_STYLES[status] || COLUMN_STYLES.SUBMITTED;
@@ -46,7 +47,6 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
         isDropTarget ? 'border-[#E89B5A] border-dashed' : style.border
       } transition-colors duration-200 p-3`}
     >
-      {/* Header Cột */}
       <div className="flex justify-between items-center w-full h-[28px] mb-4 px-1">
         <div className="flex items-center gap-2">
           <div className={`font-['Urbanist',_sans-serif] text-[15px] whitespace-nowrap leading-none font-semibold ${style.text}`}>
@@ -65,17 +65,18 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
         </button>
       </div>
 
-      {/* Danh sách thẻ Card */}
       <div className="flex flex-col gap-3 w-full overflow-y-auto custom-scrollbar pb-2 items-center">
         {applications.map((app, index) => (
           <ApplicationCard
             key={app.id}
             application={app}
             isMoving={movingIds.includes(app.id)}
-            onClick={() => onCardClick(app)}
-            onNameClick={onNameClick} // <--- TRUYỀN XUỐNG CHO CARD
+            onOpenProfile={onOpenProfile}
+            onOpenDetail={onOpenDetail}
+            onRemove={onRemove}
             showRedDot={status === 'SUBMITTED' && index === 0}
-            showMenu={status === 'NEED_MORE_INFO' && index === 0}
+            // Mặc định bật menu cho tất cả các card, hoặc sửa theo logic của bạn
+            showMenu={true} 
           />
         ))}
       </div>

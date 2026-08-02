@@ -111,11 +111,18 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 applications={col.applications}
                 movingIds={movingIds}
                 isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
-                onCardClick={(app) => {
-                  setSelectedApp(app);
+
+                // --- TRUYỀN 3 HÀM XỬ LÝ MỚI XUỐNG ---
+                onOpenDetail={(app) => {
+                  setSelectedApp(app); // Mở Modal Chi Tiết Đơn
                 }}
-                onNameClick={(app) => {
-                  setProfileApp(app);
+                onOpenProfile={(app) => {
+                  setProfileApp(app); // Mở Modal Applicant Info
+                }}
+                onRemove={(app) => {
+                  // Gọi API hoặc function xoá item ở đây (VD: removeApplication(app.id))
+                  console.log("Xoá ticket ID: ", app.id);
+                  // removeApplication(app.id); 
                 }}
               />
             ))}
@@ -124,8 +131,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
           {/* Hiệu ứng khi kéo thẻ */}
           <DragOverlay>
             {activeApp ? (
-              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] rotate-[2deg] scale-[1.03] cursor-grabbing">
-                <ApplicationCardContent application={activeApp} />
+              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
+                <ApplicationCardContent
+                  application={activeApp}
+                  onOpenProfile={() => { }} // Truyền hàm rỗng cho overlay
+                  onOpenDetail={() => { }}  // Truyền hàm rỗng cho overlay
+                  onRemove={() => { }}      // Truyền hàm rỗng cho overlay
+                />
               </div>
             ) : null}
           </DragOverlay>
