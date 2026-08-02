@@ -27,10 +27,10 @@ const SectionCard = ({ title, children }: { title: string; children: React.React
 // Bỏ flex-row cũ, chỉ giữ layout dọc cơ bản để đưa vào Grid 2 cột
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
   <div className="flex flex-col">
-    <span className="font-['Urbanist',_sans-serif] text-[11px] text-gray-400 mb-0.5 leading-none">
+    <span className="font-['Be Vietnam Pro',_sans-serif] text-[11px] text-gray-400 mb-0.5 leading-none">
       {label}
     </span>
-    <span className="font-['Urbanist',_sans-serif] text-[13px] text-gray-900 font-medium leading-snug">
+    <span className="font-['Be Vietnam Pro',_sans-serif] text-[13px] text-gray-900 font-medium leading-snug">
       {value || '-'}
     </span>
   </div>
@@ -39,7 +39,7 @@ const Field = ({ label, value }: { label: string; value?: string | null }) => (
 const CommitmentCheck = ({ label }: { label: string }) => (
   <div className="flex items-center gap-2">
     <Check size={14} className="text-[#34C759] shrink-0" strokeWidth={3} />
-    <span className="font-['Urbanist',_sans-serif] text-[12px] text-gray-900 font-medium">
+    <span className="font-['Be Vietnam Pro',_sans-serif] text-[12px] text-gray-900 font-medium">
       {label}
     </span>
   </div>
@@ -68,7 +68,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         <div className="bg-white flex justify-between items-start px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="font-['Urbanist',_sans-serif] text-[20px] font-bold text-gray-900 leading-none">
+              <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[20px] font-bold text-gray-900 leading-none">
                 Application Details
               </h2>
               <button className="text-gray-400 hover:text-gray-700 transition-colors">

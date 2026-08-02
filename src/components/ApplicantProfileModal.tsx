@@ -29,7 +29,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
               className="w-[84px] h-[84px] rounded-[20px] object-cover bg-gray-100 border border-gray-200"
             />
             <div className="flex flex-col">
-              <h2 className="font-['Urbanist',_sans-serif] text-[24px] font-bold text-gray-900 leading-tight mb-2">
+              <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[24px] font-bold text-gray-900 leading-tight mb-2">
                 {application.fullName}
               </h2>
               <div className="flex items-center gap-6 mb-5">
@@ -179,7 +179,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
               </div>
 
               {/* Add New Note Box */}
-              <div className="mt-auto border border-dashed border-gray-300 rounded-[16px] p-5 bg-[#FAFAFA]">
+              <div className="mt-6 border border-dashed border-gray-300 rounded-[16px] p-5 bg-[#FAFAFA]">
                 <h4 className="font-bold text-[14px] text-gray-900 mb-4">Add New Note</h4>
                 
                 <div className="flex flex-col gap-4">

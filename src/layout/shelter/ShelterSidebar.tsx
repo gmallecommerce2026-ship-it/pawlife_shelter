@@ -17,7 +17,7 @@ import {
 } from 'react-icons/fi';
 import classNames from 'classnames';
 import { logout } from '@/actions/logout';
-
+import { Lightbulb } from 'lucide-react';
 interface MenuItem {
   id: string;
   label: string;
@@ -32,10 +32,7 @@ const SHELTER_MENU: MenuItem[] = [
     id: 'pets',
     label: 'Quản lý Pet',
     icon: <FiHeart size={22} />,
-    children: [
-      { id: 'all_pets', label: 'Danh sách Pet', path: '/shelter/pets' },
-      { id: 'add_pet', label: 'Thêm Pet mới', path: '/shelter/pets/create' },
-    ],
+    path: '/shelter/pets',
   },
   {
     id: 'applications',
@@ -99,7 +96,8 @@ const SidebarItem = ({
           }
         )}
       >
-        <div className="flex items-center w-full">
+        {/* ĐỔI: w-full thành flex-1 min-w-0 để text vừa vặn, nhường không gian cho mũi tên */}
+        <div className="flex items-center flex-1 min-w-0">
           {level === 0 && (
             <div className="w-[56px] flex items-center justify-center shrink-0">
               <span className={isActive ? 'text-[#0D062D]' : 'text-[#787486] group-hover:text-[#0D062D] transition-colors'}>
@@ -107,7 +105,7 @@ const SidebarItem = ({
               </span>
             </div>
           )}
-          
+
           <span
             className={classNames(
               'truncate transition-all duration-300 overflow-hidden',
@@ -118,13 +116,14 @@ const SidebarItem = ({
             {item.label}
           </span>
         </div>
-        
+
         {hasChildren && (
           <FiChevronDown
-            size={18}
+            size={50}
             className={classNames(
               'text-[#787486] transition-all duration-300 shrink-0 overflow-hidden',
-              'max-w-0 group-hover:max-w-5 opacity-0 group-hover:opacity-100 mr-0 group-hover:mr-4',
+              // ĐỔI: Đã xóa group-hover:mr-4 để mũi tên sát lề phải hoàn toàn
+              'max-w-0 group-hover:max-w-5 opacity-0 group-hover:opacity-100',
               isOpen(item.id) ? 'rotate-180' : ''
             )}
           />
@@ -134,8 +133,8 @@ const SidebarItem = ({
       <div
         className={classNames(
           'overflow-hidden transition-all duration-300',
-          isOpen(item.id) 
-            ? 'max-h-0 group-hover:max-h-[500px] opacity-0 group-hover:opacity-100 mt-0 group-hover:mt-1' 
+          isOpen(item.id)
+            ? 'max-h-0 group-hover:max-h-[500px] opacity-0 group-hover:opacity-100 mt-0 group-hover:mt-1'
             : 'max-h-0 opacity-0'
         )}
       >
@@ -150,10 +149,10 @@ const SidebarItem = ({
 const ShelterSidebar = () => {
   const { data: session } = useSession();
   const user = session?.user as any; // Cast để nhận dạng role từ Session
-  
+
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({ pets: true });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
+
   const profileRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -183,22 +182,22 @@ const ShelterSidebar = () => {
   }, []);
 
   return (
-    <aside 
+    <aside
       onMouseLeave={() => setIsProfileOpen(false)}
       className="group sticky top-0 left-0 w-[88px] hover:w-[272px] shrink-0 h-screen bg-white z-50 flex flex-col font-sans transition-[width] duration-300 ease-in-out whitespace-nowrap overflow-hidden"
     >
-      
+
       {/* 1. User Profile Area */}
-      <div className="relative pt-8 px-[22px] group-hover:px-6 pb-6 flex flex-col transition-all duration-300" ref={profileRef}>
-        <div 
-          className="flex items-center gap-3 cursor-pointer"
+      <div className="relative pt-10 px-[22px] group-hover:px-6 pb-6 flex flex-col transition-all duration-300" ref={profileRef}>
+        <div
+          className="flex items-center gap-3 cursor-pointer w-full"
           onClick={() => setIsProfileOpen(!isProfileOpen)}
         >
           <Image
             src={user?.image || "/images/logo/pawlife-logo.png"}
             alt="Profile Avatar"
-            width={44}
-            height={44}
+            width={42}
+            height={42}
             priority
             className="rounded-full object-cover border border-gray-100 hover:border-[#E89B5A] transition-colors shrink-0 bg-white"
           />
@@ -210,12 +209,14 @@ const ShelterSidebar = () => {
               {'Shelter Manager'}
             </p>
           </div>
-          <FiChevronDown 
-            size={20} 
+
+          {/* ĐỔI: Thay ml-3 thành ml-auto để mũi tên dạt hết sang mép phải */}
+          <FiChevronDown
+            size={20}
             className={classNames(
-              "transition-all duration-300 shrink-0 overflow-hidden max-w-0 group-hover:max-w-5 opacity-0 group-hover:opacity-100",
+              "ml-auto transition-all duration-300 shrink-0 overflow-hidden max-w-0 group-hover:max-w-5 opacity-0 group-hover:opacity-100",
               isProfileOpen ? "rotate-180 text-[#E89B5A]" : "text-gray-400 hover:text-[#E89B5A]"
-            )} 
+            )}
           />
         </div>
 
@@ -223,7 +224,7 @@ const ShelterSidebar = () => {
         <div className={classNames(
           "absolute top-[84px] left-6 right-6 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden transition-all duration-200 origin-top",
           isProfileOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none",
-          "hidden group-hover:block" 
+          "hidden group-hover:block"
         )}>
           <div className="px-4 py-3 border-b border-gray-50 bg-gray-50/50">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Tài khoản</p>
@@ -250,32 +251,60 @@ const ShelterSidebar = () => {
         {SHELTER_MENU.map((item) => (
           <SidebarItem key={item.id} item={item} isOpen={(id) => !!openItems[id]} toggleOpen={toggleOpen} />
         ))}
+        <div className="w-[44px] group-hover:w-[85%] mx-auto h-px bg-[#F1F1F1] my-4 transition-all duration-300" />
+
       </div>
 
-      <div className="w-[44px] group-hover:w-[85%] mx-auto h-px bg-[#F1F1F1] my-4 transition-all duration-300" />
 
       {/* 3. Thoughts Time Card */}
-      <div className="px-4 mb-5 mt-2">
-        <div className="relative w-full bg-gray-50 rounded-[20px] flex flex-col items-center border border-gray-100 transition-all duration-300 h-[56px] group-hover:h-[210px]">
-          
-          <div className="absolute left-1/2 -translate-x-1/2 top-[3px] group-hover:-top-6 w-[50px] h-[50px] bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 transition-all duration-300 z-10">
-            <div className="w-9 h-9 bg-yellow-50 rounded-full flex items-center justify-center">
-              <FiMessageCircle size={18} className="text-yellow-500" />
-            </div>
-          </div>
+      <div className="px-6 mb-5 mt-2">
+        {/* Wrapper dùng drop-shadow tạo bóng đổ viền mềm bao quanh toàn bộ hình dáng (cả phần nhô lên) */}
+        <div className="relative w-full drop-shadow-[0_6px_16px_rgba(255,210,100,0.25)]">
 
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[240px] px-4 opacity-0 group-hover:opacity-100 flex flex-col items-center pointer-events-none group-hover:pointer-events-auto transition-all duration-300 z-0">
-            <h4 className="text-[14px] font-semibold text-black mb-2 tracking-wide">Thoughts Time</h4>
-            <p className="text-[12px] text-[#787486] text-center leading-relaxed mb-4 whitespace-normal">
-              We don’t have any notice for you, till then you can share your thoughts with your peers.
-            </p>
-            <button className="w-full py-2.5 bg-white rounded-xl text-[14px] font-semibold text-black shadow-sm hover:bg-gray-100 transition-colors">
-              Write a message
-            </button>
+          {/* Main Card Background - Gradient từ trắng kem xuống vàng nắng */}
+          <div className="relative w-full bg-gradient-to-b from-[#FFFDF4] to-[#FFE07A] rounded-[24px] transition-all duration-300 h-[56px] group-hover:h-[205px] flex flex-col items-center">
+
+            {/* Top Bump (Phần nhô lên chứa Icon) 
+                Màu nền #FFFDF4 trùng khớp 100% với màu đỉnh của thẻ, tạo cảm giác nối liền nguyên khối 
+            */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-0 group-hover:-top-7 w-[56px] h-[56px] bg-[#FFFDF4] rounded-full flex items-center justify-center transition-all duration-300 z-10">
+
+              {/* Hiệu ứng Glow (ánh sáng tỏa ra từ bóng đèn) */}
+              <div className="absolute w-[36px] h-[36px] bg-[#FFD700] rounded-full blur-[14px] opacity-80"></div>
+
+              {/* Icon Bóng đèn đặc (solid) */}
+              <Lightbulb
+                size={26}
+                className="relative z-20 text-[#FFB800]"
+                fill="#FFB800"
+                strokeWidth={1}
+              />
+            </div>
+
+            {/* Nội dung (Ẩn khi thu gọn, hiện mượt mà khi hover) */}
+            <div className="absolute top-8 left-0 w-full px-5 opacity-0 group-hover:opacity-100 flex flex-col items-center pointer-events-none group-hover:pointer-events-auto transition-all duration-300 z-0">
+
+              <h4 className="text-[14px] font-medium text-[#1A1A1A] mb-3 tracking-wide mt-1">
+                Thoughts Time
+              </h4>
+
+              <p className="text-[12px] text-[#7A7565] text-center leading-[1.6] mb-6 font-light px-2 whitespace-normal">
+                We don't have any notice,<br />
+                till then you can share your<br />
+                thoughts with your peers.
+              </p>
+
+              {/* Nút bấm viền trắng, đổ bóng mềm */}
+              <button className="w-full py-[11px] bg-[#FFFDF4]/50 rounded-full text-[14px] font-medium text-black border-[1px] border-white shadow-[0_2px_12px_rgba(255,200,0,0.15)] hover:bg-white hover:scale-[1.02] transition-all">
+                Write a message
+              </button>
+
+            </div>
+
           </div>
         </div>
       </div>
-      
+
     </aside>
   );
 };

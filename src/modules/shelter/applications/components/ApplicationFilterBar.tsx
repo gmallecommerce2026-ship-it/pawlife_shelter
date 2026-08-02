@@ -29,21 +29,21 @@ export const ApplicationFilterBar: React.FC = () => {
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
           placeholder="Search"
-          className="w-[260px] h-[38px] bg-white border border-[#E5E5E5] rounded-full pl-9 pr-4 text-[13px] text-gray-800 focus:outline-none focus:border-[#C4C4C4] placeholder-gray-400 transition-colors font-['Urbanist',_sans-serif]"
+          className="w-[260px] h-[38px] bg-white border border-[#E5E5E5] rounded-full pl-9 pr-4 text-[13px] text-gray-800 focus:outline-none focus:border-[#C4C4C4] placeholder-gray-400 transition-colors font-['Be Vietnam Pro',_sans-serif]"
         />
       </form>
 
       {/* Nút Filter */}
       <button className="flex items-center gap-2 h-[38px] px-4 bg-white border border-[#E5E5E5] rounded-full hover:bg-gray-50 transition-colors">
         <Filter size={14} className="text-gray-400" strokeWidth={2} />
-        <span className="text-[13.5px] text-gray-500 font-medium font-['Urbanist',_sans-serif]">Filter</span>
+        <span className="text-[13.5px] text-gray-500 font-medium font-['Be Vietnam Pro',_sans-serif]">Filter</span>
         <ChevronDown size={14} className="text-gray-400 ml-2" strokeWidth={2} />
       </button>
 
       {/* Nút Today */}
       <button className="flex items-center gap-2 h-[38px] px-4 bg-white border border-[#E5E5E5] rounded-full hover:bg-gray-50 transition-colors">
         <Calendar size={14} className="text-gray-400" strokeWidth={2} />
-        <span className="text-[13.5px] text-gray-500 font-medium font-['Urbanist',_sans-serif]">Today</span>
+        <span className="text-[13.5px] text-gray-500 font-medium font-['Be Vietnam Pro',_sans-serif]">Today</span>
         <ChevronDown size={14} className="text-gray-400 ml-2" strokeWidth={2} />
       </button>
     </div>

@@ -17,7 +17,7 @@ import { ApplicationCard, ApplicationCardContent } from './components/Applicatio
 import { ApplicationDetailModal } from './components/ApplicationDetailModal';
 import { ApplicationFilterBar } from './components/ApplicationFilterBar';
 import { ApplicantProfileModal } from '@/components/ApplicantProfileModal';
-
+import { AllDocumentsModal } from './components/AllDocumentsModal';
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { fetchApplications, moveApplication } = useApplicationActions();
@@ -26,7 +26,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [selectedApp, setSelectedApp] = useState<AdoptionApplication | null>(null);
   const [overColumn, setOverColumn] = useState<ApplicationStatus | null>(null);
   const [profileApp, setProfileApp] = useState<AdoptionApplication | null>(null);
-
+  const [documentsApp, setDocumentsApp] = useState<AdoptionApplication | null>(null);
   useEffect(() => {
     fetchApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,12 +76,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col justify-start items-start gap-[40px] w-full max-w-[1318px] pt-4">
+    <div className="flex flex-col justify-start gap-[40px] w-full max-w-[1318px]">
 
       {/* --- HEADER --- */}
-      <div className="flex justify-between items-center w-full mb-2">
-        <h1 className="font-['Urbanist',_sans-serif] text-[32px] text-[#0D062D] font-bold tracking-tight">
-          Application Management
+      <div className="flex justify-between w-full">
+        <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#0D062D] font-semibold tracking-tight">
+          Quản lý hồ sơ nhận nuôi
         </h1>
 
         <ApplicationFilterBar />
@@ -112,18 +112,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 movingIds={movingIds}
                 isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
 
-                // --- TRUYỀN 3 HÀM XỬ LÝ MỚI XUỐNG ---
-                onOpenDetail={(app) => {
-                  setSelectedApp(app); // Mở Modal Chi Tiết Đơn
-                }}
-                onOpenProfile={(app) => {
-                  setProfileApp(app); // Mở Modal Applicant Info
-                }}
-                onRemove={(app) => {
-                  // Gọi API hoặc function xoá item ở đây (VD: removeApplication(app.id))
-                  console.log("Xoá ticket ID: ", app.id);
-                  // removeApplication(app.id); 
-                }}
+                onOpenDetail={(app) => setSelectedApp(app)}
+                onOpenProfile={(app) => setProfileApp(app)}
+                onRemove={(app) => console.log("Xoá ticket ID: ", app.id)}
+
+                // ---> TRUYỀN PROP XUỐNG CỘT <---
+                onOpenDocuments={(app) => setDocumentsApp(app)}
               />
             ))}
           </div>
@@ -131,34 +125,49 @@ export const ApplicationKanbanBoard: React.FC = () => {
           {/* Hiệu ứng khi kéo thẻ */}
           <DragOverlay>
             {activeApp ? (
-              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
+              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[246px] p-[14px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
                 <ApplicationCardContent
                   application={activeApp}
                   onOpenProfile={() => { }} // Truyền hàm rỗng cho overlay
                   onOpenDetail={() => { }}  // Truyền hàm rỗng cho overlay
                   onRemove={() => { }}      // Truyền hàm rỗng cho overlay
+                  onOpenDocuments={() => { }} // Truyền hàm rỗng cho overlay
                 />
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
-      )}
+      )
+      }
 
       {/* Modal Chi Tiết Đơn */}
-      {selectedApp && (
-        <ApplicationDetailModal
-          application={selectedApp}
-          onClose={() => setSelectedApp(null)}
-        />
-      )}
+      {
+        selectedApp && (
+          <ApplicationDetailModal
+            application={selectedApp}
+            onClose={() => setSelectedApp(null)}
+          />
+        )
+      }
 
       {/* Modal Hồ Sơ Người Dùng Mới */}
-      {profileApp && (
-        <ApplicantProfileModal
-          application={profileApp}
-          onClose={() => setProfileApp(null)}
-        />
-      )}
-    </div>
+      {
+        profileApp && (
+          <ApplicantProfileModal
+            application={profileApp}
+            onClose={() => setProfileApp(null)}
+          />
+        )
+      }
+
+      {
+        documentsApp && (
+          <AllDocumentsModal
+            application={documentsApp}
+            onClose={() => setDocumentsApp(null)}
+          />
+        )
+      }
+    </div >
   );
 };
