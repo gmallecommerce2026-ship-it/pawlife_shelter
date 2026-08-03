@@ -246,6 +246,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
     transform: CSS.Transform.toString(transform),
     transition,
     forcedColorAdjust: 'none' as const,
+    touchAction: 'none',
   };
 
   return (

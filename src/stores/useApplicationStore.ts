@@ -28,7 +28,7 @@ const generateMockData = (): AdoptionApplication[] => {
   let idCounter = 1;
 
   statuses.forEach((status) => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 2; i++) {
       data.push({
         id: `app_mock_${idCounter++}`,
         status: status,

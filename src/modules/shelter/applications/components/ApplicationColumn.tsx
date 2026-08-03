@@ -54,63 +54,103 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
   return (
     <div
       ref={setNodeRef}
-      // Bỏ h-full/min-h-[500px] cố định: giờ chiều cao cột = header + khu vực item
-      // (auto-height bên dưới), để mỗi cột tự co giãn theo đúng số item của nó.
-      className={`flex flex-col flex-[1_0_260px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${
+      // Thêm max-h: cột vẫn tự co giãn theo nội dung như trước, nhưng khi số item
+      // vượt quá chiều cao này thì khu vực bên dưới sẽ cuộn nội bộ thay vì đẩy cả
+      // board cao vô hạn. Đồng bộ mốc với skeleton loading (500px / 741px).
+      className={`flex flex-col flex-[1_0_260px] max-h-[500px] sm:max-h-[741px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${
         isDropTarget
           ? 'bg-[#F7F7F7] bg-gradient-to-b from-[#D0E3FF] from-[45px] to-[#F7F7F7] to-[120px] border-[#A3BFF8] border-dashed'
           : `${style.bg} ${style.border}`
       }`}
     >
-      <div className="flex justify-between items-center w-full h-[32px] mb-2.5 px-2">
-        <div className={`font-sans text-[16px] whitespace-nowrap leading-none font-semibold ${style.text}`}>
-          {label}
+      {/* Header: cố định, không cuộn theo danh sách bên dưới */}
+      <div className="flex justify-between items-center w-full h-[32px] mb-2.5 px-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`font-sans text-[16px] whitespace-nowrap leading-none font-semibold ${style.text}`}>
+            {label}
+          </span>
+          {/* Badge số lượng item, hiện cho mọi cột kể cả khi = 0 */}
+          <span
+            className={`inline-flex items-center justify-center h-[20px] min-w-[20px] px-1.5 rounded-full bg-white/80 border border-black/5 text-[11px] font-bold leading-none shrink-0 ${style.text}`}
+          >
+            {applications.length}
+          </span>
         </div>
-        <button className="text-[#888888] hover:text-[#111111] transition-colors">
+        <button className="text-[#888888] hover:text-[#111111] transition-colors shrink-0">
           <Plus size={18} strokeWidth={1.8} />
         </button>
       </div>
 
-      {/* SortableContext: cho phép các ApplicationCard bên trong tự "né" nhau khi
-          kéo 1 item khác vào/qua vị trí của chúng (animate transform mượt). */}
-      <SortableContext
-        items={applications.map((a) => a.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {/* Wrapper animate height: height được đo bằng useAutoHeight, transition
-            trên chính thuộc tính height để cột "phình/co" mượt theo nội dung. */}
-        <div
-          style={{ height }}
-          className="w-full transition-[height] duration-300 ease-in-out overflow-hidden"
+      {/* Vùng cuộn: flex-1 + min-h-0 để co lại đúng theo max-h của cột cha (bắt
+          buộc trong flexbox). `-mx-1.5 px-1.5` kéo vùng cuộn ra khớp mép ngoài
+          của cột rồi đệm lại đúng bằng padding gốc (px-1.5) — nhờ vậy khi
+          scrollbar (thin, chỉ hiện lúc hover) xuất hiện, nó nằm gọn trong đúng
+          khoảng đệm cũ, KHÔNG cộng thêm không gian, 2 bên trái/phải luôn đối
+          xứng như thiết kế ban đầu dù đang cuộn hay không. */}
+      <div className="flex-1 min-h-0 overflow-y-auto kanban-scroll -mx-1.5 px-1.5">
+        <SortableContext
+          items={applications.map((a) => a.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <div ref={contentRef} className="flex flex-col gap-2 w-full pb-2 items-center">
-            {applications.length > 0 ? (
-              applications.map((app, index) => (
-                <ApplicationCard
-                  key={app.id}
-                  application={app}
-                  isMoving={movingIds.includes(app.id)}
-                  onOpenProfile={onOpenProfile}
-                  onOpenDetail={onOpenDetail}
-                  onRemove={onRemove}
-                  showRedDot={status === 'SUBMITTED' && index === 0}
-                  showMenu={true}
-                  onOpenDocuments={onOpenDocuments}
-                />
-              ))
-            ) : (
-              // TRẠNG THÁI EMPTY (Chưa có đơn nào)
-              <div className="w-full flex items-center justify-center p-1.5">
-                <div className="w-full h-[150px] rounded-[14px] border-2 border-dashed border-[#D4D4D4] flex items-center justify-center transition-colors">
-                  <span className="text-[12px] font-medium text-[#A3A3A3] select-none">
-                    Chưa có đơn nào
-                  </span>
+          <div
+            style={{ height }}
+            className="w-full transition-[height] duration-300 ease-in-out overflow-hidden"
+          >
+            <div ref={contentRef} className="flex flex-col gap-2 w-full pb-2 items-center">
+              {applications.length > 0 ? (
+                applications.map((app, index) => (
+                  <ApplicationCard
+                    key={app.id}
+                    application={app}
+                    isMoving={movingIds.includes(app.id)}
+                    onOpenProfile={onOpenProfile}
+                    onOpenDetail={onOpenDetail}
+                    onRemove={onRemove}
+                    showRedDot={status === 'SUBMITTED' && index === 0}
+                    showMenu={true}
+                    onOpenDocuments={onOpenDocuments}
+                  />
+                ))
+              ) : (
+                // TRẠNG THÁI EMPTY (Chưa có đơn nào)
+                <div className="w-full flex items-center justify-center p-1.5">
+                  <div className="w-full h-[150px] rounded-[14px] border-2 border-dashed border-[#D4D4D4] flex items-center justify-center transition-colors">
+                    <span className="text-[12px] font-medium text-[#A3A3A3] select-none">
+                      Chưa có đơn nào
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      </SortableContext>
+        </SortableContext>
+      </div>
+
+      <style jsx>{`
+        .kanban-scroll {
+          /* KHÔNG dùng scrollbar-gutter: stable nữa — nó reserve thêm không
+             gian cố định gây lệch 2 bên. Nhờ trick -mx-1.5/px-1.5 ở trên,
+             scrollbar giờ tự nằm trong đúng padding cũ nên không cần gutter. */
+          scrollbar-width: thin; /* Firefox: thanh mỏng */
+          scrollbar-color: transparent transparent; /* ẩn mặc định */
+        }
+        .kanban-scroll:hover {
+          scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+        }
+        .kanban-scroll::-webkit-scrollbar {
+          width: 4px; /* Chrome/Edge/Safari: siêu mỏng */
+        }
+        .kanban-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb {
+          background-color: transparent;
+          border-radius: 999px;
+        }
+        .kanban-scroll:hover::-webkit-scrollbar-thumb {
+          background-color: rgba(0, 0, 0, 0.18);
+        }
+      `}</style>
     </div>
   );
 };

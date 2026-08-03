@@ -5,9 +5,12 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  MeasuringStrategy,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
@@ -22,13 +25,13 @@ import { ApplicationFilterBar } from './components/ApplicationFilterBar';
 import { ApplicantProfileModal } from '@/components/ApplicantProfileModal';
 import { AllDocumentsModal } from './components/AllDocumentsModal';
 
+const isColumnId = (id: string | number) =>
+  KANBAN_COLUMNS.some((c) => c.status === id);
+
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { fetchApplications, moveApplication } = useApplicationActions();
 
-  // State cục bộ dùng để hiển thị preview (reorder/đổi cột) mượt trong lúc kéo,
-  // trước khi commit thật sự lên store lúc thả (dragEnd). Đồng bộ lại từ `items`
-  // (nguồn sự thật từ store) mỗi khi nó thay đổi, TRỪ lúc đang kéo (xem isDraggingRef).
   const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
   const isDraggingRef = useRef(false);
 
@@ -55,6 +58,37 @@ export const ApplicationKanbanBoard: React.FC = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
+  // FIX: thay closestCenter bằng collision detection tùy biến.
+  // Lý do: mỗi cột giờ vừa là droppable bao ngoài (cột), vừa chứa các card cũng
+  // là droppable lồng bên trong (sortable) — cộng thêm cột giờ có scroll nội bộ
+  // (overflow-y-auto). closestCenter chỉ so khoảng cách tâm nên rất dễ đo nhầm/
+  // đo hụt "over" đúng trong tình huống droppable lồng nhau này, dẫn đến kéo
+  // card sang cột khác không nhận được (không move được).
+  // Cách xử lý chuẩn (theo khuyến nghị chính thức của dnd-kit cho multi-container
+  // sortable board): ưu tiên pointerWithin — đo theo VỊ TRÍ CON TRỎ thực tế đang
+  // nằm trong droppable/sortable nào, chính xác hơn nhiều với case lồng nhau.
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+
+    if (pointerCollisions.length > 0) {
+      // Con trỏ đang hover trúng 1 CARD cụ thể (không phải id của cột) -> ưu
+      // tiên trả về card đó, để reorder/chèn đúng vị trí đang hover thay vì bị
+      // "nuốt" bởi droppable cột bao ngoài (cả 2 đều match vì card nằm lồng
+      // trong cột).
+      const cardCollision = pointerCollisions.find((c) => !isColumnId(c.id));
+      if (cardCollision) return [cardCollision];
+
+      // Con trỏ không trúng card nào (đang ở vùng trống của cột: dưới card
+      // cuối, hoặc cột đang rỗng) -> dùng thẳng collision với cột.
+      return pointerCollisions;
+    }
+
+    // Con trỏ đang ở ngoài mọi droppable đã đo (VD: khoảng hở mỏng giữa 2 cột
+    // lúc kéo nhanh, hoặc rìa board) -> fallback rectIntersection để vẫn bắt
+    // được cột gần nhất, tránh mất droppable hoàn toàn và không thả được.
+    return rectIntersection(args);
+  };
+
   const columns = useMemo(
     () =>
       KANBAN_COLUMNS.map((col) => ({
@@ -70,9 +104,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     setActiveApp(app ?? null);
   };
 
-  // Chạy liên tục trong lúc kéo (hover qua card khác hoặc qua cột khác):
-  // reorder `localItems` ngay lập tức để các card còn lại tự "né" (useSortable
-  // ở ApplicationCard sẽ tự animate transform khi vị trí trong mảng đổi).
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) {
@@ -87,9 +118,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const activeItem = localItems.find((a) => a.id === activeId);
     if (!activeItem) return;
 
-    // over.id là 1 trong 2 trường hợp: id của cột (khi thả vào vùng trống của cột),
-    // hoặc id của 1 card khác (khi hover ngay trên/dưới card đó).
-    const overIsColumn = KANBAN_COLUMNS.some((c) => c.status === overId);
+    const overIsColumn = isColumnId(overId);
     const overItem = localItems.find((a) => a.id === overId);
     const targetStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
     if (!targetStatus) return;
@@ -100,16 +129,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       const oldIndex = prev.findIndex((a) => a.id === activeId);
       if (oldIndex === -1) return prev;
 
-      // Cùng cột + đang hover trên 1 card khác -> chỉ đổi vị trí (dodge tại chỗ)
       if (activeItem.status === targetStatus && !overIsColumn && overItem) {
         const newIndex = prev.findIndex((a) => a.id === overId);
         if (newIndex === -1 || newIndex === oldIndex) return prev;
         return arrayMove(prev, oldIndex, newIndex);
       }
 
-      // Khác cột -> cập nhật status để "chuyển nhà", đồng thời chèn gần vị trí
-      // đang hover (nếu hover trên 1 card cụ thể) để card khác trong cột đích
-      // tự né ra đúng chỗ.
       if (activeItem.status !== targetStatus) {
         const next = [...prev];
         next[oldIndex] = { ...next[oldIndex], status: targetStatus };
@@ -133,7 +158,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const activeId = active.id as string;
     const originalItem = items.find((a) => a.id === activeId);
     if (!over || !originalItem) {
-      // Thả ra ngoài / không xác định được -> khôi phục lại đúng trạng thái từ store
       setLocalItems(items);
       return;
     }
@@ -142,7 +166,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     if (!finalItem || finalItem.status === originalItem.status) return;
 
     if (REQUIRES_CONFIRM.includes(finalItem.status)) {
-      // Cần xác nhận trước khi đóng hồ sơ -> chưa commit, trả preview về vị trí cũ
       setLocalItems((prev) =>
         prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a))
       );
@@ -154,17 +177,14 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    // Tăng max-w lên 1536px (2xl) hoặc full để 5 cột có không gian thở, hoặc bạn giữ 1318px tùy thiết kế
     <div className="flex flex-col justify-start gap-6 sm:gap-[40px] w-full overflow-hidden">
 
-      {/* --- HEADER --- */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
         <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[24px] sm:text-[32px] lg:text-[40px] text-[#0D062D] font-semibold tracking-tight">
           Quản lý hồ sơ nhận nuôi
         </h1>
         <ApplicationFilterBar />
       </div>
-      {/* -------------- */}
 
       {isLoading && localItems.length === 0 ? (
         <div className="flex gap-[11px] w-full h-[500px] sm:h-[741px] overflow-x-auto">
@@ -178,14 +198,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={collisionDetection}
+          // Đo lại rect liên tục trong lúc kéo (không chỉ 1 lần lúc dragStart).
+          // Quan trọng vì cột giờ có thể scroll nội bộ -> vị trí/khả năng hiển
+          // thị của card bên trong có thể đổi trong lúc đang kéo.
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {/* Vùng chứa Columns.
-              items-start (thay vì items-stretch cũ): để mỗi cột giữ chiều cao
-              riêng theo nội dung của nó, không bị kéo giãn bằng cột cao nhất. */}
           <div className="flex gap-[11px] overflow-x-auto pb-4 items-start scroll-smooth w-full">
             {columns.map((col) => (
               <ApplicationColumn
@@ -203,7 +224,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
             ))}
           </div>
 
-          {/* Hiệu ứng khi kéo thẻ */}
           <DragOverlay>
             {activeApp ? (
               <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[260px] p-[14px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
@@ -220,7 +240,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
         </DndContext>
       )}
 
-      {/* Modals */}
       {selectedApp && (
         <ApplicationDetailModal
           application={selectedApp}
