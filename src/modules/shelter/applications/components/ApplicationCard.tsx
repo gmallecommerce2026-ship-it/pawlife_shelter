@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useRouter } from 'next/navigation';
 import {
   Phone,
@@ -233,13 +234,19 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   onRemove,
   onOpenDocuments
 }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  // TRƯỚC: useDraggable — chỉ kéo được, không tự "né" nhau khi thứ tự thay đổi.
+  // SAU: useSortable — dnd-kit tự tính transform cho các item còn lại mỗi khi
+  // mảng item được reorder (xem onDragOver trong ApplicationKanbanBoard), tạo
+  // hiệu ứng các card "né" sang chỗ trống một cách mượt mà.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: application.id,
   });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, forcedColorAdjust: 'none' as const }
-    : { forcedColorAdjust: 'none' as const };
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    forcedColorAdjust: 'none' as const,
+  };
 
   return (
     <div
@@ -249,8 +256,8 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...attributes}
       tabIndex={-1}
       onClick={() => onOpenProfile(application)}
-      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none transition-all hover:border-[#D1D1D1] focus:outline-none relative ${
-        isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10' 
+      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${
+        isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
       } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <ApplicationCardContent

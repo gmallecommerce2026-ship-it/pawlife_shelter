@@ -20,7 +20,7 @@ export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   INTERVIEW_SCHEDULED: 'Đã hẹn phỏng vấn',
   APPROVED: 'Đã duyệt',
   ADOPTION_COMPLETED: 'Đã bàn giao',
-  CLOSED: 'Đã đóng / Từ chối',
+  CLOSED: 'Từ chối',
 };
 
 export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
@@ -29,6 +29,7 @@ export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
   { status: 'NEED_MORE_INFO', label: 'Cần bổ sung' },
   { status: 'INTERVIEW_SCHEDULED', label: 'Hẹn phỏng vấn' },
   { status: 'APPROVED', label: 'Đã duyệt' },
+  { status: 'CLOSED', label: 'Từ chối' },
 ];
 
 

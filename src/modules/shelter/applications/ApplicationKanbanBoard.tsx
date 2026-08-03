@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import { KANBAN_COLUMNS, ApplicationStatus, AdoptionApplication } from '@/types/application';
 import { useApplicationList, useApplicationActions } from '@/stores/useApplicationStore';
 import { ApplicationColumn } from './components/ApplicationColumn';
@@ -22,6 +25,18 @@ import { AllDocumentsModal } from './components/AllDocumentsModal';
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { fetchApplications, moveApplication } = useApplicationActions();
+
+  // State cục bộ dùng để hiển thị preview (reorder/đổi cột) mượt trong lúc kéo,
+  // trước khi commit thật sự lên store lúc thả (dragEnd). Đồng bộ lại từ `items`
+  // (nguồn sự thật từ store) mỗi khi nó thay đổi, TRỪ lúc đang kéo (xem isDraggingRef).
+  const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setLocalItems(items);
+    }
+  }, [items]);
 
   const [activeApp, setActiveApp] = useState<AdoptionApplication | null>(null);
   const [selectedApp, setSelectedApp] = useState<AdoptionApplication | null>(null);
@@ -44,47 +59,105 @@ export const ApplicationKanbanBoard: React.FC = () => {
     () =>
       KANBAN_COLUMNS.map((col) => ({
         ...col,
-        applications: items.filter((a) => a.status === col.status),
+        applications: localItems.filter((a) => a.status === col.status),
       })),
-    [items]
+    [localItems]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    const app = items.find((a) => a.id === event.active.id);
+    isDraggingRef.current = true;
+    const app = localItems.find((a) => a.id === event.active.id);
     setActiveApp(app ?? null);
   };
 
-  const handleDragOver = (event: any) => {
-    const overId = event.over?.id as ApplicationStatus | undefined;
-    setOverColumn(overId ?? null);
+  // Chạy liên tục trong lúc kéo (hover qua card khác hoặc qua cột khác):
+  // reorder `localItems` ngay lập tức để các card còn lại tự "né" (useSortable
+  // ở ApplicationCard sẽ tự animate transform khi vị trí trong mảng đổi).
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) {
+      setOverColumn(null);
+      return;
+    }
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    if (activeId === overId) return;
+
+    const activeItem = localItems.find((a) => a.id === activeId);
+    if (!activeItem) return;
+
+    // over.id là 1 trong 2 trường hợp: id của cột (khi thả vào vùng trống của cột),
+    // hoặc id của 1 card khác (khi hover ngay trên/dưới card đó).
+    const overIsColumn = KANBAN_COLUMNS.some((c) => c.status === overId);
+    const overItem = localItems.find((a) => a.id === overId);
+    const targetStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
+    if (!targetStatus) return;
+
+    setOverColumn(targetStatus);
+
+    setLocalItems((prev) => {
+      const oldIndex = prev.findIndex((a) => a.id === activeId);
+      if (oldIndex === -1) return prev;
+
+      // Cùng cột + đang hover trên 1 card khác -> chỉ đổi vị trí (dodge tại chỗ)
+      if (activeItem.status === targetStatus && !overIsColumn && overItem) {
+        const newIndex = prev.findIndex((a) => a.id === overId);
+        if (newIndex === -1 || newIndex === oldIndex) return prev;
+        return arrayMove(prev, oldIndex, newIndex);
+      }
+
+      // Khác cột -> cập nhật status để "chuyển nhà", đồng thời chèn gần vị trí
+      // đang hover (nếu hover trên 1 card cụ thể) để card khác trong cột đích
+      // tự né ra đúng chỗ.
+      if (activeItem.status !== targetStatus) {
+        const next = [...prev];
+        next[oldIndex] = { ...next[oldIndex], status: targetStatus };
+        if (!overIsColumn && overItem) {
+          const newIndex = next.findIndex((a) => a.id === overId);
+          return arrayMove(next, oldIndex, newIndex);
+        }
+        return next;
+      }
+
+      return prev;
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    isDraggingRef.current = false;
     setActiveApp(null);
     setOverColumn(null);
-    if (!over) return;
 
-    const app = items.find((a) => a.id === active.id);
-    const nextStatus = over.id as ApplicationStatus;
-    if (!app || app.status === nextStatus) return;
-
-    if (REQUIRES_CONFIRM.includes(nextStatus)) {
-      setSelectedApp(app);
+    const activeId = active.id as string;
+    const originalItem = items.find((a) => a.id === activeId);
+    if (!over || !originalItem) {
+      // Thả ra ngoài / không xác định được -> khôi phục lại đúng trạng thái từ store
+      setLocalItems(items);
       return;
     }
 
-    moveApplication(app.id, nextStatus);
+    const finalItem = localItems.find((a) => a.id === activeId);
+    if (!finalItem || finalItem.status === originalItem.status) return;
+
+    if (REQUIRES_CONFIRM.includes(finalItem.status)) {
+      // Cần xác nhận trước khi đóng hồ sơ -> chưa commit, trả preview về vị trí cũ
+      setLocalItems((prev) =>
+        prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a))
+      );
+      setSelectedApp(originalItem);
+      return;
+    }
+
+    moveApplication(activeId, finalItem.status);
   };
 
   return (
+    // Tăng max-w lên 1536px (2xl) hoặc full để 5 cột có không gian thở, hoặc bạn giữ 1318px tùy thiết kế
     <div className="flex flex-col justify-start gap-6 sm:gap-[40px] w-full overflow-hidden">
 
-      {/* --- HEADER ---
-          Thay đổi duy nhất so với bản gốc: title + filter bar xếp CHỒNG lên nhau (flex-col)
-          trên màn hình < lg (dưới 1024px), và nằm NGANG (flex-row, justify-between) như cũ
-          từ lg trở lên. Nhờ đó ApplicationFilterBar luôn có đủ chiều rộng để tự sắp xếp
-          responsive bên trong nó. Font tiêu đề cũng giảm dần trên màn hình nhỏ. */}
+      {/* --- HEADER --- */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
         <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[24px] sm:text-[32px] lg:text-[40px] text-[#0D062D] font-semibold tracking-tight">
           Quản lý hồ sơ nhận nuôi
@@ -93,25 +166,27 @@ export const ApplicationKanbanBoard: React.FC = () => {
       </div>
       {/* -------------- */}
 
-      {isLoading && items.length === 0 ? (
+      {isLoading && localItems.length === 0 ? (
         <div className="flex gap-[11px] w-full h-[500px] sm:h-[741px] overflow-x-auto">
-          {[...Array(5)].map((_, i) => (
+          {KANBAN_COLUMNS.map((col) => (
             <div
-              key={i}
-              className="w-[240px] sm:w-[calc((100%-44px)/5)] min-w-[240px] shrink-0 h-full rounded-[18px] bg-gray-100 animate-pulse"
+              key={col.status}
+              className="flex-[1_0_260px] h-full rounded-[18px] bg-gray-100 animate-pulse"
             />
           ))}
         </div>
       ) : (
         <DndContext
           sensors={sensors}
+          collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {/* Vùng chứa Columns — giữ nguyên như bản gốc, đã tự cuộn ngang tốt trên mobile
-              nhờ overflow-x-auto + min-w-[260px] trong ApplicationColumn */}
-          <div className="flex gap-[11px] overflow-x-auto pb-4 items-stretch scroll-smooth w-full min-h-[500px] sm:min-h-[741px]">
+          {/* Vùng chứa Columns.
+              items-start (thay vì items-stretch cũ): để mỗi cột giữ chiều cao
+              riêng theo nội dung của nó, không bị kéo giãn bằng cột cao nhất. */}
+          <div className="flex gap-[11px] overflow-x-auto pb-4 items-start scroll-smooth w-full">
             {columns.map((col) => (
               <ApplicationColumn
                 key={col.status}
