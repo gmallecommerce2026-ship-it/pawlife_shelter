@@ -3,7 +3,7 @@ import { ApplicationKanbanBoard } from '@/modules/shelter/applications/Applicati
 
 export default function ShelterApplicationsPage() {
   return (
-    <div className="w-full max-w-[1400px]">
+    <div className="w-full">
       <ApplicationKanbanBoard />
     </div>
   );

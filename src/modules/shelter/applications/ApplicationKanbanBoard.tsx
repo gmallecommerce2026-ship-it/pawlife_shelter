@@ -78,12 +78,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    // Tăng max-w lên 1536px (2xl) hoặc full để 5 cột có không gian thở, hoặc bạn giữ 1318px tùy thiết kế
-    <div className="flex flex-col justify-start gap-[40px] w-full overflow-hidden">
+    <div className="flex flex-col justify-start gap-6 sm:gap-[40px] w-full overflow-hidden">
 
-      {/* --- HEADER --- */}
-      <div className="flex justify-between w-full">
-        <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#0D062D] font-semibold tracking-tight">
+      {/* --- HEADER ---
+          Thay đổi duy nhất so với bản gốc: title + filter bar xếp CHỒNG lên nhau (flex-col)
+          trên màn hình < lg (dưới 1024px), và nằm NGANG (flex-row, justify-between) như cũ
+          từ lg trở lên. Nhờ đó ApplicationFilterBar luôn có đủ chiều rộng để tự sắp xếp
+          responsive bên trong nó. Font tiêu đề cũng giảm dần trên màn hình nhỏ. */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
+        <h1 className="font-['Be Vietnam Pro',_sans-serif] text-[24px] sm:text-[32px] lg:text-[40px] text-[#0D062D] font-semibold tracking-tight">
           Quản lý hồ sơ nhận nuôi
         </h1>
         <ApplicationFilterBar />
@@ -91,10 +94,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       {/* -------------- */}
 
       {isLoading && items.length === 0 ? (
-        <div className="flex gap-[11px] w-full h-[741px] overflow-hidden">
-          {/* Đổi thành 5 Skeleton và tính toán chiều rộng bằng calc() */}
+        <div className="flex gap-[11px] w-full h-[500px] sm:h-[741px] overflow-x-auto">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="w-[calc((100%-44px)/5)] shrink-0 h-full rounded-[18px] bg-gray-100 animate-pulse" />
+            <div
+              key={i}
+              className="w-[240px] sm:w-[calc((100%-44px)/5)] min-w-[240px] shrink-0 h-full rounded-[18px] bg-gray-100 animate-pulse"
+            />
           ))}
         </div>
       ) : (
@@ -104,8 +109,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {/* Vùng chứa Columns */}
-          <div className="flex gap-[11px] overflow-x-auto pb-4 items-stretch scroll-smooth w-full min-h-[741px]">
+          {/* Vùng chứa Columns — giữ nguyên như bản gốc, đã tự cuộn ngang tốt trên mobile
+              nhờ overflow-x-auto + min-w-[260px] trong ApplicationColumn */}
+          <div className="flex gap-[11px] overflow-x-auto pb-4 items-stretch scroll-smooth w-full min-h-[500px] sm:min-h-[741px]">
             {columns.map((col) => (
               <ApplicationColumn
                 key={col.status}
