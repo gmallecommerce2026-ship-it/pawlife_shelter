@@ -27,7 +27,7 @@ const COLUMN_STYLES: Record<string, { bg: string; border: string; text: string }
   INTERVIEW_SCHEDULED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#FAF5FF] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#F3E0FF]', text: 'text-[#5A1B8D]' },
   ADOPTION_COMPLETED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#236745]' },
   APPROVED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#236745]' },
-  CLOSED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#236745]' },
+  CLOSED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#fb7f5e] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#c83c16]' },
 };
 
 export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
