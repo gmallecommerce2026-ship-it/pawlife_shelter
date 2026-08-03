@@ -63,7 +63,6 @@ export const AuthService = {
         // Lưu đồng thời 2 key để ApiClient và axiosClient đều đọc được
         localStorage.setItem('token', res.accessToken);
         localStorage.setItem('accessToken', res.accessToken);
-        document.cookie = `token=${res.accessToken}; path=/; max-age=86400;`;
       }
       useUserStore.getState().setUser(res.user);
       return res;

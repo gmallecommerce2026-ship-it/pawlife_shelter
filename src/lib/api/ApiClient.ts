@@ -20,19 +20,12 @@ export class ApiClient {
     const fullUrl = this.normalizeUrl(path);
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
-    // Log dev mode để debug dễ hơn
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🚀 [API] ${options.method || 'GET'} ${fullUrl}`);
-    }
-
     const headers: HeadersInit = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      'x-client-type': 'web', // <-- BỔ SUNG DÒNG NÀY ĐỂ BACKEND NHẬN DIỆN WEB
       ...options?.headers as any,
     };
 
-
-
-    // [FIX QUAN TRỌNG] Tự động đính kèm Token nếu có
     if (token) {
       (headers as any)['Authorization'] = `Bearer ${token}`;
     }

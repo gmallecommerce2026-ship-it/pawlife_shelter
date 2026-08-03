@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') || ''; 
   const { pathname } = req.nextUrl;
-  const token = req.cookies.get('token')?.value;
+  const token = req.cookies.get('accessToken')?.value;
 
   // BỎ QUA các request gọi vào API để không ảnh hưởng Mobile App
   if (pathname.startsWith('/api')) {
