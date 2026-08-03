@@ -10,8 +10,9 @@ import {
   Globe,
   Bell,
   Pencil,
+  Trash2,
+  Plus
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
 import { ShelterProfileFormValues, defaultOpeningHours } from '@/types/shelter';
@@ -37,11 +38,30 @@ const SHELTER_TYPE_OPTIONS = [
   { value: 'Individual Rescuer', label: 'Cá nhân cứu hộ tự do' },
 ];
 
+// --- MOCK DATA CHO TAB THÀNH VIÊN ---
+const MOCK_MEMBERS = [
+  { id: 1, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Admin', roleColor: 'purple' },
+  { id: 2, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Thành viên', roleColor: 'blue' },
+  { id: 3, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Tình nguyện viên', roleColor: 'green' },
+  { id: 4, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Bác sĩ thú y', roleColor: 'pink' },
+];
+
+const getRoleBadgeStyle = (color: string) => {
+  switch (color) {
+    case 'purple': return 'bg-[#F4E8FF] text-[#A855F7] border border-[#E9D5FF]';
+    case 'blue': return 'bg-[#E0F2FE] text-[#3B82F6] border border-[#BAE6FD]';
+    case 'green': return 'bg-[#DCFCE7] text-[#22C55E] border border-[#BBF7D0]';
+    case 'pink': return 'bg-[#FCE7F3] text-[#EC4899] border border-[#FBCFE8]';
+    default: return 'bg-gray-100 text-gray-500 border border-gray-200';
+  }
+};
+
 export const ShelterProfileForm = () => {
   const { profile, isLoading } = useShelterProfile();
   const { fetchProfile, updateProfile, isSubmitting } = useShelterProfileActions();
 
-  // State quản lý chế độ Xem/Sửa
+  // State quản lý Tab & Chế độ Xem/Sửa
+  const [activeTab, setActiveTab] = useState<'info' | 'members'>('info');
   const [isEditing, setIsEditing] = useState(false);
 
   const [values, setValues] = useState<FormValues>({
@@ -92,7 +112,7 @@ export const ShelterProfileForm = () => {
       longitude: profileLng,
       bio: profile.bio || '',
       shelterType: profile.shelterType || SHELTER_TYPE_OPTIONS[0].value,
-      website: (profile as any).website || '', // Giả sử profile có website
+      website: (profile as any).website || '',
     });
     setLogoPreview(profile.logoUrl);
     setCoverPreview(profileCoverUrl || null);
@@ -113,7 +133,6 @@ export const ShelterProfileForm = () => {
   };
 
   const handleCancel = () => {
-    // Reset lại dữ liệu về như ban đầu
     populateFormWithProfile();
     setLogoFile(null);
     setCoverFile(null);
@@ -163,231 +182,343 @@ export const ShelterProfileForm = () => {
 
       {/* TABS */}
       <div className="bg-gray-100 p-1.5 rounded-full flex w-full mb-8">
-        <button className="flex-1 bg-white text-gray-900 font-semibold text-[14px] py-2.5 rounded-full shadow-sm">
+        <button 
+          onClick={() => setActiveTab('info')}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${
+            activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
           Thông tin trạm cứu hộ
         </button>
-        <button className="flex-1 text-gray-500 font-medium text-[14px] py-2.5 hover:text-gray-700 transition-colors">
+        <button 
+          onClick={() => setActiveTab('members')}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${
+            activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
           Tài khoản & thành viên
         </button>
       </div>
 
-      {/* MAIN CARD */}
-      <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-        
-        {/* Cover Photo */}
-        <div 
-          className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group"
-          onClick={() => isEditing && coverInputRef.current?.click()}
-        >
-          {coverPreview && <Image src={coverPreview} alt="Cover" fill className="object-cover" />}
-          {isEditing && (
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="flex items-center gap-2 text-white bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">
-                <Camera size={16} /> <span className="text-sm font-medium">Đổi ảnh bìa</span>
+      {/* ========================================= */}
+      {/* TAB 1: THÔNG TIN TRẠM CỨU HỘ */}
+      {/* ========================================= */}
+      {activeTab === 'info' && (
+        <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-in fade-in duration-300">
+          {/* Cover Photo */}
+          <div 
+            className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group"
+            onClick={() => isEditing && coverInputRef.current?.click()}
+          >
+            {coverPreview && <Image src={coverPreview} alt="Cover" fill className="object-cover" />}
+            {isEditing && (
+              <div className="absolute inset-0 bg-black/20 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 text-white bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">
+                  <Camera size={16} /> <span className="text-sm font-medium">Đổi ảnh bìa</span>
+                </div>
               </div>
-            </div>
-          )}
-          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
-        </div>
-
-        <div className="px-8 pb-8">
-          {/* Avatar & Header Actions */}
-          <div className="flex justify-between items-end -mt-[50px] mb-6 relative z-10">
-            {/* Avatar */}
-            <div 
-              className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden"
-              onClick={() => isEditing && fileInputRef.current?.click()}
-            >
-              {logoPreview && <Image src={logoPreview} alt="Logo" fill className="object-cover" />}
-              {isEditing && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera size={24} className="text-white" />
-                </div>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mb-2">
-              {!isEditing ? (
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border border-gray-200 text-gray-700 font-medium text-[14px] hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil size={14} /> Chỉnh Sửa
-                </button>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-[10px] bg-[#E89B5A] text-white font-bold text-[14px] hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
-                  >
-                    {isSubmitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
-                  </button>
-                  <button 
-                    onClick={handleCancel}
-                    disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-[10px] border border-gray-200 text-gray-500 font-medium text-[14px] hover:bg-gray-50 transition-colors"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
+            <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
           </div>
 
-          {/* Form Content */}
-          <div className="flex flex-col gap-6">
-            
-            {/* Tên & Loại Trạm */}
-            <div>
-              <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Sân Nhà Nhiều Chó'}</h1>
-              <p className="text-[14px] text-gray-400">{shelterTypeLabel}</p>
+          <div className="px-8 pb-8">
+            {/* Avatar & Header Actions */}
+            <div className="flex justify-between items-end -mt-[50px] mb-6 relative z-10">
+              {/* Avatar */}
+              <div 
+                className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden"
+                onClick={() => isEditing && fileInputRef.current?.click()}
+              >
+                {logoPreview && <Image src={logoPreview} alt="Logo" fill className="object-cover" />}
+                {isEditing && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera size={24} className="text-white" />
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mb-2">
+                {!isEditing ? (
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border border-gray-200 text-gray-700 font-medium text-[14px] hover:bg-gray-50 transition-colors"
+                  >
+                    <Pencil size={14} /> Chỉnh Sửa
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="px-6 py-2.5 rounded-[10px] bg-[#E89B5A] text-white font-bold text-[14px] hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
+                    >
+                      {isSubmitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                    </button>
+                    <button 
+                      onClick={handleCancel}
+                      disabled={isSubmitting}
+                      className="px-6 py-2.5 rounded-[10px] border border-gray-200 text-gray-500 font-medium text-[14px] hover:bg-gray-50 transition-colors"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* VIEW MODE */}
-            {!isEditing ? (
-              <>
-                <p className="text-[15px] text-gray-500 mb-2 leading-relaxed">
-                  {values.bio || 'Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.'}
-                </p>
+            {/* Form Content */}
+            <div className="flex flex-col gap-6">
+              {/* Tên & Loại Trạm */}
+              <div>
+                <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Sân Nhà Nhiều Chó'}</h1>
+                <p className="text-[14px] text-gray-400">{shelterTypeLabel}</p>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-4">
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Mail size={18} /></div>
-                    <div className="flex flex-col">
-                      <span className="text-[12px] text-gray-400 font-medium mb-0.5">Email</span>
-                      <span className="text-[15px] font-medium text-gray-900">{values.email || 'Chưa cập nhật'}</span>
+              {/* VIEW MODE */}
+              {!isEditing ? (
+                <>
+                  <p className="text-[15px] text-gray-500 mb-2 leading-relaxed">
+                    {values.bio || 'Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.'}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Mail size={18} /></div>
+                      <div className="flex flex-col">
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Email</span>
+                        <span className="text-[15px] font-medium text-gray-900">{values.email || 'Chưa cập nhật'}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><MapPin size={18} /></div>
-                    <div className="flex flex-col">
-                      <span className="text-[12px] text-gray-400 font-medium mb-0.5">Address</span>
-                      <span className="text-[15px] font-medium text-gray-900 leading-snug">{values.address || 'Chưa cập nhật'}</span>
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><MapPin size={18} /></div>
+                      <div className="flex flex-col">
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Address</span>
+                        <span className="text-[15px] font-medium text-gray-900 leading-snug">{values.address || 'Chưa cập nhật'}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Phone size={18} /></div>
-                    <div className="flex flex-col">
-                      <span className="text-[12px] text-gray-400 font-medium mb-0.5">Phone</span>
-                      <span className="text-[15px] font-medium text-gray-900">{values.phone || 'Chưa cập nhật'}</span>
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Phone size={18} /></div>
+                      <div className="flex flex-col">
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Phone</span>
+                        <span className="text-[15px] font-medium text-gray-900">{values.phone || 'Chưa cập nhật'}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Globe size={18} /></div>
-                    <div className="flex flex-col">
-                      <span className="text-[12px] text-gray-400 font-medium mb-0.5">Website</span>
-                      <span className="text-[15px] font-medium text-gray-900">{values.website || 'Chưa cập nhật'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full border-t border-dashed border-gray-200 my-8" />
-
-                {/* Stats */}
-                <div className="flex justify-around items-center px-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[28px] font-bold text-[#4ADE80]">1000</span>
-                    <span className="text-[13px] text-gray-400 font-medium">Available Pets</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[28px] font-bold text-[#F472B6]">1000</span>
-                    <span className="text-[13px] text-gray-400 font-medium">Adopted</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[28px] font-bold text-[#60A5FA]">1000</span>
-                    <span className="text-[13px] text-gray-400 font-medium">Followers</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* EDIT MODE */
-              <div className="flex flex-col gap-5 mt-2">
-                
-                {/* Giới thiệu (Bio) */}
-                <div>
-                  <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (Bio)</label>
-                  <textarea
-                    value={values.bio}
-                    onChange={(e) => setValues(p => ({ ...p, bio: e.target.value }))}
-                    placeholder="Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife."
-                    rows={3}
-                    className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {/* Email */}
-                  <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
-                    <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
-                      <Mail size={18} className="text-gray-400 shrink-0" />
-                      <input 
-                        type="email" 
-                        value={values.email}
-                        onChange={(e) => setValues(p => ({ ...p, email: e.target.value }))}
-                        className="w-full bg-transparent outline-none text-[14px] text-gray-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Address</label>
-                    <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 border border-transparent focus-within:border-[#E89B5A] transition-colors">
-                      <MapPin size={18} className="text-gray-400 shrink-0" />
-                      {/* Ghi đè class của AddressPicker để hoà nhập với layout mới */}
-                      <div className="flex-1 w-full -ml-3">
-                        <AddressPicker
-                          disabled={isSubmitting}
-                          initialAddress={profile?.address}
-                          initialCenter={profileLat && profileLng ? [profileLat, profileLng] : undefined}
-                          onSelect={(result) => setValues((p) => ({ ...p, address: result.address, latitude: result.lat, longitude: result.lng }))}
-                        />
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Globe size={18} /></div>
+                      <div className="flex flex-col">
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Website</span>
+                        <span className="text-[15px] font-medium text-gray-900">{values.website || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Phone</label>
-                    <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
-                      <Phone size={18} className="text-gray-400 shrink-0" />
-                      <input 
-                        type="text" 
-                        value={values.phone}
-                        onChange={(e) => setValues(p => ({ ...p, phone: e.target.value }))}
-                        className="w-full bg-transparent outline-none text-[14px] text-gray-900"
-                      />
+                  <div className="w-full border-t border-dashed border-gray-200 my-8" />
+
+                  {/* Stats */}
+                  <div className="flex justify-around items-center px-4">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[28px] font-bold text-[#4ADE80]">1000</span>
+                      <span className="text-[13px] text-gray-400 font-medium">Available Pets</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[28px] font-bold text-[#F472B6]">1000</span>
+                      <span className="text-[13px] text-gray-400 font-medium">Adopted</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[28px] font-bold text-[#60A5FA]">1000</span>
+                      <span className="text-[13px] text-gray-400 font-medium">Followers</span>
                     </div>
                   </div>
-
-                  {/* Website */}
+                </>
+              ) : (
+                /* EDIT MODE */
+                <div className="flex flex-col gap-5 mt-2">
+                  {/* Giới thiệu (Bio) */}
                   <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Website</label>
-                    <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
-                      <Globe size={18} className="text-gray-400 shrink-0" />
-                      <input 
-                        type="text" 
-                        value={values.website}
-                        onChange={(e) => setValues(p => ({ ...p, website: e.target.value }))}
-                        placeholder="https://"
-                        className="w-full bg-transparent outline-none text-[14px] text-gray-900"
-                      />
-                    </div>
+                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (Bio)</label>
+                    <textarea
+                      value={values.bio}
+                      onChange={(e) => setValues(p => ({ ...p, bio: e.target.value }))}
+                      placeholder="Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife."
+                      rows={3}
+                      className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-none"
+                    />
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Email */}
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
+                      <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
+                        <Mail size={18} className="text-gray-400 shrink-0" />
+                        <input 
+                          type="email" 
+                          value={values.email}
+                          onChange={(e) => setValues(p => ({ ...p, email: e.target.value }))}
+                          className="w-full bg-transparent outline-none text-[14px] text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Address</label>
+                      <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 border border-transparent focus-within:border-[#E89B5A] transition-colors">
+                        <MapPin size={18} className="text-gray-400 shrink-0" />
+                        <div className="flex-1 w-full -ml-3">
+                          <AddressPicker
+                            disabled={isSubmitting}
+                            initialAddress={profile?.address}
+                            initialCenter={profileLat && profileLng ? [profileLat, profileLng] : undefined}
+                            onSelect={(result) => setValues((p) => ({ ...p, address: result.address, latitude: result.lat, longitude: result.lng }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Phone</label>
+                      <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
+                        <Phone size={18} className="text-gray-400 shrink-0" />
+                        <input 
+                          type="text" 
+                          value={values.phone}
+                          onChange={(e) => setValues(p => ({ ...p, phone: e.target.value }))}
+                          className="w-full bg-transparent outline-none text-[14px] text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Website */}
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Website</label>
+                      <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
+                        <Globe size={18} className="text-gray-400 shrink-0" />
+                        <input 
+                          type="text" 
+                          value={values.website}
+                          onChange={(e) => setValues(p => ({ ...p, website: e.target.value }))}
+                          placeholder="https://"
+                          className="w-full bg-transparent outline-none text-[14px] text-gray-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================= */}
+      {/* TAB 2: TÀI KHOẢN & THÀNH VIÊN */}
+      {/* ========================================= */}
+      {activeTab === 'members' && (
+        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          
+          {/* Card: Current Account (Admin) */}
+          <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-4">
+                <img 
+                  src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100" 
+                  alt="Avatar" 
+                  className="w-[84px] h-[84px] rounded-full object-cover border border-gray-100"
+                />
+                <div className="flex flex-col">
+                  <h3 className="text-[20px] font-bold text-gray-900 mb-1">Nguyễn Thị Qyn Phan</h3>
+                  <p className="text-[14px] text-gray-400 mb-2">hello@pawlife.vn</p>
+                  <span className={`w-fit px-3 py-0.5 rounded-full text-[12px] font-medium ${getRoleBadgeStyle('purple')}`}>
+                    Admin
+                  </span>
+                </div>
+              </div>
+              <button className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors">
+                Lưu Thay Đổi
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="text-[12px] text-gray-400 mb-1.5 block">Tên đầy đủ</label>
+                <input 
+                  type="text" 
+                  defaultValue="Nguyễn Thị Qyn Phan" 
+                  className="w-full bg-white border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#E89B5A]"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] text-gray-400 mb-1.5 block">Email</label>
+                <input 
+                  type="text" 
+                  defaultValue="sannhanhieucho@gmail.com" 
+                  readOnly
+                  className="w-full bg-[#FAFAFA] border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-500 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Team Member List */}
+          <div>
+            <div className="flex justify-between items-center mb-4 mt-2">
+              <h3 className="text-[20px] font-bold text-gray-900">Team Member</h3>
+              <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-[13px] font-medium">
+                <Plus size={16} /> Thêm Member
+              </button>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-[20px] overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA]">
+                <span className="text-[13px] font-medium text-gray-500">Tên</span>
+                <span className="text-[13px] font-medium text-gray-500">Email</span>
+                <span className="text-[13px] font-medium text-gray-500">Quyền hạn</span>
+                <span className="text-[13px] font-medium text-gray-500 text-right">Thao tác</span>
+              </div>
+
+              {/* Table Body */}
+              <div className="flex flex-col divide-y divide-gray-100">
+                {MOCK_MEMBERS.map((member) => (
+                  <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100" 
+                        alt={member.name} 
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <span className="text-[14px] font-bold text-gray-900">{member.name}</span>
+                    </div>
+                    <span className="text-[14px] text-gray-500">{member.email}</span>
+                    <div>
+                      <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${getRoleBadgeStyle(member.roleColor)}`}>
+                        {member.role}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-4">
+                      {member.role !== 'Admin' && (
+                        <>
+                          <button className="text-gray-400 hover:text-[#E89B5A] transition-colors"><Pencil size={16} /></button>
+                          <button className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 };

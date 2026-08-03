@@ -821,3 +821,24 @@ span.flatpickr-weekday,
   opacity: 0.8;
   cursor: grabbing;
 }
+
+/* Nút bấm trong màn hình vẫn nên có cursor pointer rõ ràng hơn nếu muốn phân biệt */
+.iphone-screen-3d button {
+    cursor: pointer;
+}
+.iphone-screen-3d.is-dragging,
+.iphone-screen-3d.is-dragging * {
+    cursor: grabbing !important;
+}
+
+/* globals.css */
+.iphone-screen-3d,
+.iphone-screen-3d * {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 32 32"><g fill="%23F2A465"><ellipse cx="16" cy="21" rx="7" ry="5.5"/><ellipse cx="7.5" cy="11" rx="2.6" ry="3.4"/><ellipse cx="13.5" cy="7" rx="2.6" ry="3.6"/><ellipse cx="18.5" cy="7" rx="2.6" ry="3.6"/><ellipse cx="24.5" cy="11" rx="2.6" ry="3.4"/></g></svg>') 4 4, pointer !important;
+  touch-action: auto !important;
+  pointer-events: auto !important;
+}
+
+.iphone-3d-wrapper {
+  cursor: none;
+}
