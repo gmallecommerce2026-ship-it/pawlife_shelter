@@ -89,9 +89,9 @@ const SidebarItem = ({
         className={classNames(
           'flex items-center justify-between py-3 rounded-xl text-[16px] transition-all duration-200 cursor-pointer',
           {
-            'bg-gray-50 text-[#0D062D] font-semibold': isActive && level === 0,
+            'bg-gray-50 text-[#0D062D] font-medium': isActive && level === 0,
             'text-[#787486] font-medium hover:bg-gray-50 hover:text-[#0D062D]': !isActive && level === 0,
-            'text-[#E89B5A] font-semibold': isSelfActive && level > 0,
+            'text-[#E89B5A] font-medium': isSelfActive && level > 0,
             'text-[#787486] hover:text-[#E89B5A]': !isSelfActive && level > 0,
           }
         )}

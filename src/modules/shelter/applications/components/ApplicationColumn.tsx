@@ -20,13 +20,13 @@ interface ApplicationColumnProps {
 
 // CẬP NHẬT: Dùng pixel (px) thay vì phần trăm (%) để giữ dải màu Header luôn cố định, không bị bóp méo khi cột ngắn đi.
 const COLUMN_STYLES: Record<string, { bg: string; border: string; text: string }> = {
-  SUBMITTED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#EEEEEE] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#666666]' },
-  PENDING: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#E2EAF8] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#E0E8FF]', text: 'text-[#3B6BE3]' },
-  NEED_MORE_INFO: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#FDF0CC] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#FDF0CC]', text: 'text-[#B87503]' },
-  INTERVIEW_SCHEDULED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F3E0FF] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#F3E0FF]', text: 'text-[#8A38D4]' },
-  ADOPTION_COMPLETED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#D1F2D9] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#1B8A44]' },
-  APPROVED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#D1F2D9] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#1B8A44]' },
-  CLOSED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#EAEAEA] from-[5px] to-[#F7F7F7] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#8C8C8C]' },
+  SUBMITTED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F9FAFB] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#858585]' },
+  PENDING: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#E8F1FF] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#E0E8FF]', text: 'text-[#5A90DA]' },
+  NEED_MORE_INFO: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#FEFCE9] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#FDF0CC]', text: 'text-[#FFBA00]' },
+  INTERVIEW_SCHEDULED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#FAF5FF] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#F3E0FF]', text: 'text-[#5A1B8D]' },
+  ADOPTION_COMPLETED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#236745]' },
+  APPROVED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#D1F2D9]', text: 'text-[#236745]' },
+  CLOSED: { bg: 'bg-[#F7F7F7] bg-gradient-to-b from-[#F0FDF4] from-[5px] to-[#F4F4F4] to-[70px]', border: 'border-[#EAEAEA]', text: 'text-[#236745]' },
 };
 
 export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
@@ -46,14 +46,12 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
   return (
     <div
       ref={setNodeRef}
-      // Thêm min-h-[500px] để đảm bảo cột luôn dài mượt mà ngay cả khi trống trơn
-      className={`flex flex-col w-[280px] shrink-0 h-full min-h-[280px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${
+      className={`flex flex-col w-[calc((100%-44px)/5)] min-w-[260px] shrink-0 h-full min-h-[500px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${
         isDropTarget 
           ? 'bg-[#F7F7F7] bg-gradient-to-b from-[#D0E3FF] from-[45px] to-[#F7F7F7] to-[120px] border-[#A3BFF8] border-dashed'
           : `${style.bg} ${style.border}`
       }`}
     >
-      {/* Header */}
       <div className="flex justify-between items-center w-full h-[32px] mb-2.5 px-2">
         <div className={`font-sans text-[16px] whitespace-nowrap leading-none font-semibold ${style.text}`}>
           {label}
