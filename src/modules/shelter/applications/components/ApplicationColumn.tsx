@@ -18,6 +18,7 @@ interface ApplicationColumnProps {
   onOpenProfile: (app: AdoptionApplication) => void;
   onRemove: (app: AdoptionApplication) => void;
   onOpenDocuments: (app: AdoptionApplication) => void;
+  onOpenQuickView: (app: AdoptionApplication) => void;
 }
 
 const COLUMN_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -40,6 +41,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
   onOpenProfile,
   onRemove,
   onOpenDocuments,
+  onOpenQuickView,
 }) => {
   const { setNodeRef } = useDroppable({ id: status });
   const style = COLUMN_STYLES[status] || COLUMN_STYLES.SUBMITTED;
@@ -57,11 +59,10 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
       // Thêm max-h: cột vẫn tự co giãn theo nội dung như trước, nhưng khi số item
       // vượt quá chiều cao này thì khu vực bên dưới sẽ cuộn nội bộ thay vì đẩy cả
       // board cao vô hạn. Đồng bộ mốc với skeleton loading (500px / 741px).
-      className={`flex flex-col flex-[1_0_260px] max-h-[500px] sm:max-h-[741px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${
-        isDropTarget
-          ? 'bg-[#F7F7F7] bg-gradient-to-b from-[#D0E3FF] from-[45px] to-[#F7F7F7] to-[120px] border-[#A3BFF8] border-dashed'
-          : `${style.bg} ${style.border}`
-      }`}
+      className={`flex flex-col flex-[1_0_260px] max-h-[500px] sm:max-h-[741px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${isDropTarget
+        ? 'bg-[#F7F7F7] bg-gradient-to-b from-[#D0E3FF] from-[45px] to-[#F7F7F7] to-[120px] border-[#A3BFF8] border-dashed'
+        : `${style.bg} ${style.border}`
+        }`}
     >
       {/* Header: cố định, không cuộn theo danh sách bên dưới */}
       <div className="flex justify-between items-center w-full h-[32px] mb-2.5 px-2 shrink-0">
@@ -96,7 +97,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
             style={{ height }}
             className="w-full transition-[height] duration-300 ease-in-out overflow-hidden"
           >
-            <div ref={contentRef} className="flex flex-col gap-2 w-full pb-2 items-center">
+            <div ref={contentRef} className="flex flex-col gap-2 w-full pb-2 items-center px-1">
               {applications.length > 0 ? (
                 applications.map((app, index) => (
                   <ApplicationCard
@@ -109,6 +110,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
                     showRedDot={status === 'SUBMITTED' && index === 0}
                     showMenu={true}
                     onOpenDocuments={onOpenDocuments}
+                    onOpenQuickView={onOpenQuickView}
                   />
                 ))
               ) : (

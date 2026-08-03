@@ -67,7 +67,7 @@ export interface AdoptionApplication {
     vaccine?: string; medical?: string; expenses?: string;
     updateStatus?: string; homeVisit?: string; provideID?: string;
   };
-  pet?: { id: string; name: string; avatarUrl?: string | null };
+  pet?: { id: string; name: string; avatarUrl?: string | null; gender?: string; };
   createdAt: string; updatedAt: string;
 }
 

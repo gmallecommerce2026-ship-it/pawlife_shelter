@@ -13,7 +13,6 @@ import {
   FileText,
   MoreVertical,
   User,
-  PawPrint,
   Folder,
   X,
   File
@@ -93,7 +92,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
     e.stopPropagation();
     setIsMenuOpen(false);
     switch (action) {
-      case 'applicantProfile': onOpenProfile(application); break;
+      case 'applicantProfile':
+        onOpenProfile(application);
+        break;
       case 'petProfile':
         const petId = application.pet?.id;
         if (petId) router.push(`/shelter/pets/${petId}`);
@@ -110,8 +111,6 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
 
   return (
     <div className="flex flex-col w-full relative group/content">
-      
-      {/* Nút 3 chấm - Ẩn đi và chỉ hiện khi hover để giao diện sạch như hình mẫu */}
       <div className="absolute top-[-4px] right-[-4px] z-[5] opacity-0 group-hover/content:opacity-100 transition-opacity">
         <button
           ref={buttonRef}
@@ -121,14 +120,14 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         >
           <MoreVertical size={16} strokeWidth={2} />
         </button>
-        {/* Menu Portal... (Giữ nguyên logic của bạn) */}
         {mounted && isMenuOpen && createPortal(
           <div ref={menuRef} style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }} className="w-[220px] bg-white rounded-[16px] shadow-xl border border-gray-100 py-2.5 flex flex-col origin-top-right">
-             <button onClick={(e) => handleMenuAction(e, 'applicantProfile')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><User size={18} className="text-gray-800"/> <span className="text-[15px] font-medium text-gray-900">Applicant Profile</span></button>
-             <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800"/> <span className="text-[15px] font-medium text-gray-900">View Application</span></button>
-             <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800"/> <span className="text-[15px] font-medium text-gray-900">All Documents</span></button>
-             <div className="h-[1px] w-full bg-gray-100 my-1"></div>
-             <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left"><X size={18} className="text-red-600"/> <span className="text-[15px] font-medium text-red-600">Remove Ticket</span></button>
+            {/* Giữ nguyên popup cũ, không có Quick View */}
+            <button onClick={(e) => handleMenuAction(e, 'applicantProfile')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><User size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Applicant Profile</span></button>
+            <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">View Application</span></button>
+            <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">All Documents</span></button>
+            <div className="h-[1px] w-full bg-gray-100 my-1"></div>
+            <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left"><X size={18} className="text-red-600" /> <span className="text-[15px] font-medium text-red-600">Remove Ticket</span></button>
           </div>,
           document.body
         )}
@@ -176,7 +175,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         </div>
       </div>
 
-      {/* 3. Chips (Follow-up & First-time) */}
+      {/* 3. Chips */}
       <div className="flex items-center gap-2.5 mb-[18px]">
         <div className="px-3.5 py-[5px] bg-[#EEF3FF] rounded-full">
           <span className="font-sans text-[12px] text-[#5982E6] font-semibold">Follow-up</span>
@@ -189,7 +188,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
       {/* 4. Divider */}
       <div className="w-full h-px bg-[#EEEEEE] mb-3.5" />
 
-      {/* 5. Footer (Date, Msgs, Docs) */}
+      {/* 5. Footer */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1.5">
           <Calendar size={13} className="text-[#888888]" strokeWidth={1.8} />
@@ -208,7 +207,6 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </div>
         </div>
       </div>
-
     </div>
   );
 };
@@ -222,6 +220,7 @@ interface ApplicationCardProps {
   onOpenDetail: (app: AdoptionApplication) => void;
   onRemove: (app: AdoptionApplication) => void;
   onOpenDocuments: (app: AdoptionApplication) => void;
+  onOpenQuickView: (app: AdoptionApplication) => void; // Khai báo prop ở đây
 }
 
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({
@@ -232,18 +231,15 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   onOpenProfile,
   onOpenDetail,
   onRemove,
-  onOpenDocuments
+  onOpenDocuments,
+  onOpenQuickView
 }) => {
-  // TRƯỚC: useDraggable — chỉ kéo được, không tự "né" nhau khi thứ tự thay đổi.
-  // SAU: useSortable — dnd-kit tự tính transform cho các item còn lại mỗi khi
-  // mảng item được reorder (xem onDragOver trong ApplicationKanbanBoard), tạo
-  // hiệu ứng các card "né" sang chỗ trống một cách mượt mà.
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: application.id,
   });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     forcedColorAdjust: 'none' as const,
     touchAction: 'none',
@@ -256,10 +252,9 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...listeners}
       {...attributes}
       tabIndex={-1}
-      onClick={() => onOpenProfile(application)}
-      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${
-        isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
-      } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      onClick={() => onOpenDetail(application)} // Gắn click vào thẻ để mở Quick View
+      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
+        } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <ApplicationCardContent
         application={application}
@@ -269,6 +264,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         onOpenDetail={onOpenDetail}
         onRemove={onRemove}
         onOpenDocuments={onOpenDocuments}
+        // Không truyền onOpenQuickView xuống đây nữa
       />
     </div>
   );
