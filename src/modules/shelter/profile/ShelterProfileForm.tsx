@@ -11,7 +11,8 @@ import {
   Bell,
   Pencil,
   Trash2,
-  Plus
+  Plus,
+  Check
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
@@ -22,7 +23,6 @@ const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />
 });
 
-// Mở rộng type FormValues để chứa các field mới
 type FormValues = ShelterProfileFormValues & {
   lat?: number;
   lng?: number;
@@ -38,12 +38,24 @@ const SHELTER_TYPE_OPTIONS = [
   { value: 'Individual Rescuer', label: 'Cá nhân cứu hộ tự do' },
 ];
 
-// --- MOCK DATA CHO TAB THÀNH VIÊN ---
 const MOCK_MEMBERS = [
   { id: 1, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Admin', roleColor: 'purple' },
   { id: 2, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Thành viên', roleColor: 'blue' },
   { id: 3, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Tình nguyện viên', roleColor: 'green' },
   { id: 4, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Bác sĩ thú y', roleColor: 'pink' },
+];
+
+// --- DỮ LIỆU BẢNG QUYỀN HẠN ---
+const PERMISSIONS_DATA = [
+  { name: 'Thêm pet mới', admin: true, vet: true, member: true, volunteer: true },
+  { name: 'Sửa thông tin pet', admin: true, vet: true, member: true, volunteer: true },
+  { name: 'Cập nhật hồ sơ y tế', admin: true, vet: true, member: false, volunteer: false },
+  { name: 'Xóa pet', admin: true, vet: true, member: true, volunteer: false },
+  { name: 'Xem và quản lý đơn đăng ký', admin: true, vet: true, member: true, volunteer: true },
+  { name: 'Duyệt/từ chối đơn đăng ký', admin: true, vet: false, member: true, volunteer: false },
+  { name: 'Ghi chú external note', admin: true, vet: true, member: true, volunteer: false },
+  { name: 'Tạo cuộc hẹn phỏng vấn', admin: true, vet: false, member: true, volunteer: false },
+  { name: 'Quản lý account và team member', admin: true, vet: false, member: false, volunteer: false },
 ];
 
 const getRoleBadgeStyle = (color: string) => {
@@ -60,7 +72,6 @@ export const ShelterProfileForm = () => {
   const { profile, isLoading } = useShelterProfile();
   const { fetchProfile, updateProfile, isSubmitting } = useShelterProfileActions();
 
-  // State quản lý Tab & Chế độ Xem/Sửa
   const [activeTab, setActiveTab] = useState<'info' | 'members'>('info');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -87,7 +98,6 @@ export const ShelterProfileForm = () => {
   const profileLng = profile?.longitude;
   const profileCoverUrl = profile?.coverUrl;
 
-  // Sync dữ liệu từ API
   useEffect(() => {
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,12 +210,9 @@ export const ShelterProfileForm = () => {
         </button>
       </div>
 
-      {/* ========================================= */}
       {/* TAB 1: THÔNG TIN TRẠM CỨU HỘ */}
-      {/* ========================================= */}
       {activeTab === 'info' && (
         <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-in fade-in duration-300">
-          {/* Cover Photo */}
           <div 
             className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group"
             onClick={() => isEditing && coverInputRef.current?.click()}
@@ -222,9 +229,7 @@ export const ShelterProfileForm = () => {
           </div>
 
           <div className="px-8 pb-8">
-            {/* Avatar & Header Actions */}
             <div className="flex justify-between items-end -mt-[50px] mb-6 relative z-10">
-              {/* Avatar */}
               <div 
                 className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden"
                 onClick={() => isEditing && fileInputRef.current?.click()}
@@ -238,7 +243,6 @@ export const ShelterProfileForm = () => {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
               </div>
 
-              {/* Action Buttons */}
               <div className="mb-2">
                 {!isEditing ? (
                   <button 
@@ -268,15 +272,12 @@ export const ShelterProfileForm = () => {
               </div>
             </div>
 
-            {/* Form Content */}
             <div className="flex flex-col gap-6">
-              {/* Tên & Loại Trạm */}
               <div>
                 <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Sân Nhà Nhiều Chó'}</h1>
                 <p className="text-[14px] text-gray-400">{shelterTypeLabel}</p>
               </div>
 
-              {/* VIEW MODE */}
               {!isEditing ? (
                 <>
                   <p className="text-[15px] text-gray-500 mb-2 leading-relaxed">
@@ -319,7 +320,6 @@ export const ShelterProfileForm = () => {
 
                   <div className="w-full border-t border-dashed border-gray-200 my-8" />
 
-                  {/* Stats */}
                   <div className="flex justify-around items-center px-4">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-[28px] font-bold text-[#4ADE80]">1000</span>
@@ -336,9 +336,7 @@ export const ShelterProfileForm = () => {
                   </div>
                 </>
               ) : (
-                /* EDIT MODE */
                 <div className="flex flex-col gap-5 mt-2">
-                  {/* Giới thiệu (Bio) */}
                   <div>
                     <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (Bio)</label>
                     <textarea
@@ -351,7 +349,6 @@ export const ShelterProfileForm = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Email */}
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -365,7 +362,6 @@ export const ShelterProfileForm = () => {
                       </div>
                     </div>
 
-                    {/* Address */}
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Address</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -381,7 +377,6 @@ export const ShelterProfileForm = () => {
                       </div>
                     </div>
 
-                    {/* Phone */}
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Phone</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -395,7 +390,6 @@ export const ShelterProfileForm = () => {
                       </div>
                     </div>
 
-                    {/* Website */}
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Website</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -417,11 +411,9 @@ export const ShelterProfileForm = () => {
         </div>
       )}
 
-      {/* ========================================= */}
       {/* TAB 2: TÀI KHOẢN & THÀNH VIÊN */}
-      {/* ========================================= */}
       {activeTab === 'members' && (
-        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+        <div className="flex flex-col gap-8 animate-in fade-in duration-300">
           
           {/* Card: Current Account (Admin) */}
           <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
@@ -476,7 +468,6 @@ export const ShelterProfileForm = () => {
             </div>
 
             <div className="bg-white border border-gray-200 rounded-[20px] overflow-hidden">
-              {/* Table Header */}
               <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA]">
                 <span className="text-[13px] font-medium text-gray-500">Tên</span>
                 <span className="text-[13px] font-medium text-gray-500">Email</span>
@@ -484,7 +475,6 @@ export const ShelterProfileForm = () => {
                 <span className="text-[13px] font-medium text-gray-500 text-right">Thao tác</span>
               </div>
 
-              {/* Table Body */}
               <div className="flex flex-col divide-y divide-gray-100">
                 {MOCK_MEMBERS.map((member) => (
                   <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
@@ -509,6 +499,43 @@ export const ShelterProfileForm = () => {
                           <button className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                         </>
                       )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Bảng Quyền Hạn */}
+          <div>
+            <div className="flex justify-between items-center mb-4 mt-2">
+              <h3 className="text-[20px] font-bold text-gray-900">Quyền Hạn</h3>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-[20px] overflow-hidden shadow-sm">
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] items-center">
+                <span className="text-[13px] font-medium text-gray-500">Quyền hạn</span>
+                <span className="text-[13px] font-bold text-[#A855F7] text-center">Admin</span>
+                <span className="text-[13px] font-bold text-[#EC4899] text-center">Bác sĩ thú y</span>
+                <span className="text-[13px] font-bold text-[#3B82F6] text-center">Thành viên</span>
+                <span className="text-[13px] font-bold text-[#22C55E] text-center">Tình nguyện viên</span>
+              </div>
+
+              <div className="flex flex-col divide-y divide-gray-100">
+                {PERMISSIONS_DATA.map((item, index) => (
+                  <div key={index} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                    <span className="text-[14px] text-gray-600 font-medium">{item.name}</span>
+                    <div className="flex justify-center">
+                      {item.admin && <Check size={20} strokeWidth={2.5} className="text-[#22C55E]" />}
+                    </div>
+                    <div className="flex justify-center">
+                      {item.vet && <Check size={20} strokeWidth={2.5} className="text-[#22C55E]" />}
+                    </div>
+                    <div className="flex justify-center">
+                      {item.member && <Check size={20} strokeWidth={2.5} className="text-[#22C55E]" />}
+                    </div>
+                    <div className="flex justify-center">
+                      {item.volunteer && <Check size={20} strokeWidth={2.5} className="text-[#22C55E]" />}
                     </div>
                   </div>
                 ))}
