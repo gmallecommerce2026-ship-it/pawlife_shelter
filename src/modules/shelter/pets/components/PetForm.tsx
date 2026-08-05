@@ -71,15 +71,12 @@ const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string;
 
 const DEFAULT_HISTORY_CONFIG = { Icon: Cake, bg: '#F5F5F5', color: '#8E8E93' };
 
-// 3 màu nhãn xoay vòng cho Tags / Yêu cầu (theo ảnh mẫu: vàng cam - xanh dương - xanh lá)
 const TAG_COLOR_STYLES = [
   { bg: '#FBF7EB', border: '#E8A53C', color: '#E8A53C' },
   { bg: '#E8F1FF', border: '#5A90DA', color: '#5A90DA' },
   { bg: '#EBFFE2', border: '#77C852', color: '#77C852' },
 ];
 
-// Same status palette used on the pet/[id] detail page, so the badge on the
-// photo behaves and looks identical between the two screens.
 const STATUS_BADGE_CONFIG: Record<string, { bg: string; border: string; color: string; label: string }> = {
   AVAILABLE: { bg: '#DEFFDF', border: '#00AC47', color: '#00AC47', label: 'Chờ nhận nuôi' },
   PENDING: { bg: '#FFF8E5', border: '#FFBA00', color: '#FFBA00', label: 'Đang xét duyệt' },
@@ -97,7 +94,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   // Form State
   const [name, setName] = useState('');
-  const [breed, setBreed] = useState('');
+  const [breed, setBreed] = useState('Golden British');
   const [gender, setGender] = useState<PetGender>('FEMALE');
   const [color, setColor] = useState('GOLDEN');
   const [dob, setDob] = useState('2020-07-12');
@@ -116,7 +113,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Status badge dropdown (mirrors the photo-badge dropdown on the detail page)
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   // Submit Record State
@@ -124,18 +120,29 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [newRecordNote, setNewRecordNote] = useState('');
   const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
 
-  // Populating initial data
   useEffect(() => {
     if (initialPet) {
       setName(initialPet.name || 'Luna');
-      setBreed(typeof initialPet.breed === 'object' ? initialPet.breed?.en || initialPet.breed?.vi || '' : initialPet.breed || 'Golden British');
+      setBreed(
+        typeof initialPet.breed === 'object'
+          ? initialPet.breed?.en || initialPet.breed?.vi || ''
+          : initialPet.breed || 'Golden British'
+      );
       setGender(initialPet.gender || 'FEMALE');
-      setColor(typeof initialPet.color === 'object' ? initialPet.color?.en || initialPet.color?.vi || '' : initialPet.color || 'GOLDEN');
+      setColor(
+        typeof initialPet.color === 'object'
+          ? initialPet.color?.en || initialPet.color?.vi || ''
+          : initialPet.color || 'GOLDEN'
+      );
       setDob(initialPet.dob ? String(initialPet.dob).slice(0, 10) : '2020-07-12');
       setWeight(initialPet.weight ?? 12);
       setPawLifeId(initialPet.code || initialPet.tags?.[0]?.id || 'PL-00000');
       setStatus(initialPet.status || 'AVAILABLE');
-      setDescription(typeof initialPet.description === 'object' ? initialPet.description?.vi || initialPet.description?.en || '' : initialPet.description || '');
+      setDescription(
+        typeof initialPet.description === 'object'
+          ? initialPet.description?.vi || initialPet.description?.en || ''
+          : initialPet.description || ''
+      );
       setIsVaccinated(initialPet.isVaccinated ?? true);
       setIsSpayedNeutered(initialPet.isSpayedNeutered ?? true);
       setImages(Array.isArray(initialPet.images) ? initialPet.images : []);
@@ -147,7 +154,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     if (!files.length) return;
     setImageFiles((prev) => [...prev, ...files]);
     const previews = files.map((f) => URL.createObjectURL(f));
-    setCurrentImageIndex(images.length); // nhảy tới ảnh vừa thêm
+    setCurrentImageIndex(images.length);
     setImages((prev) => [...prev, ...previews]);
   };
 
@@ -223,15 +230,16 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     }
   };
 
-  const pawHistory = Array.isArray(initialPet?.pawHistory) && initialPet.pawHistory.length > 0
-    ? initialPet.pawHistory
-    : [
-        { id: '1', type: 'TRANSFER', title: 'Curren Owner', description: 'Ownership transferred to Jane Doe', date: '2026-01-01' },
-        { id: '2', type: 'ANNUAL_CHECKUP', title: 'Annual Checkup', description: 'Health examination completed', date: '2026-01-01' },
-        { id: '3', type: 'VACCINE', title: 'DHPP Vaccination', description: 'Vaccinated: hepatitis, rabies, parvo, and parainfluenza', date: '2026-01-01' },
-        { id: '4', type: 'QR_LINKED', title: 'QR Code Registered', description: 'PawLife QR tag activated and linked to Luna', date: '2025-01-01' },
-        { id: '5', type: 'BIRTH', title: 'Date of Birth', description: 'Luna was born', date: '2026-01-01' },
-      ];
+  const pawHistory =
+    Array.isArray(initialPet?.pawHistory) && initialPet.pawHistory.length > 0
+      ? initialPet.pawHistory
+      : [
+          { id: '1', type: 'TRANSFER', title: 'Curren Owner', description: 'Ownership transferred to Jane Doe', date: '2026-01-01' },
+          { id: '2', type: 'ANNUAL_CHECKUP', title: 'Annual Checkup', description: 'Health examination completed', date: '2026-01-01' },
+          { id: '3', type: 'VACCINE', title: 'DHPP Vaccination', description: 'Vaccinated: hepatitis, rabies, parvo, and parainfluenza', date: '2026-01-01' },
+          { id: '4', type: 'QR_LINKED', title: 'QR Code Registered', description: 'PawLife QR tag activated and linked to Luna', date: '2025-01-01' },
+          { id: '5', type: 'BIRTH', title: 'Date of Birth', description: 'Luna was born', date: '2026-01-01' },
+        ];
   const sortedHistory = [...pawHistory].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -243,7 +251,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     <div className="w-full max-w-[1280px] mx-auto flex flex-col font-sans pb-20">
       <div className="flex flex-col lg:flex-row gap-7 items-start px-2 py-1">
 
-        {/* ================= CỘT TRÁI: ẢNH + THÔNG TIN CƠ BẢN ================= */}
+        {/* ================= CỘT TRÁI: ÁNH + THÔNG TIN CƠ BẢN ================= */}
         <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0 flex flex-col gap-5 p-1">
           <div className="flex items-center gap-3">
             <button
@@ -277,14 +285,13 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
               )}
 
-              {/* Nút trước/sau: chỉ active khi có nhiều hơn 1 ảnh */}
               {images.length > 0 && (
                 <>
                   <button
                     type="button"
                     onClick={goPrevImage}
                     disabled={images.length <= 1}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/85"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft size={16} className="text-gray-700" />
                   </button>
@@ -292,7 +299,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     type="button"
                     onClick={goNextImage}
                     disabled={images.length <= 1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/85"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronRight size={16} className="text-gray-700" />
                   </button>
@@ -312,7 +319,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </>
               )}
 
-              {/* Status badge / dropdown, matching the detail page */}
+              {/* Status badge dropdown */}
               <div className="absolute top-4 right-4 z-20">
                 <button
                   type="button"
@@ -362,7 +369,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             </div>
 
             <div className="p-5 flex flex-col gap-4">
-              {/* Quick-glance stat pills, same style as the detail page */}
+              {/* Quick-glance stat pills */}
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="rounded-2xl bg-[#E2EFF8] py-3.5 flex flex-col items-center gap-1.5">
                   <span className="text-[13px] text-gray-500">Gender</span>
@@ -378,7 +385,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
               </div>
 
-              {/* Editable fields, styled like the 2x2 info grid on the detail page */}
+              {/* Editable basic info grid (Bổ sung ô Breed) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Name</label>
@@ -387,6 +394,19 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={!isEditing}
+                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
+                  />
+                </div>
+
+                {/* Ô nhập Breed (Giống loài) mới thêm */}
+                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Breed</label>
+                  <input
+                    type="text"
+                    value={breed}
+                    onChange={(e) => setBreed(e.target.value)}
+                    disabled={!isEditing}
+                    placeholder="VD: GOLDEN BRITISH"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
                 </div>
@@ -437,7 +457,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   />
                 </div>
 
-                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
+                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3 col-span-2">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">PawLife ID</label>
                   <input
                     type="text"
@@ -450,6 +470,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               </div>
             </div>
           </div>
+
         </div>
 
         {/* ================= CỘT PHẢI: ACTIONS + TABS + NỘI DUNG ================= */}
@@ -517,7 +538,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           {/* TAB: THÔNG TIN */}
           {activeTab === 'info' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-
               {/* Sub-card trái: Giới thiệu, Tags, Tính cách, Yêu cầu, Sức khỏe */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
                 {/* Giới thiệu */}
