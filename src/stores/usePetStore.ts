@@ -239,17 +239,18 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
   getPetById: async (id) => {
     try {
       const res = await apiClient.get(`/shelter-dashboard/pets/${id}`);
-      return res as Pet;
+      if (res) return res as Pet;
     } catch (error) {
       console.warn('Get pet error, fallback to mock data:', error);
-
-      // Lấy thông tin từ danh sách hiện tại trong Zustand store hoặc mảng mock fallback
-      const mockPet = get().items.find((p) => p.id === id) || FALLBACK_MOCK_PETS.find((p) => p.id === id);
-      if (mockPet) return mockPet;
-
-      toast.error('Không tìm thấy thông tin pet.');
-      return null;
     }
+
+    // Trả về Mock Data khi API offline/không phản hồi
+    const mockPet =
+      get().items.find((p) => p.id === id) ||
+      FALLBACK_MOCK_PETS.find((p) => p.id === id) ||
+      FALLBACK_MOCK_PETS[0];
+
+    return mockPet as Pet;
   },
 
   createPet: async (values, images) => {

@@ -69,7 +69,7 @@ export class ApiClient {
       return await res.text() as unknown as T;
 
     } catch (error) {
-      console.error(`❌ [API Error] ${fullUrl}:`, error);
+      console.warn(`❌ [API Error] ${fullUrl}:`, error);
       throw error;
     }
   }

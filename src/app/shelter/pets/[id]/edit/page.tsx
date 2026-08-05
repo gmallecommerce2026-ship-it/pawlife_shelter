@@ -1,3 +1,4 @@
+// src/app/shelter/pets/[id]/edit/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -15,24 +16,24 @@ export default function EditPetPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const result = await getPetById(params.id);
-      if (mounted) {
-        setPet(result);
-        setIsLoading(false);
+      try {
+        const result = await getPetById(params.id);
+        if (mounted) {
+          setPet(result);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.warn('[EditPetPage] Fetch warning:', err);
+        if (mounted) setIsLoading(false);
       }
     })();
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   if (isLoading) {
-    return <div className="w-full max-w-[900px] py-20 text-center text-gray-400">Đang tải thông tin pet...</div>;
-  }
-
-  if (!pet) {
-    return <div className="w-full max-w-[900px] py-20 text-center text-gray-500">Không tìm thấy pet này.</div>;
+    return <div className="w-full max-w-[900px] py-20 text-center text-gray-400 font-sans">Đang tải thông tin pet...</div>;
   }
 
   return <PetForm mode="edit" initialPet={pet} />;

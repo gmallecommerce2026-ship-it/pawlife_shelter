@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,25 @@ import {
     FiMail,
     FiCalendar,
 } from 'react-icons/fi';
-import { PawPrint, Cake, QrCode, Home, Syringe, Stethoscope, Smile, User as UserIcon, HeartHandshake, SparklesIcon } from 'lucide-react';
+import {
+    PawPrint,
+    Cake,
+    QrCode,
+    Home,
+    Syringe,
+    Stethoscope,
+    Smile,
+    User as UserIcon,
+    HeartHandshake,
+    SparklesIcon,
+    Send,
+    MoreVertical,
+    Upload,
+    Calendar,
+    Eye,
+    Pencil,
+    Download,
+} from 'lucide-react';
 import axiosClient from '@/lib/api/axiosClient';
 import { usePetActions } from '@/stores/usePetStore';
 import { PetPublic3DModal } from '@/components/PetPublic3DModal';
@@ -38,7 +56,64 @@ const APPLICATION_STATUS_STYLE: Record<AdoptionApplication['status'], { bg: stri
     APPROVED: { bg: '#EBFFE2', color: '#77C852', label: 'Approved' },
     REJECTED: { bg: '#FFEAEA', color: '#FF5A5A', label: 'Rejected' },
 };
-
+const MOCK_DOCUMENTS = [
+    {
+        id: 'doc_1',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+    {
+        id: 'doc_2',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đang xác minh',
+        statusClass: 'bg-[#E8F1FF] text-[#5A90DA]',
+    },
+    {
+        id: 'doc_3',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+    {
+        id: 'doc_4',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+    {
+        id: 'doc_5',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+    {
+        id: 'doc_6',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+    {
+        id: 'doc_7',
+        fileName: 'Khám tổng quát hằng năm.pdf',
+        date: '01/01/2026',
+        uploader: 'Nguyễn Văn A',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+    },
+];
 const MOCK_APPLICATIONS: AdoptionApplication[] = Array.from({ length: 8 }).map((_, i) => ({
     id: `mock-app-${i + 1}`,
     applicantName: 'Maria Garcia',
@@ -73,7 +148,6 @@ const getAgeLabel = (dob?: string | null): string => {
     return 'Sơ sinh';
 };
 
-// Cấu hình màu sắc & Nhãn hiển thị trạng thái chuẩn theo yêu cầu
 const STATUS_PHOTO_BADGE: Record<string, { bg: string; border: string; color: string; label: string }> = {
     AVAILABLE: { bg: '#DEFFDF', border: '#00AC47', color: '#00AC47', label: 'Chờ nhận nuôi' },
     PENDING: { bg: '#FFF8E5', border: '#FFBA00', color: '#FFBA00', label: 'Đang xét duyệt' },
@@ -117,47 +191,79 @@ const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string;
     CURRENT_OWNER: { Icon: UserIcon, bg: '#FFE9B8', color: '#CF7900' },
     PREVIOUS_OWNER: { Icon: UserIcon, bg: '#FFE9B8', color: '#CF7900' },
     UNDER_SHELTER_CARE: { Icon: HeartHandshake, bg: '#FFE4F0', color: '#D6447A' },
-    WAS_UNDER_SHELTER_CARE: { Icon: HeartHandshake, bg: '#FFE4F0', color: '#D6447A' },
 };
 
 const DEFAULT_HISTORY_CONFIG = { Icon: Cake, bg: '#F5F5F5', color: '#8E8E93' };
 
 const HISTORY_TYPE_LABEL: Record<string, string> = {
-    BIRTH: 'Ngày sinh',
-    TRANSFER: 'Chuyển giao quyền sở hữu',
-    VACCINE: 'Tiêm phòng',
-    DENTAL_CARE: 'Khám răng miệng',
-    ANNUAL_CHECKUP: 'Khám định kỳ',
-    CURRENT_OWNER: 'Chủ sở hữu hiện tại',
-    PREVIOUS_OWNER: 'Chủ cũ',
-    UNDER_SHELTER_CARE: 'Đang ở trạm cứu hộ',
-    WAS_UNDER_SHELTER_CARE: 'Từng ở trạm cứu hộ',
-    QR_LINKED: 'Kích hoạt thẻ QR',
+    BIRTH: 'Date of Birth',
+    TRANSFER: 'Curren Owner',
+    VACCINE: 'DHPP Vaccination',
+    ANNUAL_CHECKUP: 'Annual Checkup',
+    QR_LINKED: 'QR Code Registered',
 };
 
-const RECORD_TYPE_NOTE_OPTIONS = [
-    { value: 'VACCINE', label: 'Tiêm phòng' },
-    { value: 'ANNUAL_CHECKUP', label: 'Khám tổng quát' },
-    { value: 'DENTAL_CARE', label: 'Khám răng miệng' },
-    { value: 'TRANSFER', label: 'Chuyển giao quyền sở hữu' },
-    { value: 'OTHER', label: 'Ghi chú khác' },
+const INITIAL_NOTES = [
+    {
+        id: 'n1',
+        author: 'Julia Nguyễn',
+        role: 'Bác sĩ thú y',
+        roleBadgeClass: 'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]',
+        date: '08/05/2020',
+        content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+    },
+    {
+        id: 'n2',
+        author: 'Julia Nguyễn',
+        role: 'Thành viên',
+        roleBadgeClass: 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]',
+        date: '08/05/2020',
+        content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+    },
+    {
+        id: 'n3',
+        author: 'Julia Nguyễn',
+        role: 'Tình nguyện viên',
+        roleBadgeClass: 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]',
+        date: '08/05/2020',
+        content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+    },
+    {
+        id: 'n4',
+        author: 'Julia Nguyễn',
+        role: 'Admin',
+        roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
+        date: '08/05/2020',
+        content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+    },
 ];
 
-const MEDICAL_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-    DISPUTED: { bg: '#FFEAF2', color: '#D6447A', label: 'Cần xem xét' },
-    VERIFIED: { bg: '#EBFFE2', color: '#77C852', label: 'Đã xác minh' },
-    PENDING: { bg: '#FBF7EB', color: '#E8A53C', label: 'Đang xác minh' },
-};
-
-const MEDICAL_TYPE_ICON: Record<string, React.ElementType> = {
-    VACCINE: Syringe,
-    VACCINATION: Syringe,
-    CHECKUP: Stethoscope,
-    ANNUAL_CHECKUP: Stethoscope,
-    EXAMINATION: Stethoscope,
-    DENTAL: Smile,
-    DENTAL_CARE: Smile,
-};
+const INITIAL_MEDICAL_RECORDS = [
+    {
+        id: 'm1',
+        title: 'DHPP (5/7in1)',
+        statusLabel: 'Đang xác minh',
+        statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
+        statusIcon: '⏱',
+        type: 'Tiêm chủng',
+        date: '17/7/2026',
+        nextDue: '14/08/2026',
+    },
+    {
+        id: 'm2',
+        title: 'DHPP (5/7in1)',
+        statusLabel: 'Đã xác minh',
+        statusClass: 'bg-[#EBFFE2] text-[#77C852] border-[#D1F5BF]',
+        statusIcon: '✓',
+        type: 'Tiêm chủng',
+        date: '17/7/2026',
+        nextDue: '14/08/2026',
+    },
+];
 
 type TabKey = 'detail' | 'application' | 'document';
 const TABS: { key: TabKey; label: string }[] = [
@@ -179,14 +285,23 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const [activeTab, setActiveTab] = useState<TabKey>('detail');
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [show3DModal, setShow3DModal] = useState(false);
-    const [newRecordType, setNewRecordType] = useState('');
-    const [newRecordNote, setNewRecordNote] = useState('');
-    const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
     const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
     // State quản lý Dropdown đổi trạng thái
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    // State Ghi chú
+    const [notes, setNotes] = useState(INITIAL_NOTES);
+    const [newNoteInput, setNewNoteInput] = useState('');
+
+    // State Hồ sơ y tế
+    const [medicalList, setMedicalList] = useState(INITIAL_MEDICAL_RECORDS);
+    const [showMedicalForm, setShowMedicalForm] = useState(true);
+    const [medicalType, setMedicalType] = useState('');
+    const [medicalDetail, setMedicalDetail] = useState('');
+    const [medicalDate, setMedicalDate] = useState('');
+    const medicalFileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         let active = true;
@@ -234,7 +349,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         };
     }, [id]);
 
-    // Xử lý cập nhật trạng thái Pet
     const handleStatusChange = async (newStatus: string) => {
         setIsStatusDropdownOpen(false);
         if (!pet || pet.status === newStatus) return;
@@ -267,25 +381,39 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         }
     };
 
-    const handleSubmitRecord = async (e: React.FormEvent) => {
+    const handleAddNote = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!pet || !newRecordType || !newRecordNote.trim()) return;
-        setIsSubmittingRecord(true);
-        try {
-            const res = await axiosClient.post(`/pets/${pet.id}/history`, {
-                type: newRecordType,
-                description: newRecordNote.trim(),
-                date: new Date().toISOString(),
-            });
-            setPet((prev) => (prev ? { ...prev, pawHistory: [...(prev.pawHistory || []), res.data] } : prev));
-            setNewRecordType('');
-            setNewRecordNote('');
-        } catch (err) {
-            console.error('[PetDetailPage] Khảo sát thất bại:', err);
-            alert('Không thể gửi ghi chú, vui lòng thử lại.');
-        } finally {
-            setIsSubmittingRecord(false);
-        }
+        if (!newNoteInput.trim()) return;
+        const newNote = {
+            id: `n_${Date.now()}`,
+            author: 'Julia Nguyễn',
+            role: 'Admin',
+            roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
+            date: new Date().toLocaleDateString('vi-VN'),
+            content: newNoteInput.trim(),
+            avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+        };
+        setNotes((prev) => [...prev, newNote]);
+        setNewNoteInput('');
+    };
+
+    const handleSaveMedical = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!medicalType) return;
+        const newRecord = {
+            id: `m_${Date.now()}`,
+            title: medicalDetail || medicalType,
+            statusLabel: 'Đang xác minh',
+            statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
+            statusIcon: '⏱',
+            type: medicalType,
+            date: medicalDate || new Date().toLocaleDateString('vi-VN'),
+            nextDue: '14/08/2026',
+        };
+        setMedicalList((prev) => [...prev, newRecord]);
+        setMedicalType('');
+        setMedicalDetail('');
+        setMedicalDate('');
     };
 
     if (isLoading) {
@@ -326,7 +454,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const goodWith: MaybeBilingual[] = Array.isArray(pet.goodWith) ? pet.goodWith : [];
     const badWith: MaybeBilingual[] = Array.isArray(pet.badWith) ? pet.badWith : [];
     const adoptionRequirements: any[] = Array.isArray(pet.adoptionRequirements) ? pet.adoptionRequirements : [];
-    const medicalRecords: any[] = Array.isArray(pet.medicalRecords) ? pet.medicalRecords : [];
     const pawHistory: any[] = Array.isArray(pet.pawHistory) ? pet.pawHistory : [];
     const sortedHistory = [...pawHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const applications: AdoptionApplication[] = (Array.isArray(pet.applications) ? pet.applications : null) || MOCK_APPLICATIONS;
@@ -360,7 +487,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
                             {/* DROPDOWN TRẠNG THÁI TRÊN ẢNH */}
                             <div className="absolute top-4 right-4 z-20">
-                                {/* Nút bấm phía trên: Hiển thị màu của Trạng thái ĐANG CHỌN */}
                                 <button
                                     type="button"
                                     onClick={() => setIsStatusDropdownOpen((prev) => !prev)}
@@ -379,15 +505,12 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                     />
                                 </button>
 
-                                {/* Menu danh sách các trạng thái: Nền trắng, chữ đen chuẩn theo ảnh */}
                                 {isStatusDropdownOpen && (
                                     <>
-                                        {/* Click ra ngoài để đóng menu */}
                                         <div
                                             className="fixed inset-0 z-10"
                                             onClick={() => setIsStatusDropdownOpen(false)}
                                         />
-
                                         <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-20 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
                                             {Object.entries(STATUS_PHOTO_BADGE).map(([statusKey, cfg]) => {
                                                 const isSelected = pet.status === statusKey;
@@ -412,7 +535,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         </div>
 
                         <div className="p-5 flex flex-col gap-4">
-                            {/* 3 stat pills */}
                             <div className="grid grid-cols-3 gap-2.5">
                                 <div className="rounded-2xl bg-[#E2EFF8] py-3.5 flex flex-col items-center gap-1.5">
                                     <span className="text-[13px] text-gray-500">Gender</span>
@@ -427,7 +549,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                     <span className="text-[15px] font-semibold text-black">{pet.weight != null ? `${pet.weight} kg` : ' '}</span>
                                 </div>
                             </div>
-                            {/* 2x2 info grid */}
                             <div className="grid grid-cols-2 gap-3">
                                 {[
                                     ['Gender', genderLabel.toUpperCase()],
@@ -436,8 +557,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                     ['PawLife ID', displayId],
                                 ].map(([label, value]) => (
                                     <div key={label} className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3.5">
-                                        <p className="text-[13px] text-[#8E8E93] mb-1">{label}</p>
-                                        <p className="text-[14px] font-semibold text-black tracking-wide">{value}</p>
+                                        <p className="text-[13px] text-[#8E8E93] mb-1">{label}</p>                                        <p className="text-[14px] font-semibold text-black tracking-wide">{value}</p>
                                     </div>
                                 ))}
                             </div>
@@ -493,94 +613,142 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     {/* TAB: DETAIL */}
                     {activeTab === 'detail' && (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
-                                <div>
-                                    <p className="text-sm font-medium text-black mb-3">About {pet.name}</p>
-                                    <p className="text-sm text-[#8E8E93] leading-relaxed">
-                                        {showText(pet.description) || 'Chưa có ghi chú cho pet này.'}
-                                    </p>
-                                    {traits.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-3">
-                                            {traits.map((t, i) => {
-                                                const style = TRAIT_STYLES[i % TRAIT_STYLES.length];
-                                                return (
-                                                    <span
-                                                        key={`${showText(t)}_${i}`}
-                                                        className="text-[11px] font-medium px-3 py-1 rounded-full border"
-                                                        style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
-                                                    >
-                                                        {showText(t)}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                                {(goodWith.length > 0 || badWith.length > 0) && (
+
+                            {/* Cột trái trong Tab Detail: Giới thiệu, Tags, Tính cách, Yêu cầu, Sức khỏe + KHỐI GHI CHÚ */}
+                            <div className="flex flex-col gap-4">
+                                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
                                     <div>
-                                        <p className="text-sm font-medium text-black mb-2">{pet.name}'s Behavior</p>
-                                        {goodWith.length > 0 && (
-                                            <div className="flex items-start gap-1.5 mb-1">
-                                                <FiCheck size={13} className="text-[#77C852] mt-0.5 shrink-0" />
-                                                <p className="text-[12px] leading-5">
-                                                    <span className="font-medium text-[#77C852]">Good with: </span>
-                                                    <span className="text-[#8E8E93]">{goodWith.map(showText).join(', ')}</span>
-                                                </p>
-                                            </div>
-                                        )}
-                                        {badWith.length > 0 && (
-                                            <div className="flex items-start gap-1.5">
-                                                <FiX size={13} className="text-[#FE7D66] mt-0.5 shrink-0" />
-                                                <p className="text-[12px] leading-5">
-                                                    <span className="font-medium text-[#FE7D66]">Not suitable: </span>
-                                                    <span className="text-[#8E8E93]">{badWith.map(showText).join(', ')}</span>
-                                                </p>
+                                        <p className="text-sm font-medium text-black mb-3">About {pet.name}</p>
+                                        <p className="text-sm text-[#8E8E93] leading-relaxed">
+                                            {showText(pet.description) || 'Chưa có ghi chú cho pet này.'}
+                                        </p>
+                                        {traits.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-3">
+                                                {traits.map((t, i) => {
+                                                    const style = TRAIT_STYLES[i % TRAIT_STYLES.length];
+                                                    return (
+                                                        <span
+                                                            key={`${showText(t)}_${i}`}
+                                                            className="text-[11px] font-medium px-3 py-1 rounded-full border"
+                                                            style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
+                                                        >
+                                                            {showText(t)}
+                                                        </span>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
-                                )}
-                                <div>
-                                    <p className="text-sm font-medium text-black mb-3">Yêu cầu nhận nuôi</p>
-                                    {adoptionRequirements.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {adoptionRequirements.map((r, i) => (
-                                                <span key={r.iconKey ?? i} className="text-[12px] px-3 py-1 rounded-full border border-gray-200 text-gray-600 bg-white">
-                                                    {showText(r.label)}
-                                                </span>
-                                            ))}
+                                    {(goodWith.length > 0 || badWith.length > 0) && (
+                                        <div>
+                                            <p className="text-sm font-medium text-black mb-2">{pet.name}'s Behavior</p>
+                                            {goodWith.length > 0 && (
+                                                <div className="flex items-start gap-1.5 mb-1">
+                                                    <FiCheck size={13} className="text-[#77C852] mt-0.5 shrink-0" />
+                                                    <p className="text-[12px] leading-5">
+                                                        <span className="font-medium text-[#77C852]">Good with: </span>
+                                                        <span className="text-[#8E8E93]">{goodWith.map(showText).join(', ')}</span>
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {badWith.length > 0 && (
+                                                <div className="flex items-start gap-1.5">
+                                                    <FiX size={13} className="text-[#FE7D66] mt-0.5 shrink-0" />
+                                                    <p className="text-[12px] leading-5">
+                                                        <span className="font-medium text-[#FE7D66]">Not suitable: </span>
+                                                        <span className="text-[#8E8E93]">{badWith.map(showText).join(', ')}</span>
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <p className="text-sm text-[#8E8E93] leading-relaxed">Chưa có yêu cầu nhận nuôi.</p>
                                     )}
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-black mb-3">Health Care</p>
-                                    <div className="flex gap-3">
-                                        <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
-                                            <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                                                <Syringe size={18} className="text-[#E89B5A]" />
+                                    <div>
+                                        <p className="text-sm font-medium text-black mb-3">Yêu cầu nhận nuôi</p>
+                                        {adoptionRequirements.length > 0 ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {adoptionRequirements.map((r, i) => (
+                                                    <span key={r.iconKey ?? i} className="text-[12px] px-3 py-1 rounded-full border border-gray-200 text-gray-600 bg-white">
+                                                        {showText(r.label)}
+                                                    </span>
+                                                ))}
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[12px] text-[#8E8E93]">Vaccination</p>
-                                                <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa tiêm'}</p>
+                                        ) : (
+                                            <p className="text-sm text-[#8E8E93] leading-relaxed">Chưa có yêu cầu nhận nuôi.</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-black mb-3">Health Care</p>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
+                                                <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
+                                                    <Syringe size={18} className="text-[#E89B5A]" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] text-[#8E8E93]">Vaccination</p>
+                                                    <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa tiêm'}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
-                                            <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                                                <FiCheck size={18} className="text-[#E89B5A]" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[12px] text-[#8E8E93]">Status</p>
-                                                <p className="text-[13px] font-medium text-black truncate">{pet.isSpayedNeutered ? 'Neutered' : 'Not neutered'}</p>
+                                            <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
+                                                <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
+                                                    <FiCheck size={18} className="text-[#E89B5A]" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] text-[#8E8E93]">Status</p>
+                                                    <p className="text-[13px] font-medium text-black truncate">{pet.isSpayedNeutered ? 'Neutered' : 'Not neutered'}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* KHỐI GHI CHÚ BỔ SUNG */}
+                                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
+                                    <h3 className="text-sm font-bold text-gray-900">Ghi chú</h3>
+
+                                    <div className="flex flex-col gap-4">
+                                        {notes.map((note) => (
+                                            <div key={note.id} className="flex gap-3 items-start">
+                                                <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5 border border-gray-100">
+                                                    <Image src={note.avatar} alt={note.author} fill className="object-cover" />
+                                                </div>
+                                                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-xs font-bold text-gray-900">{note.author}</span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${note.roleBadgeClass}`}>
+                                                            {note.role}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 ml-auto">{note.date}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 leading-relaxed">{note.content}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Input Thêm ghi chú mới */}
+                                    <form onSubmit={handleAddNote} className="relative mt-2 w-full">
+                                        <input
+                                            type="text"
+                                            value={newNoteInput}
+                                            onChange={(e) => setNewNoteInput(e.target.value)}
+                                            placeholder="Thêm ghi chú dưới tên Julia Nguyễn"
+                                            className="w-full bg-[#F9FAFB] border border-gray-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!newNoteInput.trim()}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
+                                        >
+                                            <Send size={15} />
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 
+                            {/* Cột phải trong Tab Detail: PawHistory + KHỐI HỒ SƠ Y TẾ */}
                             <div className="flex flex-col gap-4">
                                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                                    <p className="text-sm font-medium text-black mb-4">PawHistory</p>
+                                    <p className="text-sm font-medium text-black mb-4">PawHistory | Hành trình</p>
                                     <div className="flex flex-col">
                                         {sortedHistory.length > 0 ? (
                                             sortedHistory.map((item, index) => {
@@ -607,53 +775,134 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                 );
                                             })
                                         ) : (
-                                            <p className="text-center text-gray-400 py-3 text-[13px] italic">Chưa có lịch sử sống.</p>
-                                        )}
+                                            <p className="text-center text-gray-400 py-3 text-[13px] italic">Chưa có lịch sử sống.</p>)}
                                     </div>
                                     <div className="flex items-center gap-2 bg-[#F5F5F5] rounded-lg py-2 px-3 mt-2">
                                         <FiLock size={11} className="text-[#8E8E93] shrink-0" />
-                                        <span className="text-[10px] text-[#8E8E93]">This timeline is permanent and append-only.</span>
+                                        <span className="text-[10px] text-[#8E8E93]">Hành trình không thể bị xóa hay chỉnh sửa</span>
                                     </div>
                                 </div>
-                                <div className="rounded-2xl border border-dashed border-gray-300 p-6">
-                                    <p className="text-sm font-medium text-black mb-3">Submit New Record</p>
-                                    <form onSubmit={handleSubmitRecord} className="flex flex-col gap-3">
-                                        <div>
-                                            <label className="text-[13px] text-[#8E8E93] block mb-1">Record Type</label>
-                                            <div className="relative">
-                                                <select
-                                                    value={newRecordType}
-                                                    onChange={(e) => setNewRecordType(e.target.value)}
-                                                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg h-8 px-3 text-[12px] text-gray-700 focus:border-[#E89B5A] outline-none"
-                                                >
-                                                    <option value="">Select note type...</option>
-                                                    {RECORD_TYPE_NOTE_OPTIONS.map((opt) => (
-                                                        <option key={opt.value} value={opt.value}>
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <FiChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[13px] text-[#8E8E93] block mb-1">Note</label>
-                                            <textarea
-                                                value={newRecordNote}
-                                                onChange={(e) => setNewRecordNote(e.target.value)}
-                                                rows={2}
-                                                placeholder="Enter note detail..."
-                                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-[12px] text-gray-700 focus:border-[#E89B5A] outline-none resize-none"
-                                            />
-                                        </div>
+
+                                {/* KHỐI HỒ SƠ Y TẾ BỔ SUNG */}
+                                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-sm font-bold text-gray-900">Hồ sơ y tế</h3>
                                         <button
-                                            type="submit"
-                                            disabled={isSubmittingRecord || !newRecordType || !newRecordNote.trim()}
-                                            className="self-start bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
+                                            type="button"
+                                            onClick={() => setShowMedicalForm((v) => !v)}
+                                            className="text-[#E89B5A] bg-[#FFF8E6] border border-[#FFE1C2] px-3 py-1 rounded-full text-xs font-semibold hover:bg-orange-50 transition-colors"
                                         >
-                                            {isSubmittingRecord ? 'Đang gửi...' : 'Submit Record'}
+                                            Thêm hồ sơ
                                         </button>
-                                    </form>
+                                    </div>
+
+                                    {/* Danh sách Hồ sơ y tế */}
+                                    <div className="flex flex-col gap-2.5">
+                                        {medicalList.map((item) => (
+                                            <div key={item.id} className="border border-gray-200 rounded-2xl p-3.5 flex flex-col gap-1 bg-white relative">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Syringe size={14} className="text-gray-400 shrink-0" />
+                                                        <span className="text-xs font-bold text-gray-900">{item.title}</span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.statusClass}`}>
+                                                            {item.statusIcon} {item.statusLabel}
+                                                        </span>
+                                                    </div>
+                                                    <button type="button" className="text-gray-400 hover:text-gray-600">
+                                                        <MoreVertical size={14} />
+                                                    </button>
+                                                </div>
+                                                <p className="text-[11px] text-gray-400 pl-5">
+                                                    Loại: {item.type} | Ngày: {item.date}
+                                                </p>
+                                                {item.nextDue && (
+                                                    <p className="text-[11px] text-[#E89B5A] font-semibold pl-5">
+                                                        Lịch tiếp theo: {item.nextDue}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Form Nhập Thêm Hồ Sơ Y Tế */}
+                                    {showMedicalForm && (
+                                        <form onSubmit={handleSaveMedical} className="flex flex-col gap-3 pt-2 border-t border-dashed border-gray-200 mt-1">
+                                            <div>
+                                                <label className="text-[11px] font-bold text-gray-400 block mb-1">Loại hồ sơ</label>
+                                                <div className="relative">
+                                                    <select
+                                                        value={medicalType}
+                                                        onChange={(e) => setMedicalType(e.target.value)}
+                                                        className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                                                    >
+                                                        <option value="">Chọn loại hồ sơ</option>
+                                                        <option value="Tiêm chủng">Tiêm chủng</option>
+                                                        <option value="Khám tổng quát">Khám tổng quát</option>
+                                                        <option value="Khám răng miệng">Khám răng miệng</option>
+                                                    </select>
+                                                    <FiChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={medicalDetail}
+                                                            onChange={(e) => setMedicalDetail(e.target.value)}
+                                                            className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                                                        >
+                                                            <option value="">Chọn chi tiết hồ sơ</option>
+                                                            <option value="DHPP (5/7in1)">DHPP (5/7in1)</option>
+                                                            <option value="Rabies">Rabies (Dại)</option>
+                                                        </select>
+                                                        <FiChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[11px] font-bold text-gray-400 block mb-1">Ngày tháng</label>
+                                                    <input
+                                                        type="date"
+                                                        value={medicalDate}
+                                                        onChange={(e) => setMedicalDate(e.target.value)}
+                                                        className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Khung tải file/hình ảnh */}
+                                            <div>
+                                                <div
+                                                    onClick={() => medicalFileInputRef.current?.click()}
+                                                    className="border-2 border-dashed border-gray-200 hover:border-[#E89B5A] rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-[#F9FAFB]/50 transition-colors"
+                                                >
+                                                    <p className="text-xs font-semibold text-[#E89B5A]">Tải hình ảnh hồ sơ y tế</p>
+                                                    <p className="text-[11px] text-gray-400 mt-0.5">PDF, JPG, IMG (tối đa 2MB)</p>
+                                                </div>
+                                                <input ref={medicalFileInputRef} type="file" accept="image/*,.pdf" className="hidden" />
+                                            </div>
+
+                                            {/* Nút bấm Form */}
+                                            <div className="flex items-center gap-3 pt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowMedicalForm(false)}
+                                                    className="flex-1 border border-gray-200 bg-white text-gray-600 font-semibold py-2 rounded-full text-xs hover:bg-gray-50 transition-colors"
+                                                >
+                                                    Hủy
+                                                </button>
+                                                <button
+                                                    type="submit"
+                                                    disabled={!medicalType}
+                                                    className="flex-1 bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white font-bold py-2 rounded-full text-xs shadow-sm transition-colors"
+                                                >
+                                                    Lưu hồ sơ
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -673,7 +922,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                 onClick={() => setSelectedApplicationId(app.id)}
                                                 className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#E89B5A] shadow-sm p-5 transition-colors cursor-pointer flex items-start gap-3.5"
                                             >
-                                                {/* Avatar đặt bên trái, căn từ trên xuống */}
                                                 <div className="relative w-[57px] h-[57px] rounded-full overflow-hidden bg-gray-100 shrink-0">
                                                     {isValidImageUrl(app.applicantAvatar) ? (
                                                         <Image src={app.applicantAvatar as string} alt={app.applicantName} fill className="object-cover" />
@@ -683,10 +931,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {/* Cột thông tin bên phải: Tên, SĐT, Email, Submitted At thẳng hàng tuyệt đối */}
                                                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                                                    {/* Dòng đầu tiên: Tên nằm ở nửa trên Avatar + Badge */}
                                                     <div className="flex items-center justify-between gap-2">
                                                         <p className="text-[15px] font-semibold text-black truncate">{app.applicantName}</p>
                                                         <span
@@ -696,8 +941,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                             {badge.label}
                                                         </span>
                                                     </div>
-
-                                                    {/* Các dòng tiếp theo nằm thẳng hàng lề trái với Tên */}
                                                     <div className="flex items-center gap-2 text-[13px] text-gray-600">
                                                         <FiPhone size={13} className="text-gray-400 shrink-0" />
                                                         <span className="truncate">{app.applicantPhone || 'Chưa có SĐT'}</span>
@@ -726,48 +969,58 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     )}
 
                     {/* TAB: DOCUMENT */}
-                    {activeTab === 'document' && (
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                            <p className="text-sm font-medium text-black mb-4">Hồ sơ y tế / Giấy tờ</p>
-                            {medicalRecords.length > 0 ? (
-                                <div className="flex flex-col gap-2.5">
-                                    {medicalRecords.map((r, i) => {
-                                        const Icon = MEDICAL_TYPE_ICON[String(r.type).toUpperCase()] || FiFileText;
-                                        const badge = MEDICAL_BADGE[r.verificationStatus] || MEDICAL_BADGE.PENDING;
-                                        const recordImage = Array.isArray(r.images) ? r.images.find(isValidImageUrl) : undefined;
-                                        return (
-                                            <div key={r.id ?? i} className="flex items-start gap-3 border border-gray-200 rounded-2xl p-3">
-                                                {recordImage ? (
-                                                    <button type="button" onClick={() => setLightboxImage(recordImage)} className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-gray-200">
-                                                        <Image src={recordImage} alt="medical" fill className="object-cover" />
-                                                    </button>
-                                                ) : (
-                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                                                        <Icon size={18} className="text-gray-400" />
-                                                    </div>
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <p className="text-[13px] font-semibold text-gray-800 truncate">{showText(r.recordName)}</p>
-                                                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: badge.bg, color: badge.color }}>
-                                                            {badge.label}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[12px] text-gray-400 mt-0.5">
-                                                        Ngày: {fmtDate(r.recordDate) || 'Chưa rõ'}
-                                                        {r.hasNextDueDate && r.nextDueDate ? ` | Hạn tiếp theo: ${fmtDate(r.nextDueDate)}` : ''}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center text-center py-10">
-                                    <FiClock size={20} className="text-gray-300 mb-2" />
-                                    <p className="text-[13px] text-gray-400 italic">Chưa có hồ sơ y tế / giấy tờ nào.</p>
-                                </div>
-                            )}
+                    {activeTab === 'documents' && (
+                        <div className="bg-white rounded-[20px] border border-gray-200 shadow-sm overflow-hidden w-full">
+                            {/* Table Header */}
+                            <div className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] text-[13px] font-medium text-gray-500">
+                                <span>Tên tài liệu</span>
+                                <span>Ngày</span>
+                                <span>Người đăng</span>
+                                <span>Trạng thái</span>
+                                <span>Thao tác</span>
+                            </div>
+
+                            {/* Table Body */}
+                            <div className="flex flex-col divide-y divide-gray-100">
+                                {MOCK_DOCUMENTS.map((doc) => (
+                                    <div
+                                        key={doc.id}
+                                        className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors"
+                                    >
+                                        {/* Tên tài liệu */}
+                                        <span className="font-bold text-gray-900 text-sm truncate">{doc.fileName}</span>
+
+                                        {/* Ngày */}
+                                        <span className="text-sm text-gray-600 font-medium">{doc.date}</span>
+
+                                        {/* Người đăng */}
+                                        <span className="text-sm text-gray-600 font-medium">{doc.uploader}</span>
+
+                                        {/* Trạng thái */}
+                                        <div>
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${doc.statusClass}`}>
+                                                {doc.statusLabel}
+                                            </span>
+                                        </div>
+
+                                        {/* Thao tác (4 Icon) */}
+                                        <div className="flex items-center gap-3">
+                                            <button type="button" title="Xem" className="text-gray-400 hover:text-gray-700 transition-colors">
+                                                <Eye size={16} />
+                                            </button>
+                                            <button type="button" title="Chỉnh sửa" className="text-gray-400 hover:text-gray-700 transition-colors">
+                                                <Pencil size={15} />
+                                            </button>
+                                            <button type="button" title="Tải xuống" className="text-gray-400 hover:text-[#3B6BE3] transition-colors">
+                                                <Download size={16} />
+                                            </button>
+                                            <button type="button" title="Xóa" className="text-gray-400 hover:text-red-500 transition-colors">
+                                                <FiTrash2 size={15} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

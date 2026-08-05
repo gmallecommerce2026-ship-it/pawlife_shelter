@@ -22,28 +22,26 @@ import {
   Camera,
   FileText,
   Clock,
+  SparklesIcon,
+  Send,
+  MoreVertical,
+  Upload,
+  Calendar,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { usePetActions } from '@/stores/usePetStore';
-import { PetSpecies, PetGender, PetStatus, PET_STATUS_LABEL } from '@/types/pet';
+import { PetSpecies, PetGender, PetStatus } from '@/types/pet';
 import axiosClient from '@/lib/api/axiosClient';
+import { PetPublic3DModal } from '@/components/PetPublic3DModal';
+import { FiTrash2 } from 'react-icons/fi';
 
-// --- TYPES & INTERFACES ---
 export interface Bilingual {
   vi: string;
   en: string;
 }
 
 export type TagValue = Bilingual & { isCustom?: boolean };
-
-export type MedicalRecordDraft = {
-  localId: string;
-  type: string;
-  recordName: Bilingual;
-  recordDate: string;
-  hasNextDueDate: boolean;
-  nextDueDate?: string;
-  images: string[];
-};
 
 const SUGGESTED_TAGS = [
   'Hiền lành',
@@ -55,7 +53,64 @@ const SUGGESTED_TAGS = [
   'Cảnh giác',
   'Dễ huấn luyện',
 ];
-
+const MOCK_DOCUMENTS = [
+  {
+    id: 'doc_1',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+  {
+    id: 'doc_2',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đang xác minh',
+    statusClass: 'bg-[#E8F1FF] text-[#5A90DA]',
+  },
+  {
+    id: 'doc_3',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+  {
+    id: 'doc_4',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+  {
+    id: 'doc_5',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+  {
+    id: 'doc_6',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+  {
+    id: 'doc_7',
+    fileName: 'Khám tổng quát hằng năm.pdf',
+    date: '01/01/2026',
+    uploader: 'Nguyễn Văn A',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
+  },
+];
 const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
   BIRTH: { Icon: Cake, bg: '#FFF4EC', color: '#F2A465' },
   CREATED: { Icon: QrCode, bg: '#EAE7FB', color: '#885BF2' },
@@ -85,12 +140,77 @@ const STATUS_BADGE_CONFIG: Record<string, { bg: string; border: string; color: s
   ADOPTED: { bg: '#F0F0F0', border: '#BDBDBD', color: '#757575', label: 'Đã nhận nuôi' },
 };
 
+// Dữ liệu Ghi chú mẫu
+const INITIAL_NOTES = [
+  {
+    id: 'n1',
+    author: 'Julia Nguyễn',
+    role: 'Bác sĩ thú y',
+    roleBadgeClass: 'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]',
+    date: '08/05/2020',
+    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+  },
+  {
+    id: 'n2',
+    author: 'Julia Nguyễn',
+    role: 'Thành viên',
+    roleBadgeClass: 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]',
+    date: '08/05/2020',
+    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+  },
+  {
+    id: 'n3',
+    author: 'Julia Nguyễn',
+    role: 'Tình nguyện viên',
+    roleBadgeClass: 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]',
+    date: '08/05/2020',
+    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+  },
+  {
+    id: 'n4',
+    author: 'Julia Nguyễn',
+    role: 'Admin',
+    roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
+    date: '08/05/2020',
+    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+  },
+];
+
+// Dữ liệu Hồ sơ y tế mẫu
+const INITIAL_MEDICAL_RECORDS = [
+  {
+    id: 'm1',
+    title: 'DHPP (5/7in1)',
+    statusLabel: 'Đang xác minh',
+    statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
+    statusIcon: '⏱',
+    type: 'Tiêm chủng',
+    date: '17/7/2026',
+    nextDue: '14/08/2026',
+  },
+  {
+    id: 'm2',
+    title: 'DHPP (5/7in1)',
+    statusLabel: 'Đã xác minh',
+    statusClass: 'bg-[#EBFFE2] text-[#77C852] border-[#D1F5BF]',
+    statusIcon: '✓',
+    type: 'Tiêm chủng',
+    date: '17/7/2026',
+    nextDue: '14/08/2026',
+  },
+];
+
 export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = ({ mode, initialPet }) => {
   const router = useRouter();
   const { createPet, updatePet, isSubmitting } = usePetActions();
 
   const [activeTab, setActiveTab] = useState<'info' | 'applications' | 'documents'>('info');
   const [isEditing, setIsEditing] = useState(mode === 'create');
+  const [show3DModal, setShow3DModal] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
@@ -115,10 +235,17 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  // Submit Record State
-  const [newRecordType, setNewRecordType] = useState('');
-  const [newRecordNote, setNewRecordNote] = useState('');
-  const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
+  // Ghi chú State
+  const [notes, setNotes] = useState(INITIAL_NOTES);
+  const [newNoteInput, setNewNoteInput] = useState('');
+
+  // Hồ sơ y tế State
+  const [medicalList, setMedicalList] = useState(INITIAL_MEDICAL_RECORDS);
+  const [showMedicalForm, setShowMedicalForm] = useState(true);
+  const [medicalType, setMedicalType] = useState('');
+  const [medicalDetail, setMedicalDetail] = useState('');
+  const [medicalDate, setMedicalDate] = useState('');
+  const medicalFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialPet) {
@@ -182,6 +309,41 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     );
   };
 
+  const handleAddNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNoteInput.trim()) return;
+    const newNote = {
+      id: `n_${Date.now()}`,
+      author: 'Julia Nguyễn',
+      role: 'Admin',
+      roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
+      date: new Date().toLocaleDateString('vi-VN'),
+      content: newNoteInput.trim(),
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
+    };
+    setNotes((prev) => [...prev, newNote]);
+    setNewNoteInput('');
+  };
+
+  const handleSaveMedical = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!medicalType) return;
+    const newRecord = {
+      id: `m_${Date.now()}`,
+      title: medicalDetail || medicalType,
+      statusLabel: 'Đang xác minh',
+      statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
+      statusIcon: '⏱',
+      type: medicalType,
+      date: medicalDate || new Date().toLocaleDateString('vi-VN'),
+      nextDue: '14/08/2026',
+    };
+    setMedicalList((prev) => [...prev, newRecord]);
+    setMedicalType('');
+    setMedicalDetail('');
+    setMedicalDate('');
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const payload: any = {
@@ -211,41 +373,40 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     }
   };
 
-  const handleAddRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRecordType || !newRecordNote.trim() || !initialPet) return;
-    setIsSubmittingRecord(true);
-    try {
-      await axiosClient.post(`/pets/${initialPet.id}/history`, {
-        type: newRecordType,
-        description: newRecordNote.trim(),
-        date: new Date().toISOString(),
-      });
-      setNewRecordType('');
-      setNewRecordNote('');
-    } catch (err) {
-      console.error('Submit record failed:', err);
-    } finally {
-      setIsSubmittingRecord(false);
-    }
-  };
-
   const pawHistory =
     Array.isArray(initialPet?.pawHistory) && initialPet.pawHistory.length > 0
       ? initialPet.pawHistory
       : [
-          { id: '1', type: 'TRANSFER', title: 'Curren Owner', description: 'Ownership transferred to Jane Doe', date: '2026-01-01' },
-          { id: '2', type: 'ANNUAL_CHECKUP', title: 'Annual Checkup', description: 'Health examination completed', date: '2026-01-01' },
-          { id: '3', type: 'VACCINE', title: 'DHPP Vaccination', description: 'Vaccinated: hepatitis, rabies, parvo, and parainfluenza', date: '2026-01-01' },
-          { id: '4', type: 'QR_LINKED', title: 'QR Code Registered', description: 'PawLife QR tag activated and linked to Luna', date: '2025-01-01' },
-          { id: '5', type: 'BIRTH', title: 'Date of Birth', description: 'Luna was born', date: '2026-01-01' },
-        ];
+        { id: '1', type: 'TRANSFER', title: 'Curren Owner', description: 'Ownership transferred to Jane Doe', date: '2026-01-01' },
+        { id: '2', type: 'ANNUAL_CHECKUP', title: 'Annual Checkup', description: 'Health examination completed', date: '2026-01-01' },
+        { id: '3', type: 'VACCINE', title: 'DHPP Vaccination', description: 'Vaccinated: hepatitis, rabies, parvo, and parainfluenza', date: '2026-01-01' },
+        { id: '4', type: 'QR_LINKED', title: 'QR Code Registered', description: 'PawLife QR tag activated and linked to Luna', date: '2025-01-01' },
+        { id: '5', type: 'BIRTH', title: 'Date of Birth', description: 'Luna was born', date: '2026-01-01' },
+      ];
   const sortedHistory = [...pawHistory].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
   const statusBadge = STATUS_BADGE_CONFIG[status] || STATUS_BADGE_CONFIG.AVAILABLE;
   const genderLabel = gender === 'MALE' ? 'Male' : 'Female';
+
+  const livePreviewPet = {
+    id: initialPet?.id || 'preview_pet',
+    name: name || 'Luna',
+    breed: breed || 'Golden British',
+    gender: gender || 'FEMALE',
+    color: color || 'GOLDEN',
+    dob: dob || '2020-07-12',
+    weight: weight ?? 12,
+    code: pawLifeId || 'PL-00000',
+    status: status || 'AVAILABLE',
+    description: description || '',
+    isVaccinated,
+    isSpayedNeutered,
+    images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
+    pawHistory: sortedHistory,
+    shelter: initialPet?.shelter || { name: 'PawLife Shelter', shelterType: 'Trạm cứu hộ' },
+  };
 
   return (
     <div className="w-full max-w-[1280px] mx-auto flex flex-col font-sans pb-20">
@@ -309,9 +470,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       {images.map((_, i) => (
                         <span
                           key={i}
-                          className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                            i === Math.min(currentImageIndex, images.length - 1) ? 'bg-white' : 'bg-white/50'
-                          }`}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${i === Math.min(currentImageIndex, images.length - 1) ? 'bg-white' : 'bg-white/50'
+                            }`}
                         />
                       ))}
                     </div>
@@ -352,9 +512,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                               setStatus(statusKey as PetStatus);
                               setIsStatusDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                              isSelected ? 'font-bold text-gray-900 bg-gray-50/80' : 'font-normal text-gray-700 hover:bg-gray-50 hover:text-black'
-                            }`}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelected ? 'font-bold text-gray-900 bg-gray-50/80' : 'font-normal text-gray-700 hover:bg-gray-50 hover:text-black'
+                              }`}
                           >
                             {cfg.label}
                           </button>
@@ -369,23 +528,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             </div>
 
             <div className="p-5 flex flex-col gap-4">
-              {/* Quick-glance stat pills */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="rounded-2xl bg-[#E2EFF8] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Gender</span>
-                  <span className="text-[15px] font-semibold text-black">{genderLabel}</span>
-                </div>
-                <div className="rounded-2xl bg-[#FEFACA] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Birthday</span>
-                  <span className="text-[15px] font-semibold text-black">{dob}</span>
-                </div>
-                <div className="rounded-2xl bg-[#F9E6EC] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Size</span>
-                  <span className="text-[15px] font-semibold text-black">{weight ?? 12} kg</span>
-                </div>
-              </div>
-
-              {/* Editable basic info grid (Bổ sung ô Breed) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Name</label>
@@ -398,7 +540,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   />
                 </div>
 
-                {/* Ô nhập Breed (Giống loài) mới thêm */}
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Breed</label>
                   <input
@@ -479,9 +620,10 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              className="h-[38px] px-4 rounded-lg border border-orange-200 text-[#E89B5A] bg-white text-sm font-semibold hover:bg-orange-50 transition-colors"
+              onClick={() => setShow3DModal(true)}
+              className="h-[38px] px-4 rounded-lg border border-orange-200 text-[#E89B5A] bg-white text-sm font-semibold flex items-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
             >
-              Live Preview
+              <SparklesIcon size={14} /> Live Preview (3D)
             </button>
 
             {!isEditing ? (
@@ -509,27 +651,24 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             <button
               type="button"
               onClick={() => setActiveTab('info')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${
-                activeTab === 'info' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
-              }`}
+              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'info' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+                }`}
             >
               Thông tin
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('applications')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${
-                activeTab === 'applications' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
-              }`}
+              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'applications' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+                }`}
             >
               Đơn nhận nuôi
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('documents')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${
-                activeTab === 'documents' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
-              }`}
+              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'documents' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+                }`}
             >
               Document
             </button>
@@ -538,161 +677,207 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           {/* TAB: THÔNG TIN */}
           {activeTab === 'info' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-              {/* Sub-card trái: Giới thiệu, Tags, Tính cách, Yêu cầu, Sức khỏe */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
-                {/* Giới thiệu */}
-                <div>
-                  <h3 className="text-sm font-medium text-black mb-2">Giới thiệu</h3>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    disabled={!isEditing}
-                    placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-                    className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl p-3 text-xs text-[#8E8E93] leading-relaxed outline-none resize-none"
-                  />
+              {/* Sub-card trái: Giới thiệu, Tags, Tính cách, Yêu cầu, Sức khỏe + KHỐI GHI CHÚ */}
+              <div className="flex flex-col gap-4">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
+                  {/* Giới thiệu */}
+                  <div>
+                    <h3 className="text-sm font-medium text-black mb-2">Giới thiệu</h3>
+                    <textarea
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      disabled={!isEditing}
+                      placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                      className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl p-3 text-xs text-[#8E8E93] leading-relaxed outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-medium text-black">Tags</h3>
+                      <span className="text-xs text-gray-400">Đã chọn {selectedTags.length}/3</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {selectedTags.map((tag, idx) => {
+                        const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
+                        return (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
+                            style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
+                          >
+                            {tag}
+                            {isEditing && (
+                              <button type="button" onClick={() => toggleTag(tag)}>
+                                <X size={12} className="hover:text-red-500" />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {isEditing && (
+                      <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
+                        {SUGGESTED_TAGS.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => toggleTag(t)}
+                            className="hover:text-gray-800 transition-colors"
+                          >
+                            + {t}
+                          </button>
+                        ))}
+                        <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tính cách */}
+                  <div>
+                    <h3 className="text-sm font-medium text-black mb-2">Tính cách</h3>
+                    <div className="flex flex-col gap-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Check size={14} className="text-[#00AC47] shrink-0" />
+                        <span className="font-semibold text-[#00AC47]">Thân thiện:</span>
+                        <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <X size={14} className="text-red-500 shrink-0" />
+                        <span className="font-semibold text-red-500">Nên cân nhắc:</span>
+                        <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Yêu cầu */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-medium text-black">Yêu cầu</h3>
+                      <span className="text-xs text-gray-400">Đã chọn {selectedRequirements.length}/5</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {selectedRequirements.map((req, idx) => {
+                        const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
+                        return (
+                          <span
+                            key={req}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
+                            style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
+                          >
+                            {req}
+                            {isEditing && (
+                              <button type="button" onClick={() => toggleRequirement(req)}>
+                                <X size={12} className="hover:text-red-500" />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {isEditing && (
+                      <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
+                        {SUGGESTED_TAGS.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => toggleRequirement(t)}
+                            className="hover:text-gray-800 transition-colors"
+                          >
+                            + {t}
+                          </button>
+                        ))}
+                        <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sức khỏe */}
+                  <div>
+                    <h3 className="text-sm font-medium text-black mb-3">Sức khỏe</h3>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => isEditing && setIsVaccinated((v) => !v)}
+                        className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
+                      >
+                        <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
+                          <Syringe size={18} className="text-[#E89B5A]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[12px] text-[#8E8E93]">Tiêm chủng</p>
+                          <p className="text-[13px] font-medium text-black truncate">{isVaccinated ? 'Đầy đủ' : 'Chưa tiêm'}</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => isEditing && setIsSpayedNeutered((v) => !v)}
+                        className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
+                      >
+                        <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
+                          <Check size={18} className="text-[#E89B5A]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[12px] text-[#8E8E93]">Trạng thái</p>
+                          <p className="text-[13px] font-medium text-black truncate">{isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Tags */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium text-black">Tags</h3>
-                    <span className="text-xs text-gray-400">Đã chọn {selectedTags.length}/3</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {selectedTags.map((tag, idx) => {
-                      const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
-                      return (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
-                          style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
-                        >
-                          {tag}
-                          {isEditing && (
-                            <button type="button" onClick={() => toggleTag(tag)}>
-                              <X size={12} className="hover:text-red-500" />
-                            </button>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {isEditing && (
-                    <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
-                      {SUGGESTED_TAGS.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => toggleTag(t)}
-                          className="hover:text-gray-800 transition-colors"
-                        >
-                          + {t}
-                        </button>
-                      ))}
-                      <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
-                    </div>
-                  )}
-                </div>
+                {/* KHỐI GHI CHÚ MỚI BỔ SUNG (BÊN DƯỚI CARD 1) */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
+                  <h3 className="text-sm font-bold text-gray-900">Ghi chú</h3>
 
-                {/* Tính cách */}
-                <div>
-                  <h3 className="text-sm font-medium text-black mb-2">Tính cách</h3>
-                  <div className="flex flex-col gap-1.5 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Check size={14} className="text-[#00AC47] shrink-0" />
-                      <span className="font-semibold text-[#00AC47]">Thân thiện:</span>
-                      <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <X size={14} className="text-red-500 shrink-0" />
-                      <span className="font-semibold text-red-500">Nên cân nhắc:</span>
-                      <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
-                    </div>
+                  <div className="flex flex-col gap-4">
+                    {notes.map((note) => (
+                      <div key={note.id} className="flex gap-3 items-start">
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5 border border-gray-100">
+                          <Image src={note.avatar} alt={note.author} fill className="object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-gray-900">{note.author}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${note.roleBadgeClass}`}>
+                              {note.role}
+                            </span>
+                            <span className="text-[10px] text-gray-400 ml-auto">{note.date}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 leading-relaxed">{note.content}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
 
-                {/* Yêu cầu */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium text-black">Yêu cầu</h3>
-                    <span className="text-xs text-gray-400">Đã chọn {selectedRequirements.length}/5</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {selectedRequirements.map((req, idx) => {
-                      const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
-                      return (
-                        <span
-                          key={req}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
-                          style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
-                        >
-                          {req}
-                          {isEditing && (
-                            <button type="button" onClick={() => toggleRequirement(req)}>
-                              <X size={12} className="hover:text-red-500" />
-                            </button>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {isEditing && (
-                    <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
-                      {SUGGESTED_TAGS.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => toggleRequirement(t)}
-                          className="hover:text-gray-800 transition-colors"
-                        >
-                          + {t}
-                        </button>
-                      ))}
-                      <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sức khỏe */}
-                <div>
-                  <h3 className="text-sm font-medium text-black mb-3">Sức khỏe</h3>
-                  <div className="flex gap-3">
+                  {/* Input Thêm ghi chú mới */}
+                  <form onSubmit={handleAddNote} className="relative mt-2 w-full">
+                    <input
+                      type="text"
+                      value={newNoteInput}
+                      onChange={(e) => setNewNoteInput(e.target.value)}
+                      placeholder="Thêm ghi chú dưới tên Julia Nguyễn"
+                      className="w-full bg-[#F9FAFB] border border-gray-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                    />
                     <button
-                      type="button"
-                      onClick={() => isEditing && setIsVaccinated((v) => !v)}
-                      className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
+                      type="submit"
+                      disabled={!newNoteInput.trim()}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
                     >
-                      <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                        <Syringe size={18} className="text-[#E89B5A]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] text-[#8E8E93]">Tiêm chủng</p>
-                        <p className="text-[13px] font-medium text-black truncate">{isVaccinated ? 'Đầy đủ' : 'Chưa tiêm'}</p>
-                      </div>
+                      <Send size={15} />
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() => isEditing && setIsSpayedNeutered((v) => !v)}
-                      className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
-                    >
-                      <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                        <Check size={18} className="text-[#E89B5A]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] text-[#8E8E93]">Trạng thái</p>
-                        <p className="text-[13px] font-medium text-black truncate">{isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}</p>
-                      </div>
-                    </button>
-                  </div>
+                  </form>
                 </div>
               </div>
 
-              {/* Sub-card phải: PawHistory + Submit New Record */}
+              {/* Sub-card phải: PawHistory + Hồ sơ y tế */}
               <div className="flex flex-col gap-4">
+                {/* PawHistory */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                  <p className="text-sm font-medium text-black mb-4">PawHistory</p>
+                  <p className="text-sm font-medium text-black mb-4">PawHistory | Hành trình</p>
                   <div className="flex flex-col">
                     {sortedHistory.map((item, index) => {
                       const isLastItem = index === sortedHistory.length - 1;
@@ -725,48 +910,130 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   </div>
                   <div className="flex items-center gap-2 bg-[#F5F5F5] rounded-lg py-2 px-3 mt-2">
                     <Lock size={11} className="text-[#8E8E93] shrink-0" />
-                    <span className="text-[10px] text-[#8E8E93]">This timeline is permanent and append-only.</span>
+                    <span className="text-[10px] text-[#8E8E93]">Hành trình không thể bị xóa hay chỉnh sửa</span>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-dashed border-gray-300 p-6">
-                  <p className="text-sm font-medium text-black mb-3">Submit New Record</p>
-                  <form onSubmit={handleAddRecord} className="flex flex-col gap-3">
-                    <div>
-                      <label className="text-[13px] text-[#8E8E93] block mb-1">Record Type</label>
-                      <div className="relative">
-                        <select
-                          value={newRecordType}
-                          onChange={(e) => setNewRecordType(e.target.value)}
-                          className="w-full appearance-none bg-white border border-gray-300 rounded-lg h-8 px-3 text-[12px] text-gray-700 focus:border-[#E89B5A] outline-none"
-                        >
-                          <option value="">Select note type...</option>
-                          <option value="ANNUAL_CHECKUP">Annual Checkup</option>
-                          <option value="VACCINE">Vaccine</option>
-                        </select>
-                        <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[13px] text-[#8E8E93] block mb-1">Note</label>
-                      <textarea
-                        rows={2}
-                        value={newRecordNote}
-                        onChange={(e) => setNewRecordNote(e.target.value)}
-                        placeholder="Enter note detail..."
-                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-[12px] text-gray-700 focus:border-[#E89B5A] outline-none resize-none"
-                      />
-                    </div>
-
+                {/* KHỐI HỒ SƠ Y TẾ MỚI BỔ SUNG (BÊN DƯỚI PAWHISTORY) */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-gray-900">Hồ sơ y tế</h3>
                     <button
-                      type="submit"
-                      disabled={isSubmittingRecord || !newRecordType || !newRecordNote.trim()}
-                      className="self-start bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
+                      type="button"
+                      onClick={() => setShowMedicalForm((v) => !v)}
+                      className="text-[#E89B5A] bg-[#FFF8E6] border border-[#FFE1C2] px-3 py-1 rounded-full text-xs font-semibold hover:bg-orange-50 transition-colors"
                     >
-                      {isSubmittingRecord ? 'Đang gửi...' : 'Submit Record'}
+                      Thêm hồ sơ
                     </button>
-                  </form>
+                  </div>
+
+                  {/* Danh sách Hồ sơ y tế */}
+                  <div className="flex flex-col gap-2.5">
+                    {medicalList.map((item) => (
+                      <div key={item.id} className="border border-gray-200 rounded-2xl p-3.5 flex flex-col gap-1 bg-white relative">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Syringe size={14} className="text-gray-400 shrink-0" />
+                            <span className="text-xs font-bold text-gray-900">{item.title}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.statusClass}`}>
+                              {item.statusIcon} {item.statusLabel}
+                            </span>
+                          </div>
+                          <button type="button" className="text-gray-400 hover:text-gray-600">
+                            <MoreVertical size={14} />
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-gray-400 pl-5">
+                          Loại: {item.type} | Ngày: {item.date}
+                        </p>
+                        {item.nextDue && (
+                          <p className="text-[11px] text-[#E89B5A] font-semibold pl-5">
+                            Lịch tiếp theo: {item.nextDue}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Form Nhập Thêm Hồ Sơ Y Tế */}
+                  {showMedicalForm && (
+                    <form onSubmit={handleSaveMedical} className="flex flex-col gap-3 pt-2 border-t border-dashed border-gray-200 mt-1">
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-400 block mb-1">Loại hồ sơ</label>
+                        <div className="relative">
+                          <select
+                            value={medicalType}
+                            onChange={(e) => setMedicalType(e.target.value)}
+                            className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                          >
+                            <option value="">Chọn loại hồ sơ</option>
+                            <option value="Tiêm chủng">Tiêm chủng</option>
+                            <option value="Khám tổng quát">Khám tổng quát</option>
+                            <option value="Khám răng miệng">Khám răng miệng</option>
+                          </select>
+                          <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
+                          <div className="relative">
+                            <select
+                              value={medicalDetail}
+                              onChange={(e) => setMedicalDetail(e.target.value)}
+                              className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                            >
+                              <option value="">Chọn chi tiết hồ sơ</option>
+                              <option value="DHPP (5/7in1)">DHPP (5/7in1)</option>
+                              <option value="Rabies">Rabies (Dại)</option>
+                            </select>
+                            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-400 block mb-1">Ngày tháng</label>
+                          <input
+                            type="date"
+                            value={medicalDate}
+                            onChange={(e) => setMedicalDate(e.target.value)}
+                            className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Khung tải file/hình ảnh */}
+                      <div>
+                        <div
+                          onClick={() => medicalFileInputRef.current?.click()}
+                          className="border-2 border-dashed border-gray-200 hover:border-[#E89B5A] rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-[#F9FAFB]/50 transition-colors"
+                        >
+                          <p className="text-xs font-semibold text-[#E89B5A]">Tải hình ảnh hồ sơ y tế</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">PDF, JPG, IMG (tối đa 2MB)</p>
+                        </div>
+                        <input ref={medicalFileInputRef} type="file" accept="image/*,.pdf" className="hidden" />
+                      </div>
+
+                      {/* Nút bấm Form */}
+                      <div className="flex items-center gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowMedicalForm(false)}
+                          className="flex-1 border border-gray-200 bg-white text-gray-600 font-semibold py-2 rounded-full text-xs hover:bg-gray-50 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={!medicalType}
+                          className="flex-1 bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white font-bold py-2 rounded-full text-xs shadow-sm transition-colors"
+                        >
+                          Lưu hồ sơ
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               </div>
             </div>
@@ -785,16 +1052,69 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
           {/* TAB: DOCUMENT */}
           {activeTab === 'documents' && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <p className="text-sm font-medium text-black mb-4">Hồ sơ y tế / Giấy tờ</p>
-              <div className="flex flex-col items-center text-center py-10">
-                <Clock size={20} className="text-gray-300 mb-2" />
-                <p className="text-[13px] text-gray-400 italic">Chưa có hồ sơ y tế / giấy tờ nào.</p>
+            <div className="bg-white rounded-[20px] border border-gray-200 shadow-sm overflow-hidden w-full">
+              {/* Table Header */}
+              <div className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] text-[13px] font-medium text-gray-500">
+                <span>Tên tài liệu</span>
+                <span>Ngày</span>
+                <span>Người đăng</span>
+                <span>Trạng thái</span>
+                <span>Thao tác</span>
+              </div>
+
+              {/* Table Body */}
+              <div className="flex flex-col divide-y divide-gray-100">
+                {MOCK_DOCUMENTS.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors"
+                  >
+                    {/* Tên tài liệu */}
+                    <span className="font-bold text-gray-900 text-sm truncate">{doc.fileName}</span>
+
+                    {/* Ngày */}
+                    <span className="text-sm text-gray-600 font-medium">{doc.date}</span>
+
+                    {/* Người đăng */}
+                    <span className="text-sm text-gray-600 font-medium">{doc.uploader}</span>
+
+                    {/* Trạng thái */}
+                    <div>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${doc.statusClass}`}>
+                        {doc.statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Thao tác (4 Icon) */}
+                    <div className="flex items-center gap-3">
+                      <button type="button" title="Xem" className="text-gray-400 hover:text-gray-700 transition-colors">
+                        <Eye size={16} />
+                      </button>
+                      <button type="button" title="Chỉnh sửa" className="text-gray-400 hover:text-gray-700 transition-colors">
+                        <Pencil size={15} />
+                      </button>
+                      <button type="button" title="Tải xuống" className="text-gray-400 hover:text-[#3B6BE3] transition-colors">
+                        <Download size={16} />
+                      </button>
+                      <button type="button" title="Xóa" className="text-gray-400 hover:text-red-500 transition-colors">
+                        <FiTrash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal Live Preview 3D */}
+      {show3DModal && (
+        <PetPublic3DModal
+          pet={livePreviewPet}
+          onClose={() => setShow3DModal(false)}
+        />
+      )}
     </div>
   );
 };
