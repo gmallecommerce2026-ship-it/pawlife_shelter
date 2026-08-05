@@ -6,6 +6,18 @@
 /* 2. Import Tailwind v4 (thay thế @tailwind base/components/utilities) */
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Be Vietnam Pro", sans-serif;
+  --font-roboto: "Be Vietnam Pro", sans-serif;
+  --font-inter: "Be Vietnam Pro", sans-serif;
+}
+
+@layer base {
+  html, body, *, button, input, select, textarea {
+    font-family: theme(font.sans) !important;
+  }
+}
+
 /* 3. Định nghĩa theme của bạn bằng @theme */
 @theme {
   /* --- Fonts (từ config cũ) --- */

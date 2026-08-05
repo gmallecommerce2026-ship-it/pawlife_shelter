@@ -18,30 +18,11 @@ import {
     FiMail,
     FiCalendar,
 } from 'react-icons/fi';
-import { PawPrint, Cake, QrCode, Home, Syringe, Stethoscope, Smile, User as UserIcon, HeartHandshake, Sparkles, SparklesIcon } from 'lucide-react';
+import { PawPrint, Cake, QrCode, Home, Syringe, Stethoscope, Smile, User as UserIcon, HeartHandshake, SparklesIcon } from 'lucide-react';
 import axiosClient from '@/lib/api/axiosClient';
 import { usePetActions } from '@/stores/usePetStore';
 import { PetPublic3DModal } from '@/components/PetPublic3DModal';
-// =============================================================================
-// TRANG CHI TIẾT PET (FULL-PAGE) — /shelter/pets/[id]
-// Layout & màu sắc bám theo design "Luna (Golden British)" (ảnh + code generate
-// từ Brick) mà bạn gửi: cột trái là ảnh + thông tin nhanh, cột phải gồm 2 nút
-// hành động (View as Public / Edit Profile) + thanh tab (Detail / Application /
-// Document) + nội dung theo tab đang chọn.
-//
-// NOTE VỀ DATA (giống các note trong PetListPage.tsx / PetForm.tsx):
-// - Gọi `GET /pets/{id}` qua axiosClient để lấy chi tiết. Nếu usePetStore đã có
-//   sẵn action kiểu `fetchPetById`, nên thay bằng action đó để tận dụng cache.
-// - Tab "Application" (đơn đăng ký nhận nuôi) hiện CHƯA có model dữ liệu trong
-//   codebase này -> để trạng thái rỗng (empty state), bạn nối API thật vào khi
-//   có.
-// - Tab "Document" tái dùng danh sách "Hồ sơ y tế" (medicalRecords) đã có sẵn
-//   trong dữ liệu Pet, vì design gốc không vẽ rõ nội dung tab này.
-// - Card "Submit New Record" gọi tạm `POST /pets/{id}/history` — ĐIỀU CHỈNH lại
-//   path này cho khớp API PawHistory thật của bạn.
-// - "View as Public" trỏ tạm tới `/pets/{id}` (route public giả định) — đổi lại
-//   nếu route public thật của bạn khác.
-// =============================================================================
+
 interface AdoptionApplication {
     id: string;
     applicantName: string;
@@ -57,6 +38,7 @@ const APPLICATION_STATUS_STYLE: Record<AdoptionApplication['status'], { bg: stri
     APPROVED: { bg: '#EBFFE2', color: '#77C852', label: 'Approved' },
     REJECTED: { bg: '#FFEAEA', color: '#FF5A5A', label: 'Rejected' },
 };
+
 const MOCK_APPLICATIONS: AdoptionApplication[] = Array.from({ length: 8 }).map((_, i) => ({
     id: `mock-app-${i + 1}`,
     applicantName: 'Maria Garcia',
@@ -66,9 +48,7 @@ const MOCK_APPLICATIONS: AdoptionApplication[] = Array.from({ length: 8 }).map((
     status: 'PENDING',
     submittedAt: '2026-01-01T00:00:00.000Z',
 }));
-// Next.js Image không chấp nhận src rỗng/không hợp lệ (kể cả chuỗi toàn
-// khoảng trắng, hoặc field trả về sai định dạng không phải string). Luôn lọc
-// qua hàm này trước khi truyền vào <Image src={...} />.
+
 const isValidImageUrl = (url: unknown): url is string => typeof url === 'string' && url.trim().length > 0;
 
 type MaybeBilingual = string | { vi?: string; en?: string } | null | undefined;
@@ -77,12 +57,13 @@ const showText = (val: MaybeBilingual): string => {
     if (typeof val === 'string') return val;
     return val.vi || val.en || '';
 };
+
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '');
 
 const getAgeLabel = (dob?: string | null): string => {
-    if (!dob) return 'Chưa rõ tuổi';
+    if (!dob) return 'Chưa rõ';
     const dobDate = new Date(dob);
-    if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ tuổi';
+    if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ';
     const diffMs = Date.now() - dobDate.getTime();
     const ageDate = new Date(diffMs);
     const years = Math.abs(ageDate.getUTCFullYear() - 1970);
@@ -92,22 +73,21 @@ const getAgeLabel = (dob?: string | null): string => {
     return 'Sơ sinh';
 };
 
-// Badge trạng thái đặt trên ảnh — theo đúng tông màu xanh lá của "Available"
-// trong design gốc, mở rộng thêm các trạng thái khác theo suy đoán hợp lý.
+// Cấu hình màu sắc & Nhãn hiển thị trạng thái chuẩn theo yêu cầu
 const STATUS_PHOTO_BADGE: Record<string, { bg: string; border: string; color: string; label: string }> = {
-    AVAILABLE: { bg: '#DEFFDF', border: '#00AC47', color: '#00AC47', label: 'Available' },
-    ADOPTED: { bg: '#F0F0F0', border: '#BDBDBD', color: '#757575', label: 'Adopted' },
-    PENDING: { bg: '#FFF4E0', border: '#E8A53C', color: '#E8A53C', label: 'Pending' },
-    LOST: { bg: '#FFEAEA', border: '#FF5A5A', color: '#FF5A5A', label: 'Lost' },
+    AVAILABLE: { bg: '#DEFFDF', border: '#00AC47', color: '#00AC47', label: 'Chờ nhận nuôi' },
+    PENDING: { bg: '#FFF8E5', border: '#FFBA00', color: '#FFBA00', label: 'Đang xét duyệt' },
+    REJECTED: { bg: '#FFE2E2', border: '#9F0712', color: '#9F0712', label: 'Không đủ điều kiện' },
+    HEALTH_ISSUE: { bg: '#FFEDD4', border: '#A13A17', color: '#A13A17', label: 'Vấn đề sức khoẻ' },
+    ADOPTED: { bg: '#F0F0F0', border: '#BDBDBD', color: '#757575', label: 'Đã nhận nuôi' },
 };
 
-// 3 tông màu pill cho traits, lặp lại theo index — giống 3 mẫu (Playful/Clingy/
-// Friendly) trong design gốc.
 const TRAIT_STYLES = [
     { bg: '#FBF7EB', border: '#E8A53C', color: '#E8A53C' },
     { bg: '#E8F1FF', border: '#5A90DA', color: '#5A90DA' },
     { bg: '#EBFFE2', border: '#77C852', color: '#77C852' },
 ];
+
 const FALLBACK_MOCK_PETS: Record<string, any>[] = [
     {
         id: 'pet_001',
@@ -124,23 +104,8 @@ const FALLBACK_MOCK_PETS: Record<string, any>[] = [
         isSterilized: true,
         isVaccinated: true,
     },
-    {
-        id: 'pet_002',
-        name: 'Max',
-        species: 'DOG',
-        breed: { vi: 'Chó Golden Retriever', en: 'Golden Retriever' },
-        gender: 'MALE',
-        age: 6,
-        status: 'PENDING',
-        images: ['https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=400'],
-        description: { vi: 'Năng động, thích chơi nhặt bóng.', en: 'Energetic and loves fetching.' },
-        healthStatus: ['Khỏe mạnh'],
-        weightKg: 12.5,
-        isSterilized: false,
-        isVaccinated: false,
-    },
-    // Các pet khác...
 ];
+
 const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
     BIRTH: { Icon: Cake, bg: '#FFF4EC', color: '#F2A465' },
     CREATED: { Icon: QrCode, bg: '#EAE7FB', color: '#885BF2' },
@@ -154,15 +119,17 @@ const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string;
     UNDER_SHELTER_CARE: { Icon: HeartHandshake, bg: '#FFE4F0', color: '#D6447A' },
     WAS_UNDER_SHELTER_CARE: { Icon: HeartHandshake, bg: '#FFE4F0', color: '#D6447A' },
 };
+
 const DEFAULT_HISTORY_CONFIG = { Icon: Cake, bg: '#F5F5F5', color: '#8E8E93' };
+
 const HISTORY_TYPE_LABEL: Record<string, string> = {
     BIRTH: 'Ngày sinh',
     TRANSFER: 'Chuyển giao quyền sở hữu',
     VACCINE: 'Tiêm phòng',
     DENTAL_CARE: 'Khám răng miệng',
-    ANNUAL_CHECKUP: 'Khám tổng quát định kỳ',
+    ANNUAL_CHECKUP: 'Khám định kỳ',
     CURRENT_OWNER: 'Chủ sở hữu hiện tại',
-    PREVIOUS_OWNER: 'Chủ trước',
+    PREVIOUS_OWNER: 'Chủ cũ',
     UNDER_SHELTER_CARE: 'Đang ở trạm cứu hộ',
     WAS_UNDER_SHELTER_CARE: 'Từng ở trạm cứu hộ',
     QR_LINKED: 'Kích hoạt thẻ QR',
@@ -181,6 +148,7 @@ const MEDICAL_BADGE: Record<string, { bg: string; color: string; label: string }
     VERIFIED: { bg: '#EBFFE2', color: '#77C852', label: 'Đã xác minh' },
     PENDING: { bg: '#FBF7EB', color: '#E8A53C', label: 'Đang xác minh' },
 };
+
 const MEDICAL_TYPE_ICON: Record<string, React.ElementType> = {
     VACCINE: Syringe,
     VACCINATION: Syringe,
@@ -199,8 +167,6 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export default function PetDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    // Next.js 15: `params` trong page component (kể cả client component) là 1
-    // Promise, phải unwrap bằng React.use() thay vì đọc thẳng params.id.
     const { id } = React.use(params);
     const router = useRouter();
     const { deletePet } = usePetActions() as ReturnType<typeof usePetActions> & {
@@ -217,6 +183,11 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const [newRecordNote, setNewRecordNote] = useState('');
     const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
     const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+
+    // State quản lý Dropdown đổi trạng thái
+    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
     useEffect(() => {
         let active = true;
         (async () => {
@@ -231,10 +202,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 }
             } catch (err) {
                 console.warn('[PetDetailPage] API error, falling back to Mock Data:', err);
-
-                // Tìm pet mock tương ứng theo ID hoặc lấy pet fallback mặc định
                 const mockPet = FALLBACK_MOCK_PETS.find((p) => p.id === id);
-
                 if (mockPet || String(id).startsWith('pet_') || String(id).startsWith('mock')) {
                     if (active) {
                         setPet(mockPet || {
@@ -247,7 +215,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             status: 'AVAILABLE',
                             images: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
                             description: { vi: 'Rất ngoan, quấn người.', en: 'Very well-behaved.' },
-                            healthStatus: ['Đã tiêm phòng', 'Đã tẩy giun'],
+                            healthStatus: ['Đã tiêm phòng', 'Tẩy giun'],
                             weightKg: 4.2,
                             isSterilized: true,
                             isVaccinated: true,
@@ -255,7 +223,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         });
                     }
                 } else {
-                    // Chỉ đánh dấu lỗi khi thực sự không thể tìm/fallback dữ liệu
                     if (active) setLoadError(true);
                 }
             } finally {
@@ -267,16 +234,36 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         };
     }, [id]);
 
+    // Xử lý cập nhật trạng thái Pet
+    const handleStatusChange = async (newStatus: string) => {
+        setIsStatusDropdownOpen(false);
+        if (!pet || pet.status === newStatus) return;
+
+        const prevStatus = pet.status;
+        setPet((prev) => (prev ? { ...prev, status: newStatus } : prev));
+
+        try {
+            setIsUpdatingStatus(true);
+            await axiosClient.patch(`/shelter-dashboard/pets/${pet.id}`, { status: newStatus });
+        } catch (err) {
+            console.error('[PetDetailPage] Cập nhật trạng thái thất bại:', err);
+            setPet((prev) => (prev ? { ...prev, status: prevStatus } : prev));
+            alert('Cập nhật trạng thái thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!pet) return;
-        const confirmed = window.confirm(`Bạn có chắc muốn xoá hồ sơ của "${pet.name}"? Hành động này không thể hoàn tác.`);
+        const confirmed = window.confirm(`Bạn có chắc muốn xóa "${pet.name}"? Hành động này không thể hoàn tác.`);
         if (!confirmed) return;
         try {
             if (deletePet) await deletePet(pet.id);
             router.push('/shelter/pets');
         } catch (err) {
-            console.error('[PetDetailPage] Xoá pet thất bại:', err);
-            alert('Không thể xoá pet lúc này, vui lòng thử lại.');
+            console.error('[PetDetailPage] Xóa pet thất bại:', err);
+            alert('Không thể xóa pet này, vui lòng thử lại.');
         }
     };
 
@@ -285,7 +272,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         if (!pet || !newRecordType || !newRecordNote.trim()) return;
         setIsSubmittingRecord(true);
         try {
-            // NOTE: endpoint giả định — chỉnh lại cho khớp API PawHistory thật.
             const res = await axiosClient.post(`/pets/${pet.id}/history`, {
                 type: newRecordType,
                 description: newRecordNote.trim(),
@@ -295,8 +281,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
             setNewRecordType('');
             setNewRecordNote('');
         } catch (err) {
-            console.error('[PetDetailPage] Không thể gửi hồ sơ mới:', err);
-            alert('Không thể gửi hồ sơ mới lúc này, vui lòng thử lại.');
+            console.error('[PetDetailPage] Khảo sát thất bại:', err);
+            alert('Không thể gửi ghi chú, vui lòng thử lại.');
         } finally {
             setIsSubmittingRecord(false);
         }
@@ -322,9 +308,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     if (loadError || !pet) {
         return (
             <div className="w-full max-w-2xl mx-auto text-center py-24">
-                <p className="text-gray-500 mb-4">Không tìm thấy hồ sơ pet này, hoặc đã có lỗi khi tải dữ liệu.</p>
+                <p className="text-gray-500 mb-4">Không tìm thấy thông tin pet này, hoặc có lỗi xảy ra.</p>
                 <Link href="/shelter/pets" className="text-[#E89B5A] font-medium hover:underline">
-                    ← Quay về danh sách Pets
+                    Quay về danh sách Pets
                 </Link>
             </div>
         );
@@ -336,7 +322,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const genderLabel = ['male', 'nam'].includes(genderLower) ? 'Male' : ['female', 'nữ', 'nu'].includes(genderLower) ? 'Female' : 'Unknown';
     const displayId = pet.tags?.[0]?.id?.toString()?.slice(0, 8)?.toUpperCase() || pet.code || String(pet.id).slice(0, 8).toUpperCase();
     const statusBadge = STATUS_PHOTO_BADGE[pet.status] || STATUS_PHOTO_BADGE.AVAILABLE;
-
     const traits: MaybeBilingual[] = Array.isArray(pet.traitsList) ? pet.traitsList.map((t: any) => t?.name ?? t) : Array.isArray(pet.traits) ? pet.traits : [];
     const goodWith: MaybeBilingual[] = Array.isArray(pet.goodWith) ? pet.goodWith : [];
     const badWith: MaybeBilingual[] = Array.isArray(pet.badWith) ? pet.badWith : [];
@@ -345,11 +330,12 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const pawHistory: any[] = Array.isArray(pet.pawHistory) ? pet.pawHistory : [];
     const sortedHistory = [...pawHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const applications: AdoptionApplication[] = (Array.isArray(pet.applications) ? pet.applications : null) || MOCK_APPLICATIONS;
+
     return (
         <div className="w-full">
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex flex-col lg:flex-row gap-7 items-start px-2 py-1">
                 {/* ================= CỘT TRÁI: ẢNH + THÔNG TIN NHANH ================= */}
-                <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0 flex flex-col gap-5">
+                <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0 flex flex-col gap-5 p-1">
                     <div className="flex items-center gap-3">
                         <button
                             type="button"
@@ -359,7 +345,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             <FiChevronLeft size={26} />
                         </button>
                         <h1 className="text-3xl font-bold text-[#0D062D] truncate">{pet.name}</h1>
-                        <span className="text-lg text-[#8E8E93] truncate">({showText(pet.breed) || 'Chưa rõ giống'})</span>
+                        <span className="text-lg text-[#8E8E93] truncate">({showText(pet.breed) || 'Chưa rõ'})</span>
                     </div>
 
                     <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
@@ -371,12 +357,58 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                     <PawPrint size={40} />
                                 </div>
                             )}
-                            <span
-                                className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border"
-                                style={{ backgroundColor: statusBadge.bg, borderColor: statusBadge.border, color: statusBadge.color }}
-                            >
-                                {statusBadge.label} <FiChevronDown size={12} />
-                            </span>
+
+                            {/* DROPDOWN TRẠNG THÁI TRÊN ẢNH */}
+                            <div className="absolute top-4 right-4 z-20">
+                                {/* Nút bấm phía trên: Hiển thị màu của Trạng thái ĐANG CHỌN */}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsStatusDropdownOpen((prev) => !prev)}
+                                    disabled={isUpdatingStatus}
+                                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                                    style={{
+                                        backgroundColor: statusBadge.bg,
+                                        borderColor: statusBadge.border,
+                                        color: statusBadge.color,
+                                    }}
+                                >
+                                    {isUpdatingStatus ? 'Đang lưu...' : statusBadge.label}
+                                    <FiChevronDown
+                                        size={14}
+                                        className={`transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
+
+                                {/* Menu danh sách các trạng thái: Nền trắng, chữ đen chuẩn theo ảnh */}
+                                {isStatusDropdownOpen && (
+                                    <>
+                                        {/* Click ra ngoài để đóng menu */}
+                                        <div
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setIsStatusDropdownOpen(false)}
+                                        />
+
+                                        <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-20 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                                            {Object.entries(STATUS_PHOTO_BADGE).map(([statusKey, cfg]) => {
+                                                const isSelected = pet.status === statusKey;
+                                                return (
+                                                    <button
+                                                        key={statusKey}
+                                                        type="button"
+                                                        onClick={() => handleStatusChange(statusKey)}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelected
+                                                            ? 'font-bold text-gray-900 bg-gray-50/80'
+                                                            : 'font-normal text-gray-700 hover:bg-gray-50 hover:text-black'
+                                                            }`}
+                                                    >
+                                                        {cfg.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         <div className="p-5 flex flex-col gap-4">
@@ -392,10 +424,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                 </div>
                                 <div className="rounded-2xl bg-[#F9E6EC] py-3.5 flex flex-col items-center gap-1.5">
                                     <span className="text-[13px] text-gray-500">Size</span>
-                                    <span className="text-[15px] font-semibold text-black">{pet.weight != null ? `${pet.weight} kg` : '—'}</span>
+                                    <span className="text-[15px] font-semibold text-black">{pet.weight != null ? `${pet.weight} kg` : ' '}</span>
                                 </div>
                             </div>
-
                             {/* 2x2 info grid */}
                             <div className="grid grid-cols-2 gap-3">
                                 {[
@@ -415,7 +446,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 </div>
 
                 {/* ================= CỘT PHẢI: ACTIONS + TABS + NỘI DUNG ================= */}
-                <div className="flex-1 min-w-0 flex flex-col gap-5">
+                <div className="flex-1 min-w-0 flex flex-col gap-5 px-2 py-1">
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3">
                         <button
@@ -423,19 +454,19 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             onClick={() => setShow3DModal(true)}
                             className="h-[38px] px-4 rounded-lg border border-[#E89B5A] text-[#E89B5A] text-sm font-medium flex items-center gap-2 hover:bg-[#E89B5A]/5 transition-colors"
                         >
-                            <SparklesIcon size={14} /> View as Public (3D)
+                            <SparklesIcon size={14} /> Xem ở chế độ công khai (3D)
                         </button>
                         <button
                             type="button"
                             onClick={() => router.push(`/shelter/pets/${pet.id}/edit`)}
                             className="h-[38px] px-4 rounded-lg border border-gray-300 text-gray-500 text-sm font-medium flex items-center gap-2 hover:border-gray-400 transition-colors"
                         >
-                            <FiEdit2 size={13} /> Edit Profile
+                            <FiEdit2 size={13} /> Chỉnh sửa hồ sơ
                         </button>
                         <button
                             type="button"
                             onClick={handleDelete}
-                            title="Xoá pet"
+                            title="Xóa pet"
                             className="h-[38px] w-[38px] rounded-lg border border-gray-300 text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shrink-0"
                         >
                             <FiTrash2 size={14} />
@@ -449,7 +480,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                 key={tab.key}
                                 type="button"
                                 onClick={() => setActiveTab(tab.key)}
-                                // Thêm flex-1 vào đây để dàn đều width các nút
                                 className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === tab.key
                                     ? 'bg-white text-black font-semibold shadow-sm'
                                     : 'text-gray-500 font-medium'
@@ -460,15 +490,14 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         ))}
                     </div>
 
-                    {/* ---------------- TAB: DETAIL ---------------- */}
+                    {/* TAB: DETAIL */}
                     {activeTab === 'detail' && (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-                            {/* About / Behavior / Requirements / Health */}
                             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
                                 <div>
                                     <p className="text-sm font-medium text-black mb-3">About {pet.name}</p>
                                     <p className="text-sm text-[#8E8E93] leading-relaxed">
-                                        {showText(pet.description) || 'Chưa có mô tả cho pet này.'}
+                                        {showText(pet.description) || 'Chưa có ghi chú cho pet này.'}
                                     </p>
                                     {traits.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-3">
@@ -487,7 +516,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                         </div>
                                     )}
                                 </div>
-
                                 {(goodWith.length > 0 || badWith.length > 0) && (
                                     <div>
                                         <p className="text-sm font-medium text-black mb-2">{pet.name}'s Behavior</p>
@@ -511,7 +539,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                         )}
                                     </div>
                                 )}
-
                                 <div>
                                     <p className="text-sm font-medium text-black mb-3">Yêu cầu nhận nuôi</p>
                                     {adoptionRequirements.length > 0 ? (
@@ -523,10 +550,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-[#8E8E93] leading-relaxed">Chưa có yêu cầu nhận nuôi cụ thể.</p>
+                                        <p className="text-sm text-[#8E8E93] leading-relaxed">Chưa có yêu cầu nhận nuôi.</p>
                                     )}
                                 </div>
-
                                 <div>
                                     <p className="text-sm font-medium text-black mb-3">Health Care</p>
                                     <div className="flex gap-3">
@@ -536,7 +562,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-[12px] text-[#8E8E93]">Vaccination</p>
-                                                <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa đầy đủ'}</p>
+                                                <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa tiêm'}</p>
                                             </div>
                                         </div>
                                         <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
@@ -552,7 +578,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                 </div>
                             </div>
 
-                            {/* PawHistory + Submit New Record */}
                             <div className="flex flex-col gap-4">
                                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                                     <p className="text-sm font-medium text-black mb-4">PawHistory</p>
@@ -582,7 +607,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                 );
                                             })
                                         ) : (
-                                            <p className="text-center text-gray-400 py-3 text-[13px] italic">Chưa có lịch sử hoạt động.</p>
+                                            <p className="text-center text-gray-400 py-3 text-[13px] italic">Chưa có lịch sử sống.</p>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 bg-[#F5F5F5] rounded-lg py-2 px-3 mt-2">
@@ -590,7 +615,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                         <span className="text-[10px] text-[#8E8E93]">This timeline is permanent and append-only.</span>
                                     </div>
                                 </div>
-
                                 <div className="rounded-2xl border border-dashed border-gray-300 p-6">
                                     <p className="text-sm font-medium text-black mb-3">Submit New Record</p>
                                     <form onSubmit={handleSubmitRecord} className="flex flex-col gap-3">
@@ -635,67 +659,73 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         </div>
                     )}
 
-                    {/* ---------------- TAB: APPLICATION ---------------- */}
+                    {/* TAB: APPLICATION */}
                     {activeTab === 'application' && (
                         applications.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {applications.map((app) => {
-                                    const badge = APPLICATION_STATUS_STYLE[app.status] || APPLICATION_STATUS_STYLE.PENDING;
-                                    const isSelected = selectedApplicationId === app.id;
-                                    return (
-                                        <button
-                                            key={app.id}
-                                            type="button"
-                                            onClick={() => setSelectedApplicationId(app.id)}
-                                            className={`text-left bg-white rounded-2xl border shadow-sm p-4 transition-colors ${isSelected ? 'border-[#E89B5A]' : 'border-gray-200 hover:border-gray-300'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="relative w-11 h-11 rounded-full overflow-hidden bg-gray-100 shrink-0">
+                            <div className="">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {applications.map((app) => {
+                                        const badge = APPLICATION_STATUS_STYLE[app.status] || APPLICATION_STATUS_STYLE.PENDING;
+                                        return (
+                                            <button
+                                                key={app.id}
+                                                type="button"
+                                                onClick={() => setSelectedApplicationId(app.id)}
+                                                className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#E89B5A] shadow-sm p-5 transition-colors cursor-pointer flex items-start gap-3.5"
+                                            >
+                                                {/* Avatar đặt bên trái, căn từ trên xuống */}
+                                                <div className="relative w-[57px] h-[57px] rounded-full overflow-hidden bg-gray-100 shrink-0">
                                                     {isValidImageUrl(app.applicantAvatar) ? (
                                                         <Image src={app.applicantAvatar as string} alt={app.applicantName} fill className="object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                            <UserIcon size={18} />
+                                                            <UserIcon size={20} />
                                                         </div>
                                                     )}
                                                 </div>
-                                                <p className="text-[15px] font-semibold text-black truncate flex-1">{app.applicantName}</p>
-                                                <span
-                                                    className="text-[12px] font-medium px-3 py-1 rounded-full shrink-0"
-                                                    style={{ backgroundColor: badge.bg, color: badge.color }}
-                                                >
-                                                    {badge.label}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col gap-1.5 pl-1">
-                                                <div className="flex items-center gap-2 text-[13px] text-gray-600">
-                                                    <FiPhone size={13} className="text-gray-400 shrink-0" />
-                                                    <span className="truncate">{app.applicantPhone || 'Chưa có SĐT'}</span>
+
+                                                {/* Cột thông tin bên phải: Tên, SĐT, Email, Submitted At thẳng hàng tuyệt đối */}
+                                                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                                                    {/* Dòng đầu tiên: Tên nằm ở nửa trên Avatar + Badge */}
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-[15px] font-semibold text-black truncate">{app.applicantName}</p>
+                                                        <span
+                                                            className="text-[11px] font-medium px-[13px] py-[5px] rounded-full shrink-0"
+                                                            style={{ backgroundColor: badge.bg, color: badge.color }}
+                                                        >
+                                                            {badge.label}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Các dòng tiếp theo nằm thẳng hàng lề trái với Tên */}
+                                                    <div className="flex items-center gap-2 text-[13px] text-gray-600">
+                                                        <FiPhone size={13} className="text-gray-400 shrink-0" />
+                                                        <span className="truncate">{app.applicantPhone || 'Chưa có SĐT'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[13px] text-gray-600">
+                                                        <FiMail size={13} className="text-gray-400 shrink-0" />
+                                                        <span className="truncate">{app.applicantEmail || 'Chưa có email'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[13px] text-gray-600">
+                                                        <FiCalendar size={13} className="text-gray-400 shrink-0" />
+                                                        <span className="truncate">Submitted on: {fmtDate(app.submittedAt) || 'Chưa rõ'}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[13px] text-gray-600">
-                                                    <FiMail size={13} className="text-gray-400 shrink-0" />
-                                                    <span className="truncate">{app.applicantEmail || 'Chưa có email'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[13px] text-gray-600">
-                                                    <FiCalendar size={13} className="text-gray-400 shrink-0" />
-                                                    <span className="truncate">Submitted on: {fmtDate(app.submittedAt) || '—'}</span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         ) : (
                             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 flex flex-col items-center text-center">
                                 <FiFileText size={22} className="text-gray-300 mb-2" />
                                 <p className="text-sm font-medium text-black mb-1">Chưa có đơn đăng ký nhận nuôi</p>
-                                <p className="text-[12px] text-gray-400 max-w-sm">Các đơn đăng ký nhận nuôi {pet.name} sẽ hiển thị ở đây khi có người gửi.</p>
+                                <p className="text-[12px] text-gray-400 max-w-sm">Các đơn đăng ký nhận nuôi {pet.name} sẽ hiển thị ở đây khi có người nộp.</p>
                             </div>
                         )
                     )}
 
-                    {/* ---------------- TAB: DOCUMENT (tái dùng hồ sơ y tế) ---------------- */}
+                    {/* TAB: DOCUMENT */}
                     {activeTab === 'document' && (
                         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                             <p className="text-sm font-medium text-black mb-4">Hồ sơ y tế / Giấy tờ</p>
@@ -724,8 +754,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                                         </span>
                                                     </div>
                                                     <p className="text-[12px] text-gray-400 mt-0.5">
-                                                        Ngày: {fmtDate(r.recordDate) || '—'}
-                                                        {r.hasNextDueDate && r.nextDueDate ? ` · Hẹn tiếp theo: ${fmtDate(r.nextDueDate)}` : ''}
+                                                        Ngày: {fmtDate(r.recordDate) || 'Chưa rõ'}
+                                                        {r.hasNextDueDate && r.nextDueDate ? ` | Hạn tiếp theo: ${fmtDate(r.nextDueDate)}` : ''}
                                                     </p>
                                                 </div>
                                             </div>
@@ -758,6 +788,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     </div>
                 </div>
             )}
+
             {show3DModal && (
                 <PetPublic3DModal
                     pet={pet}
