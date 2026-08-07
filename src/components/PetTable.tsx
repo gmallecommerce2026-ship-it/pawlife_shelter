@@ -4,7 +4,8 @@ import React from 'react';
 import Image from 'next/image';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Mars, Venus, PawPrint } from 'lucide-react';
-import { Pet, PET_SPECIES_LABEL, PET_STATUS_LABEL } from '@/types/pet';
+import { Pet } from '@/types/pet';
+import { PetStatusBadge } from '@/components/PetStatusBadge';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 
 interface PetTableProps {
@@ -22,11 +23,40 @@ const formatAge = (months: number): string => {
   return rest > 0 ? `${years} năm ${rest} tháng` : `${years} năm`;
 };
 
-const formatPetId = (id: string): string => id.slice(-6).toUpperCase();
+// ✅ FIX: species trả về dạng bilingual object { vi, en } (giống breed), không
+// phải string key đơn giản như PET_SPECIES_LABEL kỳ vọng -> parse phòng thủ cả
+// 2 trường hợp, ưu tiên hiển thị tiếng Việt.
+const SPECIES_VI_LABEL: Record<string, string> = {
+  DOG: 'Chó',
+  CAT: 'Mèo',
+};
+
+const formatSpecies = (species: unknown): string => {
+  if (!species) return 'Chưa rõ';
+  if (typeof species === 'object') {
+    const obj = species as { vi?: string; en?: string };
+    return obj.vi || (obj.en ? SPECIES_VI_LABEL[obj.en.toUpperCase()] : undefined) || obj.en || 'Chưa rõ';
+  }
+  const key = String(species).toUpperCase();
+  return SPECIES_VI_LABEL[key] || String(species);
+};
+
+// ✅ FIX: đồng bộ đúng logic lấy PawLife ID với trang Pet Detail
+// (ưu tiên tags[0].id -> code -> fallback id)
+const formatPetId = (pet: Pet): string =>
+  (pet as any).tags?.[0]?.id?.toString()?.slice(0, 8)?.toUpperCase() ||
+  (pet as any).code ||
+  pet.id.slice(0, 8).toUpperCase();
 
 // Tinh chỉnh lại tỷ lệ Grid để giống với khoảng cách trong ảnh
 const COLUMNS_CLASS =
   'grid grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(200px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_72px] items-center gap-4';
+
+const getImageUrl = (img: unknown): string | null => {
+  if (typeof img === 'string') return img;
+  if (img && typeof img === 'object' && 'url' in img) return (img as any).url || null;
+  return null;
+};
 
 export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDelete }) => {
   const stop = (fn?: () => void) => (e: React.MouseEvent) => {
@@ -34,7 +64,6 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
     fn?.();
   };
 
-  // Trích xuất style tĩnh để badge "Available" giống 100% ảnh mẫu
   const getStatusStyle = (status: string) => {
     switch (status.toUpperCase()) {
       case 'AVAILABLE':
@@ -54,12 +83,12 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
     <div className="w-full bg-white border border-gray-200 rounded-[16px] overflow-hidden">
       {/* Header */}
       <div className={`${COLUMNS_CLASS} px-6 py-4 bg-[#F9FAFB] border-b border-gray-200`}>
-        <span className="text-[14px] font-medium text-gray-500">Pet Name</span>
-        <span className="text-[14px] font-medium text-gray-500">Type</span>
-        <span className="text-[14px] font-medium text-gray-500">Breed</span>
-        <span className="text-[14px] font-medium text-gray-500">Age</span>
-        <span className="text-[14px] font-medium text-gray-500">ID</span>
-        <span className="text-[14px] font-medium text-gray-500">Status</span>
+        <span className="text-[14px] font-medium text-gray-500">Tên Pet</span>
+        <span className="text-[14px] font-medium text-gray-500">Loại</span>
+        <span className="text-[14px] font-medium text-gray-500">Giống</span>
+        <span className="text-[14px] font-medium text-gray-500">Tuổi</span>
+        <span className="text-[14px] font-medium text-gray-500">PawLife ID</span>
+        <span className="text-[14px] font-medium text-gray-500">Trạng thái</span>
         <span />
       </div>
 
@@ -67,8 +96,7 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
       {pets.map((pet) => {
         const genderLower = String(pet.gender || '').toLowerCase();
         const isFemale = genderLower === 'female';
-        const statusLabel = PET_STATUS_LABEL[pet.status] ?? pet.status;
-        const imageUrl = pet.images?.[0] || null;
+        const imageUrl = getImageUrl(pet.images?.[0]) || (pet as any).avatarUrl || null;
 
         return (
           <div
@@ -78,7 +106,6 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
           >
             {/* Pet Name & Avatar */}
             <div className="flex items-center gap-4 min-w-0">
-              {/* Đổi thành rounded-full để tạo hình tròn hoàn hảo giống ảnh */}
               <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-50">
                 {imageUrl ? (
                   <Image src={imageUrl} alt={pet.name} fill className="object-cover" />
@@ -89,7 +116,6 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
                 )}
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
-                {/* Font chữ to và đậm hơn để giống text "Max" trong ảnh */}
                 <span className="font-bold text-gray-900 text-[16px] truncate">{pet.name}</span>
                 {isFemale ? (
                   <Venus size={16} strokeWidth={2.5} className="text-[#FF6B93] shrink-0" />
@@ -99,9 +125,9 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
               </div>
             </div>
 
-            {/* Thông tin - Màu xám trung tính, font to rõ ràng */}
+            {/* ✅ FIX: dùng formatSpecies thay vì PET_SPECIES_LABEL[pet.species] */}
             <span className="text-[15px] font-normal text-gray-500 truncate">
-              {PET_SPECIES_LABEL[pet.species]}
+              {formatSpecies(pet.species)}
             </span>
             <span className="text-[15px] font-normal text-gray-500 truncate">
               {formatBreed(pet.breed as MaybeBilingual) || 'Chưa rõ giống'}
@@ -109,17 +135,14 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
             <span className="text-[15px] font-normal text-gray-500 truncate">
               {formatAge(pet.age)}
             </span>
+            {/* ✅ FIX: dùng formatPetId đã đồng bộ với Pet Detail */}
             <span className="text-[15px] font-normal text-gray-500 truncate">
-              {formatPetId(pet.id)}
+              {formatPetId(pet)}
             </span>
 
-            {/* Status Badge - Fixed width, bo tròn pill, màu sắc chuẩn */}
+            {/* Status Badge */}
             <div>
-              <span
-                className={`inline-flex items-center justify-center w-[96px] h-[28px] rounded-full text-[12px] font-semibold border ${getStatusStyle(pet.status)}`}
-              >
-                {statusLabel}
-              </span>
+              <PetStatusBadge status={pet.status} size="sm" />
             </div>
 
             {/* Actions (Sửa/Xoá) */}

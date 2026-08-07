@@ -6,7 +6,7 @@ import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Mars, Venus, PawPrint } from 'lucide-react';
 import { Pet, PetViewMode, PET_STATUS_LABEL } from '@/types/pet';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
-
+import { PetStatusBadge } from '@/components/PetStatusBadge';
 // =============================================================================
 // SONG NGỮ (VI/EN) — breed/description/color hiện được lưu dạng { vi, en } sau
 // khi PetForm submit (xem buildBilingualOnSubmit trong PetForm.tsx). Dữ liệu cũ
@@ -51,15 +51,17 @@ interface PetCardProps {
   onEdit?: (pet: Pet) => void;
   onDelete?: (pet: Pet) => void;
 }
-
+const getImageUrl = (img: unknown): string | null => {
+  if (typeof img === 'string') return img;
+  if (img && typeof img === 'object' && 'url' in img) return (img as any).url || null;
+  return null;
+};
 export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit, onDelete }) => {
-  const imageUrl = pet.images?.[0] || null;
+  const imageUrl = getImageUrl(pet.images?.[0]) || (pet as any).avatarUrl || null;
   const genderLower = String(pet.gender || '').toLowerCase();
   const isFemale = genderLower === 'female' || genderLower === 'cái' || genderLower === 'cai';
   const ageLabel = getAgeLabel((pet as any).dob);
   const breedLabel = formatBreed(pet.breed as MaybeBilingual) || 'Chưa rõ giống';
-  const statusLabel = PET_STATUS_LABEL?.[pet.status] ?? pet.status;
-  const statusClass = STATUS_BADGE_STYLE[pet.status] || 'bg-gray-100 text-gray-500';
 
   const stop = (fn?: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,9 +112,7 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="text-black font-semibold text-[15px] truncate">{pet.name}</p>
-            <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
-              {statusLabel}
-            </span>
+            <PetStatusBadge status={pet.status} size="sm" className="shrink-0" />
           </div>
           <div className="flex items-center gap-1 mt-1">
             {isFemale ? <Venus size={12} className="text-pink-400" /> : <Mars size={12} className="text-blue-400" />}
@@ -161,11 +161,9 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
           </div>
         )}
 
-        <span
-          className={`absolute top-2 left-2 text-[11px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm ${statusClass}`}
-        >
-          {statusLabel}
-        </span>
+        <div className="absolute top-2 left-2 backdrop-blur-sm">
+          <PetStatusBadge status={pet.status} size="sm" />
+        </div>
 
         {/* Overlay tối nhẹ khi hover để 2 nút trắng nổi bật hơn trên ảnh */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-150" />

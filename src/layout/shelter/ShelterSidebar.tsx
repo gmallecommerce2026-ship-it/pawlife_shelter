@@ -5,48 +5,62 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { createPortal } from 'react-dom';
 import {
-  FiHome,
-  FiHeart,
-  FiClipboard,
-  FiUser,
   FiLogOut,
   FiChevronDown,
   FiMessageCircle,
-  FiBox,
 } from 'react-icons/fi';
 import classNames from 'classnames';
 import { logout } from '@/actions/logout';
 import { Lightbulb } from 'lucide-react';
+import { WriteMessageModal } from '@/components/WriteMessageModal';
+
 interface MenuItem {
   id: string;
   label: string;
   icon?: React.ReactNode;
   path?: string;
   children?: MenuItem[];
+  disabled?: boolean;
 }
 
 const SHELTER_MENU: MenuItem[] = [
-  { id: 'dashboard', label: 'Trang chủ', icon: <FiHome size={22} />, path: '/shelter/dashboard' },
+  {
+    id: 'dashboard',
+    label: 'Trang chủ',
+    icon: <Image src="/images/trang-chu.png" alt="Trang chủ" width={22} height={22} />,
+    path: '/shelter/dashboard',
+    disabled: true,
+  },
   {
     id: 'pets',
     label: 'Quản lý Pet',
-    icon: <FiHeart size={22} />,
+    icon: <Image src="/images/quan-ly-pet.png" alt="Quản lý Pet" width={22} height={22} />,
     path: '/shelter/pets',
+    // không disabled -> vẫn hoạt động bình thường
   },
   {
     id: 'applications',
     label: 'Hồ sơ nhận nuôi',
-    icon: <FiClipboard size={22} />,
+    icon: <Image src="/images/dang-ky-nhan-nuoi.png" alt="Hồ sơ nhận nuôi" width={22} height={22} />,
     path: '/shelter/applications',
+    disabled: true,
   },
   {
     id: 'post-adoption',
     label: 'Đã nhận nuôi',
-    icon: <FiBox size={22} />,
+    icon: <Image src="/images/sau-nhan-nuoi.png" alt="Đã nhận nuôi" width={22} height={22} />,
     path: '/shelter/post-adoption',
+    disabled: true,
   },
-  { id: 'profile', label: 'Cài đặt', icon: <FiUser size={22} />, path: '/shelter/profile' },
+  {
+    id: 'profile',
+    label: 'Cài đặt',
+    icon: <Image src="/images/cai-dat.png" alt="Cài đặt" width={22} height={22} />,
+    path: '/shelter/profile',
+    disabled: true,
+  },
 ];
 
 const SidebarItem = ({
@@ -62,6 +76,8 @@ const SidebarItem = ({
 }) => {
   const pathname = usePathname();
   const hasChildren = item.children && item.children.length > 0;
+  const linkRef = useRef<HTMLAnchorElement>(null); // ✅ ref để lấy vị trí item
+  const [tooltipTop, setTooltipTop] = useState<number | null>(null); // ✅ tọa độ Y hiển thị tooltip
 
   const checkActive = (menuItemPath?: string) =>
     menuItemPath ? pathname.startsWith(menuItemPath) : false;
@@ -75,32 +91,54 @@ const SidebarItem = ({
   }, [pathname, isChildActive, item.id]);
 
   const handleClick = (e: React.MouseEvent) => {
+    if (item.disabled) {
+      e.preventDefault();
+      return;
+    }
     if (hasChildren) {
       e.preventDefault();
       toggleOpen(item.id);
     }
   };
 
+  // ✅ Tính vị trí item khi hover vào (dùng cho tooltip portal)
+  const handleMouseEnter = () => {
+    if (!item.disabled) return;
+    if (linkRef.current) {
+      const rect = linkRef.current.getBoundingClientRect();
+      setTooltipTop(rect.top + rect.height / 2);
+    }
+  };
+  const handleMouseLeave = () => {
+    if (!item.disabled) return;
+    setTooltipTop(null);
+  };
+
   return (
     <div className="w-full select-none mb-1 px-4">
       <Link
-        href={item.path || '#'}
+        ref={linkRef}
+        href={item.disabled ? '#' : item.path || '#'}
         onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        aria-disabled={item.disabled}
         className={classNames(
-          'flex items-center justify-between py-3 rounded-xl text-[16px] transition-all duration-200 cursor-pointer',
+          'flex items-center justify-between py-3 rounded-xl text-[16px] transition-all duration-200',
+          item.disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
           {
-            'bg-gray-50 text-[#0D062D] font-medium': isActive && level === 0,
-            'text-[#787486] font-medium hover:bg-gray-50 hover:text-[#0D062D]': !isActive && level === 0,
-            'text-[#E89B5A] font-medium': isSelfActive && level > 0,
-            'text-[#787486] hover:text-[#E89B5A]': !isSelfActive && level > 0,
+            'bg-gray-50 text-red font-regular': isActive && level === 0 && !item.disabled,
+            'text-[#787486] font-regular hover:bg-gray-50 hover:text-[#0D062D]': !isActive && level === 0 && !item.disabled,
+            'text-[#E89B5A] font-regular': isSelfActive && level > 0 && !item.disabled,
+            'text-[#787486] hover:text-[#E89B5A]': !isSelfActive && level > 0 && !item.disabled,
+            'text-[#787486] font-regular': item.disabled,
           }
         )}
       >
-        {/* ĐỔI: w-full thành flex-1 min-w-0 để text vừa vặn, nhường không gian cho mũi tên */}
         <div className="flex items-center flex-1 min-w-0">
           {level === 0 && (
             <div className="w-[56px] flex items-center justify-center shrink-0">
-              <span className={isActive ? 'text-[#0D062D]' : 'text-[#787486] group-hover:text-[#0D062D] transition-colors'}>
+              <span className={isActive && !item.disabled ? 'text-[#0D062D]' : 'text-[#787486] transition-colors'}>
                 {item.icon}
               </span>
             </div>
@@ -117,12 +155,11 @@ const SidebarItem = ({
           </span>
         </div>
 
-        {hasChildren && (
+        {hasChildren && !item.disabled && (
           <FiChevronDown
             size={50}
             className={classNames(
               'text-[#787486] transition-all duration-300 shrink-0 overflow-hidden',
-              // ĐỔI: Đã xóa group-hover:mr-4 để mũi tên sát lề phải hoàn toàn
               'max-w-0 group-hover:max-w-5 opacity-0 group-hover:opacity-100',
               isOpen(item.id) ? 'rotate-180' : ''
             )}
@@ -130,18 +167,34 @@ const SidebarItem = ({
         )}
       </Link>
 
-      <div
-        className={classNames(
-          'overflow-hidden transition-all duration-300',
-          isOpen(item.id)
-            ? 'max-h-0 group-hover:max-h-[500px] opacity-0 group-hover:opacity-100 mt-0 group-hover:mt-1'
-            : 'max-h-0 opacity-0'
-        )}
-      >
-        {item.children?.map((child) => (
-          <SidebarItem key={child.id} item={child} level={level + 1} isOpen={isOpen} toggleOpen={toggleOpen} />
-        ))}
-      </div>
+      {/* ✅ Tooltip render qua portal -> document.body, không bị overflow-hidden cắt */}
+      {item.disabled && tooltipTop !== null && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            style={{ top: tooltipTop, left: 300 }}
+            className="fixed -translate-y-1/2 whitespace-nowrap bg-[#0D062D] text-white text-[12px] font-medium px-3 py-1.5 rounded-lg shadow-lg z-[9999] pointer-events-none animate-in fade-in duration-150"
+          >
+            Tính năng đang được phát triển
+            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#0D062D]" />
+          </div>,
+          document.body
+        )
+      }
+
+      {!item.disabled && (
+        <div
+          className={classNames(
+            'overflow-hidden transition-all duration-300',
+            isOpen(item.id)
+              ? 'max-h-0 group-hover:max-h-[500px] opacity-0 group-hover:opacity-100 mt-0 group-hover:mt-1'
+              : 'max-h-0 opacity-0'
+          )}
+        >
+          {item.children?.map((child) => (
+            <SidebarItem key={child.id} item={child} level={level + 1} isOpen={isOpen} toggleOpen={toggleOpen} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -152,6 +205,7 @@ const ShelterSidebar = () => {
 
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({ pets: true });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isWriteMessageOpen, setIsWriteMessageOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -202,11 +256,11 @@ const ShelterSidebar = () => {
             className="rounded-full object-cover border border-gray-100 hover:border-[#E89B5A] transition-colors shrink-0 bg-white"
           />
           <div className="flex flex-col justify-center min-w-0 opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[150px] transition-all duration-300 overflow-hidden">
-            <h3 className="text-[16px] text-[#0D062D] font-semibold leading-tight truncate">
-              {user?.name || 'PawLife Shelter'}
+            <h3 className="text-[16px] text-[#0D062D] font-light leading-tight truncate">
+              {user?.name || user?.email || 'PawLife Shelter'}
             </h3>
-            <p className="text-[14px] text-[#787486] font-normal leading-tight mt-0.5 truncate">
-              {'Shelter Manager'}
+            <p className="text-[14px] text-[#787486] font-light leading-tight mt-0.5 truncate">
+              {'Admin'}
             </p>
           </div>
 
@@ -284,19 +338,21 @@ const ShelterSidebar = () => {
             {/* Nội dung (Ẩn khi thu gọn, hiện mượt mà khi hover) */}
             <div className="absolute top-8 left-0 w-full px-5 opacity-0 group-hover:opacity-100 flex flex-col items-center pointer-events-none group-hover:pointer-events-auto transition-all duration-300 z-0">
 
-              <h4 className="text-[14px] font-medium text-[#1A1A1A] mb-3 tracking-wide mt-1">
-                Thoughts Time
+              <h4 className="text-[14px] font-regular text-[#1A1A1A] mb-3 tracking-wide mt-1">
+                Thời gian suy ngẫm
               </h4>
 
               <p className="text-[12px] text-[#7A7565] text-center leading-[1.6] mb-6 font-light px-2 whitespace-normal">
-                We don't have any notice,<br />
-                till then you can share your<br />
-                thoughts with your peers.
+                Chúng tôi chưa nhận được thông báo nào, bạn có thể chia sẻ suy nghĩ của mình.
               </p>
 
               {/* Nút bấm viền trắng, đổ bóng mềm */}
-              <button className="w-full py-[11px] bg-[#FFFDF4]/50 rounded-full text-[14px] font-medium text-black border-[1px] border-white shadow-[0_2px_12px_rgba(255,200,0,0.15)] hover:bg-white hover:scale-[1.02] transition-all">
-                Write a message
+              <button
+                type="button"
+                onClick={() => setIsWriteMessageOpen(true)}
+                className="w-full py-[11px] bg-[#FFFDF4]/50 rounded-full text-[14px] font-regular text-black border-[1px] border-white shadow-[0_2px_12px_rgba(255,200,0,0.15)] hover:bg-white hover:scale-[1.02] transition-all"
+              >
+                Viết một tin nhắn
               </button>
 
             </div>
@@ -304,7 +360,9 @@ const ShelterSidebar = () => {
           </div>
         </div>
       </div>
-
+      {isWriteMessageOpen && (
+        <WriteMessageModal onClose={() => setIsWriteMessageOpen(false)} />
+      )}
     </aside>
   );
 };

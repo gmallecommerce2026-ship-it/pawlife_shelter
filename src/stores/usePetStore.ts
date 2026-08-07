@@ -11,94 +11,6 @@ import {
   defaultPetFilter,
 } from '@/types/pet';
 
-// --- MOCK DATA DỰ PHÒNG CHO TRANG QUẢN LÝ PET ---
-const FALLBACK_MOCK_PETS: Pet[] = [
-  {
-    id: 'pet_001',
-    name: 'Luna',
-    species: 'CAT',
-    breed: { vi: 'Mèo Anh Lông Ngắn', en: 'British Shorthair' },
-    age: 24, // 2 tuổi
-    gender: 'FEMALE',
-    status: 'AVAILABLE',
-    images: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
-    description: { vi: 'Rất ngoan, quấn người và thích được chải lông.', en: 'Very well-behaved and affectionate.' },
-    healthStatus: ['Đã tiêm phòng dại', 'Đã tẩy giun'],
-    weightKg: 4.2,
-    isSterilized: true,
-    isVaccinated: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'pet_002',
-    name: 'Max',
-    species: 'DOG',
-    breed: { vi: 'Chó Golden Retriever', en: 'Golden Retriever' },
-    age: 6, // 6 tháng
-    gender: 'MALE',
-    status: 'PENDING',
-    images: ['https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=400'],
-    description: { vi: 'Năng động, thích chơi nhặt bóng.', en: 'Energetic and loves fetching.' },
-    healthStatus: ['Khỏe mạnh', 'Đang chờ tiêm mũi 2'],
-    weightKg: 12.5,
-    isSterilized: false,
-    isVaccinated: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'pet_003',
-    name: 'Milo',
-    species: 'CAT',
-    breed: { vi: 'Mèo ta (Mướp)', en: 'Domestic Shorthair' },
-    age: 36, // 3 năm
-    gender: 'MALE',
-    status: 'ADOPTED',
-    images: ['https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=400'],
-    description: { vi: 'Hơi nhút nhát ban đầu nhưng rất tình cảm.', en: 'A bit shy at first but very affectionate.' },
-    healthStatus: ['Đã khám tổng quát', 'Khỏe mạnh'],
-    weightKg: 5.1,
-    isSterilized: true,
-    isVaccinated: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'pet_004',
-    name: 'Bella',
-    species: 'DOG',
-    breed: { vi: 'Chó Poodle', en: 'Poodle' },
-    age: 12, // 1 năm
-    gender: 'FEMALE',
-    status: 'AVAILABLE',
-    images: ['https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=400'],
-    description: { vi: 'Thông minh, không rụng lông.', en: 'Smart and non-shedding.' },
-    healthStatus: ['Đã cạo vôi răng', 'Sức khỏe tốt'],
-    weightKg: 3.8,
-    isSterilized: true,
-    isVaccinated: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'pet_005',
-    name: 'Bông',
-    species: 'DOG',
-    breed: { vi: 'Chó Corgi', en: 'Corgi' },
-    age: 48,
-    gender: 'MALE',
-    status: 'AVAILABLE',
-    images: ['https://images.unsplash.com/photo-1597626133663-cb34ae9231f4?q=80&w=400'],
-    description: { vi: 'Ham ăn, vui vẻ và thích đi dạo.', en: 'Loves to eat and enjoy walks.' },
-    healthStatus: ['Hơi thừa cân'],
-    weightKg: 14.0,
-    isSterilized: true,
-    isVaccinated: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
 
 // ... (Các hàm sanitizePayload, normalizeEnums, mapAdoptionRequirements, preparePayload, uploadOne giữ nguyên) ...
 
@@ -192,72 +104,39 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     try {
       const params = new URLSearchParams();
       if (filter.search) params.set('search', filter.search);
-      if (filter.species !== 'ALL') params.set('species', filter.species);
-      if (filter.status !== 'ALL') params.set('status', filter.status);
+      if (filter.species !== 'ALL') params.set('type', filter.species);
+      if (filter.status && filter.status !== 'ALL') params.set('status', filter.status);
       params.set('page', String(filter.page));
       params.set('pageSize', String(filter.pageSize));
 
-      const res = await apiClient.get(`/shelter-dashboard/pets?${params.toString()}`);
+      const res = await apiClient.get(`/pets/shelter/manage?${params.toString()}`);
 
-      // SỬ DỤNG MOCK DATA NẾU API TRẢ VỀ RỖNG HOẶC LỖI
-      const apiItems = res.items ?? res ?? [];
-      const finalItems = apiItems.length > 0 ? apiItems : FALLBACK_MOCK_PETS;
-      const finalTotal = apiItems.length > 0 ? (res.total ?? 0) : FALLBACK_MOCK_PETS.length;
-
-      // Áp dụng bộ lọc cho Mock Data ở local để UI filter hoạt động mượt mà
-      let filteredMock = [...finalItems];
-      if (apiItems.length === 0) {
-        if (filter.search) {
-          filteredMock = filteredMock.filter(p => p.name.toLowerCase().includes(filter.search.toLowerCase()));
-        }
-        if (filter.species !== 'ALL') {
-          filteredMock = filteredMock.filter(p => p.species === filter.species);
-        }
-        if (filter.status !== 'ALL') {
-          filteredMock = filteredMock.filter(p => p.status === filter.status);
-        }
-      }
-
-      set({ items: filteredMock, total: apiItems.length > 0 ? finalTotal : filteredMock.length });
-
+      set({ items: res.data ?? [], total: res.meta?.total ?? 0 });
     } catch (error) {
-      console.warn('Fetch pets error, fallback to mock data:', error);
-
-      // FALLBACK TO MOCK DATA KHI LỖI MẠNG / API CHƯA CHẠY
-      let filteredMock = [...FALLBACK_MOCK_PETS];
-      if (filter.search) filteredMock = filteredMock.filter(p => p.name.toLowerCase().includes(filter.search.toLowerCase()));
-      if (filter.species !== 'ALL') filteredMock = filteredMock.filter(p => p.species === filter.species);
-      if (filter.status !== 'ALL') filteredMock = filteredMock.filter(p => p.status === filter.status);
-
-      set({ items: filteredMock, total: filteredMock.length });
+      console.error('[usePetStore] fetchPets error:', error);
+      toast.error('Không thể tải danh sách pet. Vui lòng thử lại.');
+      set({ items: [], total: 0 });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  // ... (Các hàm getPetById, createPet, updatePet, deletePet giữ nguyên như file cũ của bạn) ...
   getPetById: async (id) => {
     try {
-      const res = await apiClient.get(`/shelter-dashboard/pets/${id}`);
-      if (res) return res as Pet;
+      const res = await apiClient.get(`/pets/${id}`);
+      return (res as Pet) ?? null;
     } catch (error) {
-      console.warn('Get pet error, fallback to mock data:', error);
+      console.error('[usePetStore] getPetById error:', error);
+      toast.error('Không thể tải thông tin pet này.');
+      return null;
     }
-
-    // Trả về Mock Data khi API offline/không phản hồi
-    const mockPet =
-      get().items.find((p) => p.id === id) ||
-      FALLBACK_MOCK_PETS.find((p) => p.id === id) ||
-      FALLBACK_MOCK_PETS[0];
-
-    return mockPet as Pet;
   },
 
   createPet: async (values, images) => {
     set({ isSubmitting: true });
     try {
       const imageUrls = await Promise.all(images.map((file) => uploadOne(file, 'pet-images')));
-      const newPet = await apiClient.post('/shelter-dashboard/pets', {
+      const newPet = await apiClient.post('/pets', {
         ...preparePayload(values),
         images: imageUrls,
       });
@@ -281,7 +160,7 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     try {
       const newImageUrls = await Promise.all(newImages.map((file) => uploadOne(file, 'pet-images')));
       const images = [...keepImageUrls, ...newImageUrls];
-      await apiClient.patch(`/shelter-dashboard/pets/${id}`, {
+      await apiClient.patch(`/pets/${id}`, {
         ...preparePayload(values),
         images,
       });
@@ -304,7 +183,7 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     const prevItems = get().items;
     set({ items: prevItems.filter((p) => p.id !== id) });
     try {
-      await apiClient.delete(`/shelter-dashboard/pets/${id}`);
+      await apiClient.delete(`/pets/${id}`);
       toast.success('Đã xóa pet.');
       return true;
     } catch (error) {

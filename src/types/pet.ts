@@ -1,6 +1,7 @@
 export type PetSpecies = 'DOG' | 'CAT';
 export type PetGender = 'MALE' | 'FEMALE';
-export type PetStatus = 'AVAILABLE' | 'PENDING' | 'ADOPTED';
+import { PET_STATUS_CONFIG } from '@/constants/petStatus';
+export type PetStatus = 'AVAILABLE' | 'PENDING' | 'REJECTED' | 'HEALTH_ISSUE' | 'ADOPTED';
 
 export interface Pet {
   id: string;
@@ -74,11 +75,9 @@ export interface PetListResponse {
   pageSize: number;
 }
 
-export const PET_STATUS_LABEL: Record<PetStatus, string> = {
-  AVAILABLE: 'Đang tìm chủ',
-  PENDING: 'Đang xử lý',
-  ADOPTED: 'Đã có chủ',
-};
+export const PET_STATUS_LABEL: Record<PetStatus, string> = Object.fromEntries(
+  Object.entries(PET_STATUS_CONFIG).map(([key, meta]) => [key, meta.label])
+) as Record<PetStatus, string>;
 
 export const PET_SPECIES_LABEL: Record<PetSpecies, string> = {
   DOG: 'Chó',

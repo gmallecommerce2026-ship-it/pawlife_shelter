@@ -29,13 +29,23 @@ import {
   Calendar,
   Eye,
   Download,
+  HomeIcon,
+  Footprints,
+  UserCheck,
+  Ban,
+  DoorClosed,
+  Maximize2,
+  VolumeX,
+  RefreshCw,
 } from 'lucide-react';
 import { usePetActions } from '@/stores/usePetStore';
 import { PetSpecies, PetGender, PetStatus } from '@/types/pet';
 import axiosClient from '@/lib/api/axiosClient';
 import { PetPublic3DModal } from '@/components/PetPublic3DModal';
-import { FiTrash2 } from 'react-icons/fi';
-
+import { FiTrash2, FiPhone, FiMail, FiCalendar } from 'react-icons/fi';
+import { ApplicationDetailModal } from '../../applications/components/ApplicationDetailModal';
+import { AdoptionApplication } from '@/types/application';
+import { PetStatusDropdown } from '@/components/PetStatusBadge';
 export interface Bilingual {
   vi: string;
   en: string;
@@ -53,64 +63,8 @@ const SUGGESTED_TAGS = [
   'Cảnh giác',
   'Dễ huấn luyện',
 ];
-const MOCK_DOCUMENTS = [
-  {
-    id: 'doc_1',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_2',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đang xác minh',
-    statusClass: 'bg-[#E8F1FF] text-[#5A90DA]',
-  },
-  {
-    id: 'doc_3',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_4',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_5',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_6',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_7',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-];
+
+
 const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
   BIRTH: { Icon: Cake, bg: '#FFF4EC', color: '#F2A465' },
   CREATED: { Icon: QrCode, bg: '#EAE7FB', color: '#885BF2' },
@@ -132,99 +86,195 @@ const TAG_COLOR_STYLES = [
   { bg: '#EBFFE2', border: '#77C852', color: '#77C852' },
 ];
 
-const STATUS_BADGE_CONFIG: Record<string, { bg: string; border: string; color: string; label: string }> = {
-  AVAILABLE: { bg: '#DEFFDF', border: '#00AC47', color: '#00AC47', label: 'Chờ nhận nuôi' },
-  PENDING: { bg: '#FFF8E5', border: '#FFBA00', color: '#FFBA00', label: 'Đang xét duyệt' },
-  REJECTED: { bg: '#FFE2E2', border: '#9F0712', color: '#9F0712', label: 'Không đủ điều kiện' },
-  HEALTH_ISSUE: { bg: '#FFEDD4', border: '#A13A17', color: '#A13A17', label: 'Vấn đề sức khoẻ' },
-  ADOPTED: { bg: '#F0F0F0', border: '#BDBDBD', color: '#757575', label: 'Đã nhận nuôi' },
+interface NoteItem { id: string; author: string; avatar: string | null; content: string; date: string; }
+
+
+
+interface MedicalRecordItem {
+  id?: string;                 // có id = record đã tồn tại trên DB
+  type: string;
+  recordName: string;          // lưu tiếng Việt, gửi lên backend backend tự nhân bản vi/en
+  recordDate: string;          // ISO string
+  images: string[];
+  hasNextDueDate: boolean;
+  nextDueName?: string;
+  isPublic?: boolean;
+  nextDueDate?: string | null;
+  verificationStatus?: 'PENDING' | 'VERIFIED' | 'DISPUTED';
+}
+
+const MEDICAL_STATUS_STYLE: Record<string, { label: string; className: string; icon: string }> = {
+  PENDING: { label: 'Đang xác minh', className: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]', icon: '⏱' },
+  VERIFIED: { label: 'Đã xác minh', className: 'bg-[#EBFFE2] text-[#77C852] border-[#D1F5BF]', icon: '✓' },
+  DISPUTED: { label: 'Đang tranh chấp', className: 'bg-[#FFE2E2] text-[#FF5A5A] border-[#FFB4B4]', icon: '⚠' },
+};
+interface AdoptionApplicationItem {
+  id: string;
+  applicantName: string;
+  applicantAvatar?: string | null;
+  applicantPhone?: string;
+  applicantEmail?: string;
+  status: 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO' | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';
+  submittedAt?: string;
+}
+
+const APPLICATION_STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+  SUBMITTED: { bg: '#E8F1FF', color: '#5A90DA', label: 'Đã nộp' },
+  PENDING: { bg: '#E8F1FF', color: '#5A90DA', label: 'Chờ xử lý' },
+  NEED_MORE_INFO: { bg: '#FFF8E5', color: '#E8A53C', label: 'Cần bổ sung' },
+  INTERVIEW_SCHEDULED: { bg: '#F3E8FF', color: '#9333EA', label: 'Đã hẹn phỏng vấn' },
+  APPROVED: { bg: '#EBFFE2', color: '#77C852', label: 'Đã duyệt' },
+  ADOPTION_COMPLETED: { bg: '#DEFFDF', color: '#00AC47', label: 'Đã nhận nuôi' },
+  CLOSED: { bg: '#F0F0F0', color: '#757575', label: 'Đã đóng' },
 };
 
-// Dữ liệu Ghi chú mẫu
-const INITIAL_NOTES = [
-  {
-    id: 'n1',
-    author: 'Julia Nguyễn',
-    role: 'Bác sĩ thú y',
-    roleBadgeClass: 'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]',
-    date: '08/05/2020',
-    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
-  },
-  {
-    id: 'n2',
-    author: 'Julia Nguyễn',
-    role: 'Thành viên',
-    roleBadgeClass: 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]',
-    date: '08/05/2020',
-    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
-  },
-  {
-    id: 'n3',
-    author: 'Julia Nguyễn',
-    role: 'Tình nguyện viên',
-    roleBadgeClass: 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]',
-    date: '08/05/2020',
-    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
-  },
-  {
-    id: 'n4',
-    author: 'Julia Nguyễn',
-    role: 'Admin',
-    roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
-    date: '08/05/2020',
-    content: 'Applicant provided all requested veterinary records for current pet. Documentation shows consistent preventive care.',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
-  },
-];
+const fmtAppDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : 'Chưa rõ');
+const mapInitialMedicalRecords = (raw: any[]): MedicalRecordItem[] =>
+  (Array.isArray(raw) ? raw : []).map((r) => ({
+    id: r.id,
+    type: r.type,
+    recordName: typeof r.recordName === 'object' ? (r.recordName?.vi || r.recordName?.en || '') : (r.recordName || ''),
+    recordDate: r.recordDate ? String(r.recordDate).slice(0, 10) : '',
+    images: sanitizeImageArray(r.images),   // ← sửa dòng này
+    hasNextDueDate: !!r.hasNextDueDate,
+    nextDueName: typeof r.nextDueName === 'object' ? (r.nextDueName?.vi || r.nextDueName?.en || '') : (r.nextDueName || ''),
+    isPublic: r.isPublic ?? true,
+    nextDueDate: r.nextDueDate ? String(r.nextDueDate).slice(0, 10) : null,
+    verificationStatus: r.verificationStatus || 'PENDING',
+  }));
+async function uploadMedicalFile(file: File): Promise<string> {
+  const { data } = await axiosClient.post('/storage/presigned-url', {
+    fileName: file.name,
+    fileType: file.type || 'application/octet-stream',
+    folder: 'medical-records',
+  });
+  const res = await fetch(data.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!res.ok) throw new Error('Upload hồ sơ y tế thất bại');
+  return data.fileUrl;
+}
+const SPECIES_LABEL: Record<PetSpecies, string> = { DOG: 'Chó', CAT: 'Mèo' };
 
-// Dữ liệu Hồ sơ y tế mẫu
-const INITIAL_MEDICAL_RECORDS = [
-  {
-    id: 'm1',
-    title: 'DHPP (5/7in1)',
-    statusLabel: 'Đang xác minh',
-    statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
-    statusIcon: '⏱',
-    type: 'Tiêm chủng',
-    date: '17/7/2026',
-    nextDue: '14/08/2026',
-  },
-  {
-    id: 'm2',
-    title: 'DHPP (5/7in1)',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852] border-[#D1F5BF]',
-    statusIcon: '✓',
-    type: 'Tiêm chủng',
-    date: '17/7/2026',
-    nextDue: '14/08/2026',
-  },
+const toISODate = (dateStr?: string): string | undefined => {
+  if (!dateStr) return undefined;
+  // Nếu đã là ISO (từ <input type="date">) thì giữ nguyên
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr;
+  // Parse định dạng "D/M/YYYY" hoặc "DD/MM/YYYY"
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return undefined;
+  const [d, m, y] = parts;
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+};
+const toUrlString = (item: unknown): string | null => {
+  if (typeof item === 'string') return item.startsWith('blob:') ? null : item; // loại bỏ blob preview
+  if (item && typeof item === 'object') {
+    const obj = item as any;
+    return obj.url || obj.fileUrl || null;
+  }
+  return null;
+};
+
+const sanitizeImageArray = (arr: unknown): string[] =>
+  (Array.isArray(arr) ? arr : [])
+    .map(toUrlString)
+    .filter((x): x is string => Boolean(x));
+const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }> = ({
+  checked,
+  onChange,
+  disabled,
+}) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${checked ? 'bg-[#22C55E]' : 'bg-gray-300'} disabled:opacity-50 disabled:cursor-not-allowed`}
+  >
+    <span
+      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+    />
+  </button>
+);
+
+const VACCINE_OPTIONS: Record<'Dog' | 'Cat', { id: string; label: string }[]> = {
+  Dog: [
+    { id: 'DOG_DHP', label: 'DHP (3in1)' },
+    { id: 'DOG_DHPP', label: 'DHPP (5/7in1)' },
+    { id: 'DOG_RABIES', label: 'Rabies (Dại)' },
+    { id: 'DOG_LEPTO', label: 'Lepto' },
+    { id: 'DOG_BORDETELLA', label: 'Bordetella' },
+    { id: 'DOG_CIV', label: 'CIV' },
+  ],
+  Cat: [
+    { id: 'CAT_FVRCP', label: 'FVRCP (3/4in1)' },
+    { id: 'CAT_RABIES', label: 'Rabies (Dại)' },
+    { id: 'CAT_FELV', label: 'FeLV' },
+  ],
+};
+
+function resolveSpeciesKey(species: any): 'Dog' | 'Cat' {
+  if (!species) return 'Dog';
+  let raw = species;
+  if (typeof raw === 'object') raw = raw.en || raw.vi || '';
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        raw = parsed.en || parsed.vi || '';
+      } catch {
+        // giữ raw gốc nếu parse lỗi
+      }
+    }
+  }
+  const normalized = String(raw).toLowerCase();
+  if (normalized.includes('cat') || normalized.includes('mèo') || normalized.includes('meo')) return 'Cat';
+  return 'Dog';
+}
+const REQUIREMENT_OPTIONS: { key: string; label: string; icon: React.ElementType }[] = [
+  { key: 'house_with_yard', label: 'Có sân vườn', icon: HomeIcon },
+  { key: 'daily_walk', label: 'Đi dạo thường xuyên', icon: Footprints },
+  { key: 'advance_experience', label: 'Chủ có kinh nghiệm', icon: UserCheck },
+  { key: 'no_cat', label: 'Không có chó khác', icon: Ban },
+  { key: 'no_dog', label: 'Không có mèo khác', icon: Ban },
+  { key: 'no_other_pet', label: 'Không pet khác', icon: Ban },
+  { key: 'no_small_animal', label: 'Không động vật nhỏ', icon: Ban },
+  { key: 'indoor_raise', label: 'Nuôi trong nhà', icon: DoorClosed },
+  { key: 'spacious_living', label: 'Không gian rộng', icon: Maximize2 },
+  { key: 'quiet_home', label: 'Nhà yên tĩnh', icon: VolumeX },
+  { key: 'often_at_home', label: 'Có thời gian ở nhà', icon: Clock },
+  { key: 'stable_routine', label: 'Lịch sinh hoạt ổn định', icon: RefreshCw },
 ];
 
 export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = ({ mode, initialPet }) => {
   const router = useRouter();
   const { createPet, updatePet, isSubmitting } = usePetActions();
-
+  const [medicalFile, setMedicalFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'applications' | 'documents'>('info');
-  const [isEditing, setIsEditing] = useState(mode === 'create');
+  const [isEditing, setIsEditing] = useState(true); // Cho phép nhập liệu ngay
   const [show3DModal, setShow3DModal] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
-  const [breed, setBreed] = useState('Golden British');
+  const [breed, setBreed] = useState('');
   const [gender, setGender] = useState<PetGender>('FEMALE');
-  const [color, setColor] = useState('GOLDEN');
-  const [dob, setDob] = useState('2020-07-12');
-  const [weight, setWeight] = useState<number | undefined>(12);
-  const [pawLifeId, setPawLifeId] = useState('PL-00000');
+  const [species, setSpecies] = useState<PetSpecies>('DOG');
+  const safeSpecies = resolveSpeciesKey(species);
+  const [color, setColor] = useState('');
+  const [dob, setDob] = useState('');
+  const [weight, setWeight] = useState<number | undefined>(undefined);
+  const [pawLifeId, setPawLifeId] = useState('');
   const [status, setStatus] = useState<PetStatus>('AVAILABLE');
 
   const [description, setDescription] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>(['Playful', 'Clingy', 'Friendly']);
-  const [selectedRequirements, setSelectedRequirements] = useState<string[]>(['Playful', 'Clingy', 'Friendly']);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [goodWith, setGoodWith] = useState('');
+  const [badWith, setBadWith] = useState('');
+  const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
   const [isVaccinated, setIsVaccinated] = useState(true);
   const [isSpayedNeutered, setIsSpayedNeutered] = useState(true);
 
@@ -236,34 +286,53 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   // Ghi chú State
-  const [notes, setNotes] = useState(INITIAL_NOTES);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [newNoteInput, setNewNoteInput] = useState('');
 
   // Hồ sơ y tế State
-  const [medicalList, setMedicalList] = useState(INITIAL_MEDICAL_RECORDS);
+  const [medicalList, setMedicalList] = useState<MedicalRecordItem[]>([]);
+  const [applications, setApplications] = useState<AdoptionApplication[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<AdoptionApplication | null>(null);
+  const [isUploadingMedicalFile, setIsUploadingMedicalFile] = useState(false);
   const [showMedicalForm, setShowMedicalForm] = useState(true);
   const [medicalType, setMedicalType] = useState('');
   const [medicalDetail, setMedicalDetail] = useState('');
   const [medicalDate, setMedicalDate] = useState('');
+  const [medicalHasReminder, setMedicalHasReminder] = useState(false);
+  const [medicalNextDueDetail, setMedicalNextDueDetail] = useState('');
+  const [medicalNextDueDate, setMedicalNextDueDate] = useState('');
+  const [medicalIsPublic, setMedicalIsPublic] = useState(true);
+  const [doseNumber, setDoseNumber] = useState<1 | 2 | 3>(1);
+  const [vaccineId, setVaccineId] = useState('');
   const medicalFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialPet) {
-      setName(initialPet.name || 'Luna');
+      setName(initialPet.name || '');
       setBreed(
         typeof initialPet.breed === 'object'
           ? initialPet.breed?.en || initialPet.breed?.vi || ''
-          : initialPet.breed || 'Golden British'
+          : initialPet.breed || ''
       );
       setGender(initialPet.gender || 'FEMALE');
+
+      // ✅ THÊM DÒNG NÀY: nạp đúng species từ pet đang edit, thay vì luôn giữ default 'DOG'
+      setSpecies(
+        typeof initialPet.species === 'object'
+          ? (initialPet.species?.en === 'CAT' || initialPet.species?.vi === 'Mèo' ? 'CAT' : 'DOG')
+          : (String(initialPet.species || '').toUpperCase() === 'CAT' ? 'CAT' : 'DOG')
+      );
+
       setColor(
         typeof initialPet.color === 'object'
           ? initialPet.color?.en || initialPet.color?.vi || ''
-          : initialPet.color || 'GOLDEN'
+          : initialPet.color || ''
       );
-      setDob(initialPet.dob ? String(initialPet.dob).slice(0, 10) : '2020-07-12');
-      setWeight(initialPet.weight ?? 12);
-      setPawLifeId(initialPet.code || initialPet.tags?.[0]?.id || 'PL-00000');
+
+      setDob(initialPet.dob ? String(initialPet.dob).slice(0, 10) : '');
+      setWeight(initialPet.weight ?? initialPet.weightKg ?? undefined);
+      setPawLifeId(initialPet.code || initialPet.tags?.[0]?.id || '');
       setStatus(initialPet.status || 'AVAILABLE');
       setDescription(
         typeof initialPet.description === 'object'
@@ -271,11 +340,61 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           : initialPet.description || ''
       );
       setIsVaccinated(initialPet.isVaccinated ?? true);
-      setIsSpayedNeutered(initialPet.isSpayedNeutered ?? true);
-      setImages(Array.isArray(initialPet.images) ? initialPet.images : []);
+      setIsSpayedNeutered(initialPet.isSpayedNeutered ?? initialPet.isSterilized ?? true);
+      // 🆕 Nạp requirement key đã lưu — theo PetsService.getPetById, mỗi item có id = requirement.key
+      setSelectedRequirements(
+        Array.isArray(initialPet.adoptionRequirements)
+          ? initialPet.adoptionRequirements.map((r: any) => r.id).filter(Boolean)
+          : []
+      );
+      const normalizedImages = Array.isArray(initialPet.images)
+        ? initialPet.images.map((img: any) => (typeof img === 'string' ? img : img.url)).filter(Boolean)
+        : [];
+      setImages(normalizedImages);
+      setSelectedTags(
+        Array.isArray(initialPet.traits)
+          ? initialPet.traits.map((t: any) => (typeof t === 'string' ? t : t?.name?.vi || t?.name?.en || t?.vi || t?.en || '')).filter(Boolean)
+          : []
+      );
+      setGoodWith(
+        Array.isArray(initialPet.goodWith)
+          ? initialPet.goodWith.map((x: any) => (typeof x === 'string' ? x : x?.vi || x?.en || '')).filter(Boolean).join(', ')
+          : ''
+      );
+      setBadWith(
+        Array.isArray(initialPet.badWith)
+          ? initialPet.badWith.map((x: any) => (typeof x === 'string' ? x : x?.vi || x?.en || '')).filter(Boolean).join(', ')
+          : ''
+      );
+      setMedicalList(mapInitialMedicalRecords(initialPet.medicalRecords));
+      setApplications(Array.isArray(initialPet.applications) ? initialPet.applications : []);
+
     }
   }, [initialPet]);
+  useEffect(() => {
+    if (initialPet?.id) {
+      axiosClient.get(`/pets/${initialPet.id}/notes`)
+        .then((res) => setNotes(res.data))
+        .catch((err) => console.error('[PetForm] Lỗi tải ghi chú:', err));
+    }
+  }, [initialPet?.id]);
 
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const content = newNoteInput.trim();
+    if (!content || !initialPet?.id) return;
+    try {
+      setIsSubmittingNote(true);
+      const res = await axiosClient.post(`/pets/${initialPet.id}/notes`, { content });
+      setNotes((prev) => [res.data, ...prev]);
+      setNewNoteInput('');
+    } catch (err) {
+      console.error('[PetForm] Gửi ghi chú thất bại:', err);
+      alert('Gửi ghi chú thất bại.');
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -284,7 +403,15 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     setCurrentImageIndex(images.length);
     setImages((prev) => [...prev, ...previews]);
   };
-
+  const refetchApplications = async () => {
+    if (!initialPet?.id) return;
+    try {
+      const res = await axiosClient.get(`/shelter-dashboard/pets/${initialPet.id}`);
+      setApplications(Array.isArray(res.data?.applications) ? res.data.applications : []);
+    } catch (err) {
+      console.error('[PetForm] Lỗi tải lại đơn nhận nuôi:', err);
+    }
+  };
   const goPrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (images.length <= 1) return;
@@ -308,67 +435,151 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       prev.includes(req) ? prev.filter((r) => r !== req) : [...prev, req]
     );
   };
+  const isRabies = medicalDetail.toLowerCase().includes('rabies') || medicalDetail.toLowerCase().includes('dại');
 
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newNoteInput.trim()) return;
-    const newNote = {
-      id: `n_${Date.now()}`,
-      author: 'Julia Nguyễn',
-      role: 'Admin',
-      roleBadgeClass: 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]',
-      date: new Date().toLocaleDateString('vi-VN'),
-      content: newNoteInput.trim(),
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100',
-    };
-    setNotes((prev) => [...prev, newNote]);
-    setNewNoteInput('');
-  };
+  const prevMedicalTypeRef = useRef(medicalType);
+  useEffect(() => {
+    if (prevMedicalTypeRef.current === medicalType) return;
+    prevMedicalTypeRef.current = medicalType;
+    setMedicalDetail('');
+    setVaccineId('');
+    setDoseNumber(1);
+  }, [medicalType]);
 
-  const handleSaveMedical = (e: React.FormEvent) => {
+  // Effect 2: tính lại Nhắc lịch mỗi khi Chi tiết / Ngày / Mũi tiêm đổi — KHÔNG đụng medicalDetail
+  useEffect(() => {
+    if (!medicalType) return;
+
+    if (medicalType === 'Khác') {
+      setMedicalHasReminder(false);
+      setMedicalNextDueDetail('');
+      setMedicalNextDueDate('');
+      return;
+    }
+    if (medicalType === 'Tiêm chủng' && !vaccineId) {
+      // Chưa chọn vaccine cụ thể → chưa đủ dữ liệu để tính lịch nhắc
+      setMedicalHasReminder(false);
+      setMedicalNextDueDetail('');
+      setMedicalNextDueDate('');
+      return;
+    }
+
+    setMedicalHasReminder(true);
+    const base = medicalDate ? new Date(medicalDate) : new Date();
+    const next = new Date(base);
+
+    if (medicalType === 'Tiêm chủng') {
+      if (vaccineId === 'DOG_RABIES' || vaccineId === 'CAT_RABIES') {
+        next.setDate(next.getDate() + 365);
+      } else if (vaccineId === 'DOG_BORDETELLA') {
+        next.setDate(next.getDate() + 180);
+      } else if (doseNumber === 3) {
+        next.setDate(next.getDate() + 365);
+      } else {
+        next.setDate(next.getDate() + 28);
+      }
+
+    } else if (medicalType === 'Khám tổng quát') {
+      next.setFullYear(next.getFullYear() + 1);
+    } else if (medicalType === 'Khám răng miệng') {
+      next.setMonth(next.getMonth() + 6);
+    }
+
+    setMedicalNextDueDetail(medicalDetail || medicalType);
+    setMedicalNextDueDate(next.toISOString().slice(0, 10));
+  }, [medicalType, medicalDetail, medicalDate, doseNumber, vaccineId]);
+  const handleSaveMedical = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!medicalType) return;
-    const newRecord = {
-      id: `m_${Date.now()}`,
-      title: medicalDetail || medicalType,
-      statusLabel: 'Đang xác minh',
-      statusClass: 'bg-[#FFF8E5] text-[#E8A53C] border-[#FFE1C2]',
-      statusIcon: '⏱',
-      type: medicalType,
-      date: medicalDate || new Date().toLocaleDateString('vi-VN'),
-      nextDue: '14/08/2026',
-    };
-    setMedicalList((prev) => [...prev, newRecord]);
-    setMedicalType('');
-    setMedicalDetail('');
-    setMedicalDate('');
+    if (!medicalFile) {
+      alert('Vui lòng tải lên ít nhất 1 ảnh/hồ sơ trước khi lưu.');
+      return;
+    }
+
+
+    try {
+      setIsUploadingMedicalFile(true);
+      const images = medicalFile ? [await uploadMedicalFile(medicalFile)] : [];
+
+      const newRecord: MedicalRecordItem = {
+        type: medicalType,
+        recordName: medicalDetail || medicalType,
+        recordDate: medicalDate ? new Date(medicalDate).toISOString() : new Date().toISOString(),
+        images,
+        hasNextDueDate: medicalHasReminder,
+        nextDueDate: medicalHasReminder && medicalNextDueDate ? new Date(medicalNextDueDate).toISOString() : null,
+        nextDueName: medicalHasReminder ? (medicalNextDueDetail || undefined) : undefined,
+        isPublic: medicalIsPublic,
+        verificationStatus: 'PENDING', // record mới luôn chờ xác minh
+      };
+
+      setMedicalList((prev) => [...prev, newRecord]);
+      setMedicalType('');
+      setMedicalDetail('');
+      setMedicalDate('');
+      setMedicalFile(null);
+      setMedicalHasReminder(false);
+      setMedicalNextDueDetail('');
+      setMedicalNextDueDate('');
+      setMedicalIsPublic(true);
+      setDoseNumber(1);
+      setVaccineId('');
+    } catch (err) {
+      console.error('[PetForm] Upload hồ sơ y tế thất bại:', err);
+      alert('Tải hồ sơ y tế thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsUploadingMedicalFile(false);
+    }
+  };
+
+  const handleRemoveMedical = (index: number) => {
+    setMedicalList((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
     const payload: any = {
       name,
-      breed,
+      species: { en: species, vi: SPECIES_LABEL[species] },
+      breed: { en: breed, vi: breed },
       gender,
-      color,
+      color: { en: color, vi: color },
       dob,
       weight,
       status,
-      description,
+      description: { en: description, vi: description },
       isVaccinated,
       isSpayedNeutered,
       code: pawLifeId,
+      traits: selectedTags,
+      adoptionRequirementKeys: selectedRequirements,
+      goodWith: goodWith.split(',').map((s) => s.trim()).filter(Boolean),
+      badWith: badWith.split(',').map((s) => s.trim()).filter(Boolean),
+      medicalRecords: medicalList.map((r) => ({
+        ...(r.id ? { id: r.id } : {}),
+        type: r.type,
+        recordName: r.recordName,
+        recordDate: r.recordDate,
+        images: sanitizeImageArray(r.images),   // ← chặn lần cuối
+        hasNextDueDate: r.hasNextDueDate,
+        ...(r.hasNextDueDate && r.nextDueDate ? { nextDueDate: r.nextDueDate } : {}),
+        ...(r.hasNextDueDate && r.nextDueName ? { nextDueName: r.nextDueName } : {}),
+        isPublic: r.isPublic ?? true,
+      })),
     };
+
+    // images pet: loại bỏ blob preview, chỉ giữ URL thật đã upload/tồn tại
+    const cleanImages = sanitizeImageArray(images);
 
     let success = false;
     if (mode === 'create') {
       success = await createPet(payload, imageFiles);
     } else if (initialPet) {
-      success = await updatePet(initialPet.id, payload, imageFiles, images);
+      success = await updatePet(initialPet.id, payload, imageFiles, cleanImages);  // ← dùng cleanImages
     }
 
     if (success) {
-      setIsEditing(false);
       router.push('/shelter/pets');
     }
   };
@@ -387,9 +598,11 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
-  const statusBadge = STATUS_BADGE_CONFIG[status] || STATUS_BADGE_CONFIG.AVAILABLE;
-  const genderLabel = gender === 'MALE' ? 'Male' : 'Female';
+  const approvedApplication = applications.find(
+    (a) => a.status === 'APPROVED' || a.status === 'ADOPTION_COMPLETED'
+  );
 
+  const isAdoptedByApplication = !!approvedApplication;
   const livePreviewPet = {
     id: initialPet?.id || 'preview_pet',
     name: name || 'Luna',
@@ -422,8 +635,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             >
               <ChevronLeft size={26} />
             </button>
-            <h1 className="text-3xl font-bold text-[#0D062D] truncate">{name || 'Luna'}</h1>
-            <span className="text-lg text-[#8E8E93] truncate">({breed || 'Golden British'})</span>
+            <h1 className="text-3xl font-bold text-[#0D062D] truncate">{name || 'Thêm Pet'}</h1>
+            <span className="text-lg text-[#8E8E93] truncate">({breed || 'Giống loài'})</span>
           </div>
 
           <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col bg-white">
@@ -481,47 +694,11 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
               {/* Status badge dropdown */}
               <div className="absolute top-4 right-4 z-20">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isEditing) setIsStatusDropdownOpen((prev) => !prev);
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold border shadow-sm transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: statusBadge.bg, borderColor: statusBadge.border, color: statusBadge.color }}
+                <PetStatusDropdown
+                  status={status}
+                  onChange={(v) => setStatus(v)}
                   disabled={!isEditing}
-                >
-                  {statusBadge.label}
-                  {isEditing && (
-                    <ChevronDown size={14} className={`transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
-                  )}
-                </button>
-
-                {isStatusDropdownOpen && isEditing && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setIsStatusDropdownOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-20 flex flex-col gap-0.5">
-                      {Object.entries(STATUS_BADGE_CONFIG).map(([statusKey, cfg]) => {
-                        const isSelected = status === statusKey;
-                        return (
-                          <button
-                            key={statusKey}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatus(statusKey as PetStatus);
-                              setIsStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelected ? 'font-bold text-gray-900 bg-gray-50/80' : 'font-normal text-gray-700 hover:bg-gray-50 hover:text-black'
-                              }`}
-                          >
-                            {cfg.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                />
               </div>
 
               <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
@@ -536,10 +713,22 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={!isEditing}
+                    placeholder="Tên Pet"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
                 </div>
-
+                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Loại</label>
+                  <select
+                    value={species}
+                    onChange={(e) => setSpecies(e.target.value as PetSpecies)}
+                    disabled={!isEditing}
+                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide appearance-none disabled:text-black"
+                  >
+                    <option value="DOG">Chó</option>
+                    <option value="CAT">Mèo</option>
+                  </select>
+                </div>
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Breed</label>
                   <input
@@ -572,6 +761,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
                     disabled={!isEditing}
+                    placeholder="Màu sắc"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
                 </div>
@@ -591,24 +781,27 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Size (kg)</label>
                   <input
                     type="number"
-                    value={weight ?? 12}
-                    onChange={(e) => setWeight(Number(e.target.value))}
+                    value={weight ?? ''}
+                    onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : undefined)}
                     disabled={!isEditing}
+                    placeholder="VD: 12"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none disabled:text-black"
                   />
                 </div>
 
-                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3 col-span-2">
+                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">PawLife ID</label>
                   <input
                     type="text"
                     value={pawLifeId}
                     onChange={(e) => setPawLifeId(e.target.value)}
                     disabled={!isEditing}
+                    placeholder="VD: PL-00000"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -626,24 +819,14 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               <SparklesIcon size={14} /> Live Preview (3D)
             </button>
 
-            {!isEditing ? (
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="h-[38px] px-4 rounded-lg border border-gray-300 text-gray-500 text-sm font-medium flex items-center gap-2 hover:border-gray-400 transition-colors"
-              >
-                <Pencil size={13} /> Chỉnh sửa
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="h-[38px] px-5 rounded-lg bg-[#E89B5A] text-white text-sm font-bold hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
-              >
-                {isSubmitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="h-[38px] px-5 rounded-lg bg-[#E89B5A] text-white text-sm font-bold hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
+            >
+              {isSubmitting ? 'Đang lưu...' : mode === 'create' ? 'Tạo mới' : 'Lưu Thay Đổi'}
+            </button>
           </div>
 
           {/* Tab bar */}
@@ -670,14 +853,14 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'documents' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
                 }`}
             >
-              Document
+              Tài liệu
             </button>
           </div>
 
           {/* TAB: THÔNG TIN */}
           {activeTab === 'info' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-              {/* Sub-card trái: Giới thiệu, Tags, Tính cách, Yêu cầu, Sức khỏe + KHỐI GHI CHÚ */}
+              {/* Sub-card trái */}
               <div className="flex flex-col gap-4">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
                   {/* Giới thiệu */}
@@ -688,7 +871,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       disabled={!isEditing}
-                      placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                      placeholder="Mô tả chi tiết về thú cưng..."
                       className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl p-3 text-xs text-[#8E8E93] leading-relaxed outline-none resize-none"
                     />
                   </div>
@@ -720,7 +903,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     </div>
                     {isEditing && (
                       <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
-                        {SUGGESTED_TAGS.map((t) => (
+                        {SUGGESTED_TAGS.filter((t) => !selectedTags.includes(t)).map((t) => (
                           <button
                             key={t}
                             type="button"
@@ -730,7 +913,6 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             + {t}
                           </button>
                         ))}
-                        <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
                       </div>
                     )}
                   </div>
@@ -738,16 +920,32 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   {/* Tính cách */}
                   <div>
                     <h3 className="text-sm font-medium text-black mb-2">Tính cách</h3>
-                    <div className="flex flex-col gap-1.5 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <Check size={14} className="text-[#00AC47] shrink-0" />
-                        <span className="font-semibold text-[#00AC47]">Thân thiện:</span>
-                        <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <label className="text-[11px] font-semibold text-[#00AC47] flex items-center gap-1 mb-1">
+                          <Check size={12} /> Thân thiện với (phân tách bằng dấu phẩy)
+                        </label>
+                        <input
+                          type="text"
+                          value={goodWith}
+                          onChange={(e) => setGoodWith(e.target.value)}
+                          disabled={!isEditing}
+                          placeholder="VD: Trẻ em, Người già, Chó, Mèo"
+                          className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                        />
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <X size={14} className="text-red-500 shrink-0" />
-                        <span className="font-semibold text-red-500">Nên cân nhắc:</span>
-                        <span className="text-[#8E8E93]">Children, Seniors, Dogs, Cats.</span>
+                      <div>
+                        <label className="text-[11px] font-semibold text-red-500 flex items-center gap-1 mb-1">
+                          <X size={12} /> Nên cân nhắc với
+                        </label>
+                        <input
+                          type="text"
+                          value={badWith}
+                          onChange={(e) => setBadWith(e.target.value)}
+                          disabled={!isEditing}
+                          placeholder="VD: Mèo khác, Trẻ nhỏ"
+                          className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                        />
                       </div>
                     </div>
                   </div>
@@ -758,40 +956,27 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       <h3 className="text-sm font-medium text-black">Yêu cầu</h3>
                       <span className="text-xs text-gray-400">Đã chọn {selectedRequirements.length}/5</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {selectedRequirements.map((req, idx) => {
-                        const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
+                    <div className="flex flex-wrap gap-2">
+                      {REQUIREMENT_OPTIONS.map((opt) => {
+                        const isSelected = selectedRequirements.includes(opt.key);
+                        const Icon = opt.icon;
                         return (
-                          <span
-                            key={req}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
-                            style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
+                          <button
+                            key={opt.key}
+                            type="button"
+                            disabled={!isEditing}
+                            onClick={() => toggleRequirement(opt.key)}
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-medium transition-colors ${isSelected
+                              ? 'border-[#E89B5A] bg-[#FFF8F0] text-[#E89B5A]'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                              } disabled:cursor-not-allowed disabled:opacity-60`}
                           >
-                            {req}
-                            {isEditing && (
-                              <button type="button" onClick={() => toggleRequirement(req)}>
-                                <X size={12} className="hover:text-red-500" />
-                              </button>
-                            )}
-                          </span>
+                            <Icon size={16} className={isSelected ? 'text-[#E89B5A]' : 'text-gray-400'} />
+                            {opt.label}
+                          </button>
                         );
                       })}
                     </div>
-                    {isEditing && (
-                      <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
-                        {SUGGESTED_TAGS.map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => toggleRequirement(t)}
-                            className="hover:text-gray-800 transition-colors"
-                          >
-                            + {t}
-                          </button>
-                        ))}
-                        <button type="button" className="text-[#E89B5A] font-semibold">+ Thêm mới</button>
-                      </div>
-                    )}
                   </div>
 
                   {/* Sức khỏe */}
@@ -829,51 +1014,61 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   </div>
                 </div>
 
-                {/* KHỐI GHI CHÚ MỚI BỔ SUNG (BÊN DƯỚI CARD 1) */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-gray-900">Ghi chú</h3>
+                {/* KHỐI GHI CHÚ */}
+                {mode === 'edit' && initialPet?.id && (
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
+                    <h3 className="text-sm font-bold text-gray-900">Ghi chú</h3>
 
-                  <div className="flex flex-col gap-4">
-                    {notes.map((note) => (
-                      <div key={note.id} className="flex gap-3 items-start">
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5 border border-gray-100">
-                          <Image src={note.avatar} alt={note.author} fill className="object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0 flex flex-col gap-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-gray-900">{note.author}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${note.roleBadgeClass}`}>
-                              {note.role}
-                            </span>
-                            <span className="text-[10px] text-gray-400 ml-auto">{note.date}</span>
+                    <div className="flex flex-col gap-4">
+                      {notes.length === 0 && (
+                        <p className="text-xs text-gray-400 italic">Chưa có ghi chú nào.</p>
+                      )}
+                      {notes.map((note) => (
+                        <div key={note.id} className="flex gap-3 items-start">
+                          <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5 border border-gray-100 bg-gray-100">
+                            {note.avatar ? (
+                              <Image src={note.avatar} alt={note.author} fill className="object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">
+                                {note.author?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                            )}
                           </div>
-                          <p className="text-xs text-gray-500 leading-relaxed">{note.content}</p>
+                          <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-gray-900">{note.author}</span>
+                              <span className="text-[10px] text-gray-400 ml-auto">
+                                {new Date(note.date).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 leading-relaxed">{note.content}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  {/* Input Thêm ghi chú mới */}
-                  <form onSubmit={handleAddNote} className="relative mt-2 w-full">
-                    <input
-                      type="text"
-                      value={newNoteInput}
-                      onChange={(e) => setNewNoteInput(e.target.value)}
-                      placeholder="Thêm ghi chú dưới tên Julia Nguyễn"
-                      className="w-full bg-[#F9FAFB] border border-gray-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!newNoteInput.trim()}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
-                    >
-                      <Send size={15} />
-                    </button>
-                  </form>
-                </div>
+                    {/* Input Thêm ghi chú mới */}
+                    <form onSubmit={handleAddNote} className="relative mt-2 w-full">
+                      <input
+                        type="text"
+                        value={newNoteInput}
+                        onChange={(e) => setNewNoteInput(e.target.value)}
+                        placeholder="Thêm ghi chú dưới tên Julia Nguyễn"
+                        className="w-full bg-[#F9FAFB] border border-gray-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newNoteInput.trim() || isSubmittingNote}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
+                      >
+                        <Send size={15} />
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
 
-              {/* Sub-card phải: PawHistory + Hồ sơ y tế */}
+              {/* Sub-card phải */}
               <div className="flex flex-col gap-4">
                 {/* PawHistory */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -914,7 +1109,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   </div>
                 </div>
 
-                {/* KHỐI HỒ SƠ Y TẾ MỚI BỔ SUNG (BÊN DƯỚI PAWHISTORY) */}
+                {/* KHỐI HỒ SƠ Y TẾ */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-gray-900">Hồ sơ y tế</h3>
@@ -929,30 +1124,38 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
                   {/* Danh sách Hồ sơ y tế */}
                   <div className="flex flex-col gap-2.5">
-                    {medicalList.map((item) => (
-                      <div key={item.id} className="border border-gray-200 rounded-2xl p-3.5 flex flex-col gap-1 bg-white relative">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Syringe size={14} className="text-gray-400 shrink-0" />
-                            <span className="text-xs font-bold text-gray-900">{item.title}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.statusClass}`}>
-                              {item.statusIcon} {item.statusLabel}
-                            </span>
+                    {medicalList.map((item, index) => {
+                      const style = MEDICAL_STATUS_STYLE[item.verificationStatus || 'PENDING'];
+                      return (
+                        <div key={item.id ?? `new_${index}`} className="border border-gray-200 rounded-2xl p-3.5 flex flex-col gap-1 bg-white relative">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Syringe size={14} className="text-gray-400 shrink-0" />
+                              <span className="text-xs font-bold text-gray-900">{item.recordName || item.type}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${style.className}`}>
+                                {style.icon} {style.label}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMedical(index)}
+                              title="Xoá hồ sơ"
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
                           </div>
-                          <button type="button" className="text-gray-400 hover:text-gray-600">
-                            <MoreVertical size={14} />
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-gray-400 pl-5">
-                          Loại: {item.type} | Ngày: {item.date}
-                        </p>
-                        {item.nextDue && (
-                          <p className="text-[11px] text-[#E89B5A] font-semibold pl-5">
-                            Lịch tiếp theo: {item.nextDue}
+                          <p className="text-[11px] text-gray-400 pl-5">
+                            Loại: {item.type} | Ngày: {item.recordDate ? new Date(item.recordDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
                           </p>
-                        )}
-                      </div>
-                    ))}
+                          {item.hasNextDueDate && item.nextDueDate && (
+                            <p className="text-[11px] text-[#E89B5A] font-semibold pl-5">
+                              Lịch tiếp theo: {new Date(item.nextDueDate).toLocaleDateString('vi-VN')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Form Nhập Thêm Hồ Sơ Y Tế */}
@@ -970,6 +1173,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             <option value="Tiêm chủng">Tiêm chủng</option>
                             <option value="Khám tổng quát">Khám tổng quát</option>
                             <option value="Khám răng miệng">Khám răng miệng</option>
+                            <option value="Khác">Khác</option>
                           </select>
                           <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
@@ -978,18 +1182,34 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
-                          <div className="relative">
-                            <select
+                          {medicalType === 'Tiêm chủng' ? (
+                            <div className="relative">
+                              <select
+                                value={vaccineId}
+                                onChange={(e) => {
+                                  const id = e.target.value;
+                                  setVaccineId(id);
+                                  const label = VACCINE_OPTIONS[safeSpecies].find((v) => v.id === id)?.label || '';
+                                  setMedicalDetail(label);
+                                }}
+                                className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                              >
+                                <option value="">Chọn vắc-xin</option>
+                                {VACCINE_OPTIONS[safeSpecies].map((v) => (
+                                  <option key={v.id} value={v.id}>{v.label}</option>
+                                ))}
+                              </select>
+                              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
                               value={medicalDetail}
                               onChange={(e) => setMedicalDetail(e.target.value)}
-                              className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
-                            >
-                              <option value="">Chọn chi tiết hồ sơ</option>
-                              <option value="DHPP (5/7in1)">DHPP (5/7in1)</option>
-                              <option value="Rabies">Rabies (Dại)</option>
-                            </select>
-                            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                          </div>
+                              placeholder="Nhập chi tiết hồ sơ"
+                              className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                            />
+                          )}
                         </div>
 
                         <div>
@@ -1002,19 +1222,84 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                           />
                         </div>
                       </div>
-
+                      {medicalType === 'Tiêm chủng' && vaccineId && vaccineId !== 'DOG_RABIES' && vaccineId !== 'CAT_RABIES' && vaccineId !== 'DOG_BORDETELLA' && (
+                        <div className="col-span-2 flex items-center justify-between bg-[#FAFAFA] px-3 py-2.5 rounded-xl border border-gray-200">
+                          {[1, 2, 3].map((dose) => (
+                            <button
+                              key={dose}
+                              type="button"
+                              onClick={() => setDoseNumber(dose as 1 | 2 | 3)}
+                              className="flex items-center gap-1.5"
+                            >
+                              <span className={`w-4 h-4 rounded-full border-2 ${doseNumber === dose ? 'border-[#E89B5A] bg-[#E89B5A]' : 'border-gray-300'}`} />
+                              <span className={`text-xs ${doseNumber === dose ? 'text-[#E89B5A] font-semibold' : 'text-gray-500'}`}>
+                                Mũi {dose}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {/* Khung tải file/hình ảnh */}
                       <div>
+                        <label className="text-[11px] font-bold text-gray-400 block mb-1">
+                          Ảnh hồ sơ <span className="text-red-500">*</span>
+                        </label>
                         <div
                           onClick={() => medicalFileInputRef.current?.click()}
-                          className="border-2 border-dashed border-gray-200 hover:border-[#E89B5A] rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-[#F9FAFB]/50 transition-colors"
-                        >
-                          <p className="text-xs font-semibold text-[#E89B5A]">Tải hình ảnh hồ sơ y tế</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">PDF, JPG, IMG (tối đa 2MB)</p>
-                        </div>
-                        <input ref={medicalFileInputRef} type="file" accept="image/*,.pdf" className="hidden" />
-                      </div>
+                          className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-[#F9FAFB]/50 transition-colors ${medicalFile ? 'border-[#E89B5A]' : 'border-red-300 hover:border-[#E89B5A]'
+                            }`}
 
+                        >
+                          <p className="text-xs font-semibold text-[#E89B5A]">
+                            {/* Nếu đã chọn file -> hiển thị tên file, ngược lại hiển thị chữ mặc định */}
+                            {medicalFile ? `Đã chọn: ${medicalFile.name}` : 'Tải hình ảnh hồ sơ y tế'}
+                          </p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">PDF, JPG, IMG (tối đa 2MB)</p>
+                          {!medicalFile && (
+                            <p className="text-[10px] text-red-500 mt-1">Bắt buộc phải chọn ít nhất 1 ảnh</p>
+                          )}
+                        </div>
+                        <input
+                          ref={medicalFileInputRef}
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setMedicalFile(file);
+                          }}
+                        />
+                      </div>
+                      {medicalType !== 'Khác' && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <label className="text-[13px] font-medium text-black">Nhắc lịch</label>
+                            <ToggleSwitch checked={medicalHasReminder} onChange={setMedicalHasReminder} />
+                          </div>
+                          {medicalHasReminder && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <input
+                                type="text"
+                                value={medicalNextDueDetail}
+                                onChange={(e) => setMedicalNextDueDetail(e.target.value)}
+                                placeholder="Ghi chú / Tên nhắc lịch"
+                                className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                              />
+                              <input
+                                type="date"
+                                value={medicalNextDueDate}
+                                onChange={(e) => setMedicalNextDueDate(e.target.value)}
+                                className="w-full bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {/* Hiện công khai trên PawLife app */}
+                      <div className="flex items-center justify-between">
+                        <label className="text-[13px] font-medium text-black">Hiện công khai trên PawLife app</label>
+                        <ToggleSwitch checked={medicalIsPublic} onChange={setMedicalIsPublic} />
+                      </div>
                       {/* Nút bấm Form */}
                       <div className="flex items-center gap-3 pt-2">
                         <button
@@ -1026,10 +1311,10 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                         </button>
                         <button
                           type="submit"
-                          disabled={!medicalType}
+                          disabled={!medicalType || !medicalFile || isUploadingMedicalFile}
                           className="flex-1 bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white font-bold py-2 rounded-full text-xs shadow-sm transition-colors"
                         >
-                          Lưu hồ sơ
+                          {isUploadingMedicalFile ? 'Đang tải...' : 'Lưu hồ sơ'}
                         </button>
                       </div>
                     </form>
@@ -1041,12 +1326,77 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
           {/* TAB: ĐƠN NHẬN NUÔI */}
           {activeTab === 'applications' && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 flex flex-col items-center text-center">
-              <FileText size={22} className="text-gray-300 mb-2" />
-              <p className="text-sm font-medium text-black mb-1">Chưa có đơn đăng ký nhận nuôi</p>
-              <p className="text-[12px] text-gray-400 max-w-sm">
-                Các đơn đăng ký nhận nuôi {name || 'thú cưng này'} sẽ hiển thị ở đây khi có người nộp.
-              </p>
+            <div className="flex flex-col gap-4">
+              {isAdoptedByApplication && (
+                <div className="flex items-center gap-3 bg-[#EBFFE2] border border-[#D1F5BF] rounded-2xl px-5 py-4">
+                  <span className="text-2xl">🎉</span>
+                  <div>
+                    <p className="text-sm font-bold text-[#2F7A1F]">
+                      {name || 'Pet này'} đã được nhận nuôi
+                    </p>
+                    <p className="text-xs text-[#4B7A3D]">
+                      Đơn của <span className="font-semibold">{approvedApplication?.applicantName}</span> đã được duyệt trên trang Quản lý hồ sơ nhận nuôi.
+                      {status !== 'ADOPTED' && (
+                        <> Hãy cập nhật trạng thái pet sang <span className="font-semibold">"Đã nhận nuôi"</span> để đồng bộ.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {applications.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {applications.map((app) => {
+                    const badge = APPLICATION_STATUS_STYLE[app.status] || APPLICATION_STATUS_STYLE.PENDING;
+                    return (
+                      <div
+                        key={app.id}
+                        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-start gap-3.5"
+                      >
+                        <div className="w-[48px] h-[48px] rounded-full overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center text-gray-300">
+                          {app.applicantAvatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={app.applicantAvatar} alt={app.applicantName} className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={20} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[14px] font-semibold text-black truncate">{app.applicantName}</p>
+                            <span
+                              className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                              style={{ backgroundColor: badge.bg, color: badge.color }}
+                            >
+                              {badge.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[12px] text-gray-600">
+                            <FiPhone size={12} className="text-gray-400 shrink-0" />
+                            <span className="truncate">{app.applicantPhone || 'Chưa có SĐT'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[12px] text-gray-600">
+                            <FiMail size={12} className="text-gray-400 shrink-0" />
+                            <span className="truncate">{app.applicantEmail || 'Chưa có email'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[12px] text-gray-600">
+                            <FiCalendar size={12} className="text-gray-400 shrink-0" />
+                            <span className="truncate">Nộp ngày: {fmtAppDate(app.submittedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 flex flex-col items-center text-center">
+                  <FileText size={22} className="text-gray-300 mb-2" />
+                  <p className="text-sm font-medium text-black mb-1">Chưa có đơn đăng ký nhận nuôi</p>
+                  <p className="text-[12px] text-gray-400 max-w-sm">
+                    Các đơn đăng ký nhận nuôi {name || 'thú cưng này'} sẽ hiển thị ở đây khi có người nộp.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1062,46 +1412,55 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 <span>Thao tác</span>
               </div>
 
-              {/* Table Body */}
               <div className="flex flex-col divide-y divide-gray-100">
-                {MOCK_DOCUMENTS.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors"
-                  >
-                    {/* Tên tài liệu */}
-                    <span className="font-bold text-gray-900 text-sm truncate">{doc.fileName}</span>
-
-                    {/* Ngày */}
-                    <span className="text-sm text-gray-600 font-medium">{doc.date}</span>
-
-                    {/* Người đăng */}
-                    <span className="text-sm text-gray-600 font-medium">{doc.uploader}</span>
-
-                    {/* Trạng thái */}
-                    <div>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${doc.statusClass}`}>
-                        {doc.statusLabel}
+                {medicalList.map((item, idx) => {
+                  const style = MEDICAL_STATUS_STYLE[item.verificationStatus || 'PENDING'];
+                  const firstImage = item.images?.[0] || null;
+                  return (
+                    <div
+                      key={item.id ?? `doc_${idx}`} className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors"
+                    >
+                      <span className="font-bold text-gray-900 text-sm truncate">{item.recordName || item.type}</span>
+                      <span className="text-sm text-gray-600 font-medium">
+                        {item.recordDate ? new Date(item.recordDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
                       </span>
+                      <span className="text-sm text-gray-600 font-medium">Bạn</span>
+                      <div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold border ${style.className}`}>
+                          {style.icon} {style.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          title={firstImage ? 'Xem' : 'Chưa có file'}
+                          disabled={!firstImage}
+                          onClick={() => firstImage && window.open(firstImage, '_blank')}
+                          className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title={firstImage ? 'Tải xuống' : 'Chưa có file'}
+                          disabled={!firstImage}
+                          onClick={() => firstImage && window.open(firstImage, '_blank')}
+                          className="text-gray-400 hover:text-[#3B6BE3] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Download size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Xóa"
+                          onClick={() => handleRemoveMedical(idx)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <FiTrash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Thao tác (4 Icon) */}
-                    <div className="flex items-center gap-3">
-                      <button type="button" title="Xem" className="text-gray-400 hover:text-gray-700 transition-colors">
-                        <Eye size={16} />
-                      </button>
-                      <button type="button" title="Chỉnh sửa" className="text-gray-400 hover:text-gray-700 transition-colors">
-                        <Pencil size={15} />
-                      </button>
-                      <button type="button" title="Tải xuống" className="text-gray-400 hover:text-[#3B6BE3] transition-colors">
-                        <Download size={16} />
-                      </button>
-                      <button type="button" title="Xóa" className="text-gray-400 hover:text-red-500 transition-colors">
-                        <FiTrash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1113,6 +1472,15 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         <PetPublic3DModal
           pet={livePreviewPet}
           onClose={() => setShow3DModal(false)}
+        />
+      )}
+      {selectedApplication && (
+        <ApplicationDetailModal
+          application={selectedApplication}
+          onClose={() => {
+            setSelectedApplication(null);
+            refetchApplications(); // đồng bộ lại status mới nhất sau khi đóng modal
+          }}
         />
       )}
     </div>
