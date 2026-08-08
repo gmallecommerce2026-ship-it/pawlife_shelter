@@ -94,7 +94,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           
           <SectionCard title="A - Contact Information">
             <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-              <Field label="Full Name" value={application.fullName} />
+              <Field label="Full Name" value={application.fullName || application.user?.name || "Maria Garcia"} />
               <Field label="Phone Number" value={application.phone} />
               <Field label="Email Address" value={application.zalo || 'mariagarcia@email.com'} />
               <Field label="Adopting For" value={application.adoptFor === 'Someone else' ? 'Someone else' : 'Myself'} />

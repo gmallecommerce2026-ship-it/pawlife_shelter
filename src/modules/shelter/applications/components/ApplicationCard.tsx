@@ -137,8 +137,8 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
       <div className="flex items-center gap-3.5 w-full mb-[18px]">
         <img
           className="w-[44px] h-[44px] rounded-full object-cover bg-gray-100 border border-gray-200 shrink-0"
-          src={application.pet?.avatarUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
-          alt={application.fullName}
+          src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
+          alt={application.fullName || application.user?.name || "Maria Garcia"}
         />
         <div className="flex flex-col justify-center min-w-0">
           <div className="flex items-center gap-1.5">
@@ -147,7 +147,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onOpenProfile(application); }}
             >
-              {application.fullName || "Maria Garcia"}
+              {application.fullName || application.user?.name || "Maria Garcia" || "Maria Garcia"}
             </span>
             {showRedDot && (
               <span className="w-[7px] h-[7px] bg-[#FF6B6B] rounded-full shrink-0"></span>

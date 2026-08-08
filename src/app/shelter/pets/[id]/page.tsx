@@ -725,23 +725,23 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
             <div className="p-5 flex flex-col gap-4">
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="rounded-2xl bg-[#E2EFF8] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Gender</span>
+                  <span className="text-[13px] text-gray-500">Giới tính</span>
                   <span className="text-[15px] font-semibold text-black">{genderLabel}</span>
                 </div>
                 <div className="rounded-2xl bg-[#FEFACA] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Age</span>
+                  <span className="text-[13px] text-gray-500">Tuổi</span>
                   <span className="text-[15px] font-semibold text-black">{getAgeLabel(pet.dob)}</span>
                 </div>
                 <div className="rounded-2xl bg-[#F9E6EC] py-3.5 flex flex-col items-center gap-1.5">
-                  <span className="text-[13px] text-gray-500">Size</span>
+                  <span className="text-[13px] text-gray-500">Kích cỡ</span>
                   <span className="text-[15px] font-semibold text-black">{pet.weight != null ? `${pet.weight} kg` : ' '}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  ['Gender', genderLabel.toUpperCase()],
-                  ['Color', (showText(pet.color) || 'N/A').toUpperCase()],
-                  ['Birthday', pet.dob ? fmtDate(pet.dob).toUpperCase() : 'N/A'],
+                  ['Giới tính', genderLabel.toUpperCase()],
+                  ['Màu sắc', (showText(pet.color) || 'N/A').toUpperCase()],
+                  ['Sinh nhật', pet.dob ? fmtDate(pet.dob).toUpperCase() : 'N/A'],
                   ['PawLife ID', displayId],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3.5">
@@ -807,7 +807,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
               <div className="flex flex-col gap-4">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
                   <div>
-                    <p className="text-sm font-medium text-black mb-3">About {pet.name}</p>
+                    <p className="text-sm font-medium text-black mb-3">Về {pet.name}</p>
                     <p className="text-sm text-[#8E8E93] leading-relaxed">
                       {showText(pet.description) || 'Chưa có ghi chú cho pet này.'}
                     </p>
@@ -830,12 +830,12 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                   </div>
                   {(goodWith.length > 0 || badWith.length > 0) && (
                     <div>
-                      <p className="text-sm font-medium text-black mb-2">{pet.name}'s Behavior</p>
+                      <p className="text-sm font-medium text-black mb-2">Hành vi của {pet.name}</p>
                       {goodWith.length > 0 && (
                         <div className="flex items-start gap-1.5 mb-1">
                           <FiCheck size={13} className="text-[#77C852] mt-0.5 shrink-0" />
                           <p className="text-[12px] leading-5">
-                            <span className="font-medium text-[#77C852]">Good with: </span>
+                            <span className="font-medium text-[#77C852]">Hợp với: </span>
                             <span className="text-[#8E8E93]">{goodWith.map(showText).join(', ')}</span>
                           </p>
                         </div>
@@ -844,7 +844,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         <div className="flex items-start gap-1.5">
                           <FiX size={13} className="text-[#FE7D66] mt-0.5 shrink-0" />
                           <p className="text-[12px] leading-5">
-                            <span className="font-medium text-[#FE7D66]">Not suitable: </span>
+                            <span className="font-medium text-[#FE7D66]">Không phù hợp: </span>
                             <span className="text-[#8E8E93]">{badWith.map(showText).join(', ')}</span>
                           </p>
                         </div>
@@ -866,14 +866,14 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-black mb-3">Health Care</p>
+                    <p className="text-sm font-medium text-black mb-3">Chăm sóc sức khỏe</p>
                     <div className="flex gap-3">
                       <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
                         <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
                           <Syringe size={18} className="text-[#E89B5A]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[12px] text-[#8E8E93]">Vaccination</p>
+                          <p className="text-[12px] text-[#8E8E93]">Vắc-xin</p>
                           <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa tiêm'}</p>
                         </div>
                       </div>
@@ -882,8 +882,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                           <FiCheck size={18} className="text-[#E89B5A]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[12px] text-[#8E8E93]">Status</p>
-                          <p className="text-[13px] font-medium text-black truncate">{pet.isSpayedNeutered ? 'Neutered' : 'Not neutered'}</p>
+                          <p className="text-[12px] text-[#8E8E93]">Trạng thái</p>
+                          <p className="text-[13px] font-medium text-black truncate">{pet.isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}</p>
                         </div>
                       </div>
                     </div>

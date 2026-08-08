@@ -1,17 +1,6 @@
-// src/types/application.ts
-
-// Các trạng thái đơn nhận nuôi. Đồng bộ với app mobile (adoption-form.tsx):
-// mobile check `status !== 'CLOSED' && status !== 'ADOPTION_COMPLETED'` để tính đơn "đang hoạt động"
-// => CLOSED (người dùng tự rút đơn) không cần hiển thị trên Kanban của shelter, các trạng thái
-//    còn lại là các bước xử lý mà shelter chủ động thao tác.
 export type ApplicationStatus =
-  | 'SUBMITTED'
-  | 'PENDING'
-  | 'NEED_MORE_INFO'
-  | 'INTERVIEW_SCHEDULED'
-  | 'APPROVED'
-  | 'ADOPTION_COMPLETED'
-  | 'CLOSED';
+  | 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO'
+  | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   SUBMITTED: 'Đã nộp',
@@ -32,49 +21,109 @@ export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
   { status: 'CLOSED', label: 'Từ chối' },
 ];
 
-
 export type YesNo = 'Yes' | 'No';
 export type YesNoSometimes = 'Yes' | 'No' | 'Sometimes';
-export type AdoptFor = 'Myself' | 'Someone else';
 
-// Đồng bộ 1-1 với payload gửi lên từ app/adoption-form.tsx (mobile)
 export interface AdoptionCommitments {
-  vaccine: YesNo;       // sẵn sàng tiêm phòng & chăm sóc y tế hàng năm
-  medical: YesNo;       // sẵn sàng đưa đi bệnh viện & chi trả điều trị
-  expenses: YesNo;      // sẵn sàng chi trả chi phí sức khoẻ/vệ sinh trước khi bàn giao
-  updateStatus: YesNo;  // sẵn sàng cập nhật tình trạng pet 6 tháng đầu
-  homeVisit: YesNo;     // đồng ý cho shelter đến thăm nhà
-  provideID: YesNo;     // đồng ý cung cấp CCCD & địa chỉ chính xác
+  vaccine?: YesNoSometimes;
+  medical?: YesNoSometimes;
+  expenses?: YesNoSometimes;
+  updateStatus?: YesNoSometimes;
+  homeVisit?: YesNoSometimes;
+  provideID?: YesNoSometimes;
+}
+
+// Pet.species/breed/description/color lưu dạng song ngữ {vi,en} ở DB (xem toBilingual() trong shelter-dashboard.service.ts)
+export type LocalizedText = { vi?: string; en?: string } | string | null | undefined;
+
+export interface AdoptionApplicantUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface AdoptionApplicantPetSummary {
   id: string;
   name: string;
-  avatarUrl?: string | null;
-  breed?: string;
-  species?: 'DOG' | 'CAT';
+  breed?: LocalizedText;
+  species?: LocalizedText;
+  gender?: string | null;
+  dob?: string | null; // ISO date
+  images?: { url: string }[]; // include { take: 1 } từ shelter-dashboard.service#getMyApplications
+}
+export interface ApplicationTag {
+  id: string;
+  name: string;
+  color?: string | null;
 }
 
+export interface ApplicationNote {
+  id: string;
+  authorId: string;
+  authorName?: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string | Date;
+}
 export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;
-  reviewNote?: string;
-  fullName: string; phone: string; zalo: string; adoptFor: string;
-  location: string; housing: string; children: string; cage: string;
-  petExperience: string; prevPetHistory: string; employmentStatus: string;
-  adoptionReason: string;
-  commitments: {
-    vaccine?: string; medical?: string; expenses?: string;
-    updateStatus?: string; homeVisit?: string; provideID?: string;
-  };
-  pet?: { id: string; name: string; avatarUrl?: string | null; gender?: string; };
-  createdAt: string; updatedAt: string;
+  reviewNote?: string | null;
+
+  // Do người nộp đơn khai lúc submit (CreateApplicationDto, mobile) — có thể khác hồ sơ user
+  fullName: string;
+  phone: string;
+  zalo?: string;
+  adoptFor?: string;
+  location?: string;
+  housing?: string;
+  children?: string;
+  cage?: string;
+  petExperience?: string;
+  prevPetHistory?: string;
+  employmentStatus?: string;
+  adoptionReason?: string;
+  commitments?: AdoptionCommitments;
+  tags?: ApplicationTag[];
+  notes?: ApplicationNote[];
+  pet?: AdoptionApplicantPetSummary;
+  user?: AdoptionApplicantUser; // include user{id,name,avatarUrl,email,phone} từ getMyApplications
+
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ApplicationFilter {
-  search: string; // tìm theo tên người nộp đơn hoặc tên pet
+  search: string;
 }
 
-export const defaultApplicationFilter: ApplicationFilter = {
-  search: '',
-};
+export const defaultApplicationFilter: ApplicationFilter = { search: '' };
+
+// ---- Helpers dùng chung ----
+export function localizedText(value: LocalizedText, locale: 'vi' | 'en' = 'vi'): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return (locale === 'vi' ? value.vi : value.en) || value.vi || value.en || '';
+}
+
+export function getPetAgeLabel(dob?: string | null): string {
+  if (!dob) return 'Chưa rõ tuổi';
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return 'Chưa rõ tuổi';
+  const now = new Date();
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+  if (now.getDate() < birth.getDate()) months -= 1;
+  if (months < 1) return 'Dưới 1 tháng tuổi';
+  if (months < 12) return `${months} tháng tuổi`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  return rest > 0 ? `${years} tuổi ${rest} tháng` : `${years} tuổi`;
+}
+
+export function getInitials(name?: string | null): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase() || '?';
+}

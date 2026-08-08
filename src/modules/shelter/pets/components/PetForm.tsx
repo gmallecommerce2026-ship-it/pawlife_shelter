@@ -707,7 +707,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             <div className="p-5 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Name</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Tên</label>
                   <input
                     type="text"
                     value={name}
@@ -730,7 +730,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   </select>
                 </div>
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Breed</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Giống</label>
                   <input
                     type="text"
                     value={breed}
@@ -742,7 +742,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Gender</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Giới tính</label>
                   <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value as PetGender)}
@@ -755,7 +755,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Color</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Màu sắc</label>
                   <input
                     type="text"
                     value={color}
@@ -767,7 +767,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Birthday</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Sinh nhật</label>
                   <input
                     type="date"
                     value={dob}
@@ -778,7 +778,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Size (kg)</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Cân nặng (kg)</label>
                   <input
                     type="number"
                     value={weight ?? ''}
@@ -879,7 +879,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   {/* Tags */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-medium text-black">Tags</h3>
+                      <h3 className="text-sm font-medium text-black">Thẻ</h3>
                       <span className="text-xs text-gray-400">Đã chọn {selectedTags.length}/3</span>
                     </div>
                     <div className="flex flex-wrap gap-2 mb-3">

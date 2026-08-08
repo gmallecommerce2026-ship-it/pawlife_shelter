@@ -24,13 +24,13 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
           
           <div className="flex gap-5 items-start">
             <img 
-              src={application.pet?.avatarUrl || "/images/placeholder-avatar.png"} 
-              alt={application.fullName}
+              src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "/images/placeholder-avatar.png"} 
+              alt={application.fullName || application.user?.name || "Maria Garcia"}
               className="w-[84px] h-[84px] rounded-[20px] object-cover bg-gray-100 border border-gray-200"
             />
             <div className="flex flex-col">
               <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[24px] font-bold text-gray-900 leading-tight mb-2">
-                {application.fullName}
+                {application.fullName || application.user?.name || "Maria Garcia"}
               </h2>
               <div className="flex items-center gap-6 mb-5">
                 <div className="flex items-center gap-2 text-gray-500">

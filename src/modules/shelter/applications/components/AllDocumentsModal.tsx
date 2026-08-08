@@ -103,7 +103,7 @@ export const AllDocumentsModal: React.FC<AllDocumentsModalProps> = ({ applicatio
             All Documents
           </h2>
           <p className="font-['Be Vietnam Pro',_sans-serif] text-[15px] text-gray-500 mt-1">
-            Application for <span className="text-gray-900 font-bold">{application.pet?.name || 'Whiskers'}</span> by <span className="text-gray-900 font-bold">{application.fullName}</span>
+            Application for <span className="text-gray-900 font-bold">{application.pet?.name || 'Whiskers'}</span> by <span className="text-gray-900 font-bold">{application.fullName || application.user?.name || "Maria Garcia"}</span>
           </p>
         </div>
 

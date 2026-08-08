@@ -45,7 +45,7 @@ const SHELTER_MENU: MenuItem[] = [
     label: 'Hồ sơ nhận nuôi',
     icon: <Image src="/images/dang-ky-nhan-nuoi.png" alt="Hồ sơ nhận nuôi" width={22} height={22} />,
     path: '/shelter/applications',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'post-adoption',

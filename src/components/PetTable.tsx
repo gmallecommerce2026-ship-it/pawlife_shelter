@@ -15,12 +15,19 @@ interface PetTableProps {
   onDelete?: (pet: Pet) => void;
 }
 
-const formatAge = (months: number): string => {
-  if (!months || months <= 0) return 'Chưa rõ tuổi';
-  if (months < 12) return `${months} tháng`;
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  return rest > 0 ? `${years} năm ${rest} tháng` : `${years} năm`;
+const getAgeLabel = (dob?: string | null): string => {
+  if (!dob) return 'Chưa rõ tuổi';
+  const dobDate = new Date(dob);
+  if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ tuổi';
+
+  const diffMs = Date.now() - dobDate.getTime();
+  const ageDate = new Date(diffMs);
+  const years = Math.abs(ageDate.getUTCFullYear() - 1970);
+  const months = ageDate.getUTCMonth();
+
+  if (years > 0) return `${years} tuổi`;
+  if (months > 0) return `${months} tháng tuổi`;
+  return 'Sơ sinh';
 };
 
 // ✅ FIX: species trả về dạng bilingual object { vi, en } (giống breed), không
@@ -133,7 +140,7 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
               {formatBreed(pet.breed as MaybeBilingual) || 'Chưa rõ giống'}
             </span>
             <span className="text-[15px] font-normal text-gray-500 truncate">
-              {formatAge(pet.age)}
+              {getAgeLabel((pet as any).dob)}
             </span>
             {/* ✅ FIX: dùng formatPetId đã đồng bộ với Pet Detail */}
             <span className="text-[15px] font-normal text-gray-500 truncate">
