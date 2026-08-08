@@ -24,7 +24,12 @@ interface MenuItem {
   children?: MenuItem[];
   disabled?: boolean;
 }
-
+const enableAllItems = (items: MenuItem[]): MenuItem[] =>
+  items.map((item) => ({
+    ...item,
+    disabled: false,
+    children: item.children ? enableAllItems(item.children) : undefined,
+  }));
 const SHELTER_MENU: MenuItem[] = [
   {
     id: 'dashboard',
@@ -201,7 +206,15 @@ const SidebarItem = ({
 
 const ShelterSidebar = () => {
   const { data: session } = useSession();
-  const user = session?.user as any; // Cast để nhận dạng role từ Session
+  const user = session?.user as any;
+
+  // Tài khoản test/nội bộ -> luôn thấy đầy đủ tính năng, kể cả mục đang disable
+  const isTestUser = user?.email?.toLowerCase() === 'abc@gmail.com';
+
+  const menuItems = React.useMemo(
+    () => (isTestUser ? enableAllItems(SHELTER_MENU) : SHELTER_MENU),
+    [isTestUser]
+  );
 
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({ pets: true });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -302,7 +315,7 @@ const ShelterSidebar = () => {
 
       {/* 2. Menu Navigation */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-        {SHELTER_MENU.map((item) => (
+        {menuItems.map((item) => (
           <SidebarItem key={item.id} item={item} isOpen={(id) => !!openItems[id]} toggleOpen={toggleOpen} />
         ))}
         <div className="w-[44px] group-hover:w-[85%] mx-auto h-px bg-[#F1F1F1] my-4 transition-all duration-300" />
