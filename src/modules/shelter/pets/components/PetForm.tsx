@@ -46,6 +46,8 @@ import { FiTrash2, FiPhone, FiMail, FiCalendar } from 'react-icons/fi';
 import { ApplicationDetailModal } from '../../applications/components/ApplicationDetailModal';
 import { AdoptionApplication } from '@/types/application';
 import { PetStatusDropdown } from '@/components/PetStatusBadge';
+import { CustomSelect, SelectOption } from '@/components/ui/CustomSelect';
+import { BREED_DATA } from '@/constants/breedData';
 export interface Bilingual {
   vi: string;
   en: string;
@@ -157,7 +159,10 @@ async function uploadMedicalFile(file: File): Promise<string> {
   return data.fileUrl;
 }
 const SPECIES_LABEL: Record<PetSpecies, string> = { DOG: 'Chó', CAT: 'Mèo' };
-
+const findBreedBilingual = (breedValue: string, speciesKey: 'Dog' | 'Cat') => {
+  const match = BREED_DATA[speciesKey].find((b) => b.value === breedValue);
+  return match ? { en: match.en, vi: match.vi } : { en: breedValue, vi: breedValue };
+};
 const toISODate = (dateStr?: string): string | undefined => {
   if (!dateStr) return undefined;
   // Nếu đã là ISO (từ <input type="date">) thì giữ nguyên
@@ -199,7 +204,28 @@ const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void;
     />
   </button>
 );
+type VaccinationStatusKey = 'NOT_VACCINATED' | 'IN_PROGRESS' | 'VACCINATED';
 
+type VaccinationStatusStyle = {
+  label: string;
+  color: string;
+  bgIcon: string;
+};
+
+const VACCINATION_STATUS_CONFIG: Record<VaccinationStatusKey, VaccinationStatusStyle> = {
+  NOT_VACCINATED: { label: 'Chưa tiêm', color: '#8E8E93', bgIcon: '#F0F0F0' },
+  IN_PROGRESS: { label: 'Đang tiêm', color: '#E8A53C', bgIcon: '#FFF4DE' },
+  VACCINATED: { label: 'Đầy đủ', color: '#E89B5A', bgIcon: '#FFF4EC' },
+};
+const SPECIES_OPTIONS: SelectOption[] = [
+  { value: 'DOG', label: 'Chó' },
+  { value: 'CAT', label: 'Mèo' },
+];
+
+const GENDER_OPTIONS: SelectOption[] = [
+  { value: 'FEMALE', label: 'FEMALE' },
+  { value: 'MALE', label: 'MALE' },
+];
 const VACCINE_OPTIONS: Record<'Dog' | 'Cat', { id: string; label: string }[]> = {
   Dog: [
     { id: 'DOG_DHP', label: 'DHP (3in1)' },
@@ -269,13 +295,16 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [weight, setWeight] = useState<number | undefined>(undefined);
   const [pawLifeId, setPawLifeId] = useState('');
   const [status, setStatus] = useState<PetStatus>('AVAILABLE');
+  const [dobMode, setDobMode] = useState<'date' | 'age'>('date');
+  const [ageYears, setAgeYears] = useState<number | undefined>(undefined);
 
   const [description, setDescription] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [goodWith, setGoodWith] = useState('');
   const [badWith, setBadWith] = useState('');
   const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
-  const [isVaccinated, setIsVaccinated] = useState(true);
+  const [vaccinationStatus, setVaccinationStatus] = useState<VaccinationStatusKey>('VACCINATED');
+  const [shelterInternalId, setShelterInternalId] = useState('');
   const [isSpayedNeutered, setIsSpayedNeutered] = useState(true);
 
   const [images, setImages] = useState<string[]>([]);
@@ -306,7 +335,22 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [doseNumber, setDoseNumber] = useState<1 | 2 | 3>(1);
   const [vaccineId, setVaccineId] = useState('');
   const medicalFileInputRef = useRef<HTMLInputElement>(null);
-
+  const prevSafeSpeciesRef = useRef(safeSpecies);
+  useEffect(() => {
+    if (prevSafeSpeciesRef.current === safeSpecies) return;
+    prevSafeSpeciesRef.current = safeSpecies;
+    const stillValid = BREED_DATA[safeSpecies].some((b) => b.value === breed);
+    if (!stillValid) setBreed('');
+  }, [safeSpecies]);
+  const cycleVaccinationStatus = () => {
+    setVaccinationStatus((prev) =>
+      prev === 'NOT_VACCINATED'
+        ? 'IN_PROGRESS'
+        : prev === 'IN_PROGRESS'
+          ? 'VACCINATED'
+          : 'NOT_VACCINATED'
+    );
+  };
   useEffect(() => {
     if (initialPet) {
       setName(initialPet.name || '');
@@ -339,7 +383,14 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           ? initialPet.description?.vi || initialPet.description?.en || ''
           : initialPet.description || ''
       );
-      setIsVaccinated(initialPet.isVaccinated ?? true);
+      setVaccinationStatus(
+        initialPet.vaccinationStatus
+          ? initialPet.vaccinationStatus
+          : initialPet.isVaccinated === false
+            ? 'NOT_VACCINATED'
+            : 'VACCINATED'
+      );
+      setShelterInternalId(initialPet.shelterInternalId || '');
       setIsSpayedNeutered(initialPet.isSpayedNeutered ?? initialPet.isSterilized ?? true);
       // 🆕 Nạp requirement key đã lưu — theo PetsService.getPetById, mỗi item có id = requirement.key
       setSelectedRequirements(
@@ -378,7 +429,22 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         .catch((err) => console.error('[PetForm] Lỗi tải ghi chú:', err));
     }
   }, [initialPet?.id]);
+  const handleSwitchToAgeMode = () => {
+    if (dob) {
+      const year = new Date(dob).getFullYear();
+      const age = new Date().getFullYear() - year;
+      setAgeYears(age >= 0 ? age : 0);
+    }
+    setDobMode('age');
+  };
 
+  // Khi nhập tuổi -> auto set dob = 1/1 của năm tương ứng
+  useEffect(() => {
+    if (dobMode === 'age' && ageYears !== undefined && ageYears >= 0) {
+      const year = new Date().getFullYear() - ageYears;
+      setDob(`${year}-01-01`);
+    }
+  }, [ageYears, dobMode]);
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     const content = newNoteInput.trim();
@@ -542,16 +608,17 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     const payload: any = {
       name,
       species: { en: species, vi: SPECIES_LABEL[species] },
-      breed: { en: breed, vi: breed },
+      breed: findBreedBilingual(breed, safeSpecies),
       gender,
       color: { en: color, vi: color },
       dob,
       weight,
       status,
       description: { en: description, vi: description },
-      isVaccinated,
+      vaccinationStatus,
       isSpayedNeutered,
       code: pawLifeId,
+      shelterInternalId,
       traits: selectedTags,
       adoptionRequirementKeys: selectedRequirements,
       goodWith: goodWith.split(',').map((s) => s.trim()).filter(Boolean),
@@ -614,7 +681,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     code: pawLifeId || 'PL-00000',
     status: status || 'AVAILABLE',
     description: description || '',
-    isVaccinated,
+    vaccinationStatus,        // ← thay isVaccinated
     isSpayedNeutered,
     images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
     pawHistory: sortedHistory,
@@ -719,39 +786,36 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Loại</label>
-                  <select
+                  <CustomSelect
+                    options={SPECIES_OPTIONS}
                     value={species}
-                    onChange={(e) => setSpecies(e.target.value as PetSpecies)}
+                    onChange={(v) => setSpecies(v as PetSpecies)}
                     disabled={!isEditing}
-                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide appearance-none disabled:text-black"
-                  >
-                    <option value="DOG">Chó</option>
-                    <option value="CAT">Mèo</option>
-                  </select>
+                    searchable={false}
+                  />
                 </div>
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Giống</label>
-                  <input
-                    type="text"
+                  <CustomSelect
+                    options={BREED_DATA[safeSpecies].map((b) => ({ value: b.value, label: b.vi }))}
                     value={breed}
-                    onChange={(e) => setBreed(e.target.value)}
+                    onChange={setBreed}
                     disabled={!isEditing}
-                    placeholder="VD: GOLDEN BRITISH"
-                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
+                    allowCustom
+                    placeholder="Chọn giống"
+                    customPlaceholder="Nhập tên giống..."
                   />
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Giới tính</label>
-                  <select
+                  <CustomSelect
+                    options={GENDER_OPTIONS}
                     value={gender}
-                    onChange={(e) => setGender(e.target.value as PetGender)}
+                    onChange={(v) => setGender(v as PetGender)}
                     disabled={!isEditing}
-                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide appearance-none disabled:text-black"
-                  >
-                    <option value="FEMALE">FEMALE</option>
-                    <option value="MALE">MALE</option>
-                  </select>
+                    searchable={false}
+                  />
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
@@ -767,14 +831,48 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Sinh nhật</label>
-                  <input
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    disabled={!isEditing}
-                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none tracking-wide disabled:text-black"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] text-[#8E8E93]">Sinh nhật</label>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dobMode === 'date' ? handleSwitchToAgeMode() : setDobMode('date')
+                        }
+                        className="text-[10px] font-semibold text-[#E89B5A] hover:underline"
+                      >
+                        {dobMode === 'date' ? 'Theo năm tuổi' : 'Theo ngày sinh'}
+                      </button>
+                    )}
+                  </div>
+
+                  {dobMode === 'date' ? (
+                    <input
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      disabled={!isEditing}
+                      className="w-full bg-transparent text-[14px] font-semibold text-black outline-none tracking-wide disabled:text-black"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={40}
+                        value={ageYears ?? ''}
+                        onChange={(e) =>
+                          setAgeYears(e.target.value ? Number(e.target.value) : undefined)
+                        }
+                        disabled={!isEditing}
+                        placeholder="VD: 3"
+                        className="w-20 bg-transparent text-[14px] font-semibold text-black outline-none disabled:text-black"
+                      />
+                      <span className="text-[12px] text-[#8E8E93]">
+                        tuổi
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
@@ -797,6 +895,18 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     onChange={(e) => setPawLifeId(e.target.value)}
                     disabled={!isEditing}
                     placeholder="VD: PL-00000"
+                    className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
+                  />
+                </div>
+
+                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Shelter ID</label>
+                  <input
+                    type="text"
+                    value={shelterInternalId}
+                    onChange={(e) => setShelterInternalId(e.target.value)}
+                    disabled={!isEditing}
+                    placeholder="VD: SHL-00123"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
                 </div>
@@ -985,15 +1095,23 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => isEditing && setIsVaccinated((v) => !v)}
+                        onClick={() => isEditing && cycleVaccinationStatus()}
                         className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
                       >
-                        <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                          <Syringe size={18} className="text-[#E89B5A]" />
+                        <div
+                          className="w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: VACCINATION_STATUS_CONFIG[vaccinationStatus].bgIcon }}
+                        >
+                          <Syringe size={18} style={{ color: VACCINATION_STATUS_CONFIG[vaccinationStatus].color }} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-[12px] text-[#8E8E93]">Tiêm chủng</p>
-                          <p className="text-[13px] font-medium text-black truncate">{isVaccinated ? 'Đầy đủ' : 'Chưa tiêm'}</p>
+                          <p
+                            className="text-[13px] font-medium truncate"
+                            style={{ color: VACCINATION_STATUS_CONFIG[vaccinationStatus].color }}
+                          >
+                            {VACCINATION_STATUS_CONFIG[vaccinationStatus].label}
+                          </p>
                         </div>
                       </button>
 

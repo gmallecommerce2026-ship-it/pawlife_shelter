@@ -123,7 +123,7 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
 
   getPetById: async (id) => {
     try {
-      const res = await apiClient.get(`/pets/${id}`);
+      const res = await apiClient.get(`/shelter-dashboard/pets/${id}`); // ✅ đổi từ /pets/${id}
       return (res as Pet) ?? null;
     } catch (error) {
       console.error('[usePetStore] getPetById error:', error);
@@ -136,7 +136,7 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     set({ isSubmitting: true });
     try {
       const imageUrls = await Promise.all(images.map((file) => uploadOne(file, 'pet-images')));
-      const newPet = await apiClient.post('/pets', {
+      const newPet = await apiClient.post('/shelter-dashboard/pets', {
         ...preparePayload(values),
         images: imageUrls,
       });
@@ -160,7 +160,7 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     try {
       const newImageUrls = await Promise.all(newImages.map((file) => uploadOne(file, 'pet-images')));
       const images = [...keepImageUrls, ...newImageUrls];
-      await apiClient.patch(`/pets/${id}`, {
+      await apiClient.patch(`/shelter-dashboard/pets/${id}`, {
         ...preparePayload(values),
         images,
       });

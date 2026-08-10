@@ -40,7 +40,15 @@ const formatCapitalize = (str?: string) => {
     if (!str) return 'Unknown';
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
+const getVaccinationLabel = (pet?: any) => {
+    // Ưu tiên vaccinationStatus mới; fallback về isVaccinated boolean cho pet cũ
+    const status = pet?.vaccinationStatus
+        ?? (pet?.isVaccinated === false ? 'NOT_VACCINATED' : 'VACCINATED');
 
+    if (status === 'IN_PROGRESS') return { text: 'Đang tiêm', color: '#E8A53C' };
+    if (status === 'NOT_VACCINATED') return { text: 'Thiếu', color: '#EF4444' };
+    return { text: 'Đầy đủ', color: '#77C852' };
+};
 const getGenderLabel = (gender?: string) => {
     const g = gender?.toUpperCase();
     if (g === 'MALE') return 'Đực';
@@ -235,12 +243,15 @@ export function IphoneScreenUI({
                         <div className="flex gap-2">
                             <div className="flex-1 flex items-center gap-2 bg-[#F7F7F7] rounded-full h-[46px] px-1.5">
                                 <div className="w-[36px] h-[36px] rounded-full bg-white flex items-center justify-center shrink-0">
-                                    <Syringe size={16} className="text-[#EF4444]" />
+                                    <Syringe size={16} style={{ color: getVaccinationLabel(pet).color }} />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-[10px] text-[#8E8E93] truncate">Tiêm chủng</div>
-                                    <div className="text-[12px] font-medium text-black truncate">
-                                        {pet?.isVaccinated ? 'Đầy đủ' : 'Thiếu'}
+                                    <div
+                                        className="text-[12px] font-medium truncate"
+                                        style={{ color: getVaccinationLabel(pet).color }}
+                                    >
+                                        {getVaccinationLabel(pet).text}
                                     </div>
                                 </div>
                             </div>
