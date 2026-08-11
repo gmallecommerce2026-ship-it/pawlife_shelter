@@ -61,7 +61,7 @@ export async function loginWebAction(values: z.infer<typeof LoginSchema>) {
         }
 
         // Trả token về cho Client Component (LoginPage)
-        return { success: true, token: token, redirectTo: '/shelter/dashboard' };
+        return { success: true, token: token, redirectTo: '/shelter/pets' };
 
     } catch (error: any) {
         const causeCode = error?.cause?.code;

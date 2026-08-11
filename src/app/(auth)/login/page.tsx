@@ -32,7 +32,7 @@ export default function LoginPage() {
           localStorage.setItem('accessToken', res.token);
         }
         
-        window.location.assign("/shelter/dashboard");
+        window.location.assign("/shelter/pets");
       }
     });
   };
