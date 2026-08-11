@@ -207,7 +207,7 @@ const SidebarItem = ({
 const ShelterSidebar = () => {
   const { data: session } = useSession();
   const user = session?.user as any;
-  console.log('SESSION STATUS:', status, session);
+  console.log('SESSION STATUS:', session);
   // Tài khoản test/nội bộ -> luôn thấy đầy đủ tính năng, kể cả mục đang disable
   const isTestUser = user?.email?.toLowerCase() === 'admin@pawlife.vn';
 
