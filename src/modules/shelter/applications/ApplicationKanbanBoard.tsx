@@ -29,9 +29,18 @@ import { InterviewScheduleModal } from './components/InterviewScheduleModal';
 import { ApproveApplicationModal } from './components/ApproveApplicationModal';
 import { NeedMoreInfoModal } from './components/NeedMoreInfoModal';
 import { MoveToPendingModal } from './components/MoveToPendingModal';
-
+import { RequestDocumentsModal } from './components/RequestDocumentsModal';
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
+
+// Bước kế tiếp khi bấm thẳng vào thẻ (giống hành vi kéo-thả sang cột sau).
+// PENDING bỏ qua NEED_MORE_INFO, đi thẳng tới INTERVIEW_SCHEDULED.
+const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
+  SUBMITTED: 'PENDING',
+  PENDING: 'INTERVIEW_SCHEDULED',
+  INTERVIEW_SCHEDULED: 'APPROVED',
+  // NEED_MORE_INFO, APPROVED, ADOPTION_COMPLETED, CLOSED: không có bước kế tiếp -> fallback xem chi tiết
+};
 
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
@@ -47,7 +56,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
-
+  const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrollable, setIsScrollable] = useState(false);
 
@@ -190,7 +199,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     // 2. Chuyển sang Yêu cầu bổ sung (NEED_MORE_INFO)
     if (finalItem.status === 'NEED_MORE_INFO') {
       setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
-      setNeedInfoApp(originalItem);
+      setRequestDocsApp(originalItem);
       return;
     }
 
@@ -215,6 +224,26 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
 
     moveApplication(activeId, finalItem.status);
+  };
+
+  // Click thẳng vào thẻ: mở modal chuyển sang bước kế tiếp (giống kéo-thả),
+  // bỏ qua NEED_MORE_INFO; nếu không còn bước kế tiếp thì mở chi tiết đầy đủ.
+  const handleCardClick = (app: AdoptionApplication) => {
+    const nextStatus = NEXT_STATUS_MAP[app.status];
+
+    switch (nextStatus) {
+      case 'PENDING':
+        setPendingApp(app);
+        return;
+      case 'INTERVIEW_SCHEDULED':
+        setInterviewApp(app);
+        return;
+      case 'APPROVED':
+        setApproveApp(app);
+        return;
+      default:
+        setSelectedApp(app);
+    }
   };
 
   return (
@@ -257,6 +286,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 movingIds={movingIds}
                 isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
                 onOpenDetail={(app) => setSelectedApp(app)}
+                onCardClick={handleCardClick}
                 onOpenProfile={(app) => setProfileApp(app)}
                 onRemove={(app) => console.log("Xóa ticket ID: ", app.id)}
                 onOpenDocuments={(app) => setDocumentsApp(app)}
@@ -371,6 +401,20 @@ export const ApplicationKanbanBoard: React.FC = () => {
             await moveApplication(approveApp.id, 'APPROVED', data?.reviewNote);
             await fetchApplications();
             setApproveApp(null);
+          }}
+        />
+      )}
+
+      {requestDocsApp && (
+        <RequestDocumentsModal
+          application={requestDocsApp}
+          onClose={() => {
+            setRequestDocsApp(null);
+            fetchApplications();
+          }}
+          onNext={() => {
+            setNeedInfoApp(requestDocsApp);
+            setRequestDocsApp(null);
           }}
         />
       )}

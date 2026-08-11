@@ -614,7 +614,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   const primaryImage = images[0] || pet.avatarUrl || null;
   const genderLower = String(pet.gender || '').toLowerCase();
   const genderLabel = ['male', 'nam'].includes(genderLower) ? 'Male' : ['female', 'nữ', 'nu'].includes(genderLower) ? 'Female' : 'Unknown';
-  const displayId = pet.tags?.[0]?.id?.toString()?.slice(0, 8)?.toUpperCase() || pet.code || String(pet.id).slice(0, 8).toUpperCase();
+  const shelterDisplayId = pet.shelterInternalId ? String(pet.shelterInternalId).toUpperCase() : 'N/A';
   const statusBadge = STATUS_PHOTO_BADGE[pet.status] || STATUS_PHOTO_BADGE.AVAILABLE;
   const traits: MaybeBilingual[] = Array.isArray(pet.traitsList) ? pet.traitsList.map((t: any) => t?.name ?? t) : Array.isArray(pet.traits) ? pet.traits : [];
   const goodWith: MaybeBilingual[] = Array.isArray(pet.goodWith) ? pet.goodWith : [];
@@ -742,7 +742,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                   ['Giới tính', genderLabel.toUpperCase()],
                   ['Màu sắc', (showText(pet.color) || 'N/A').toUpperCase()],
                   ['Sinh nhật', pet.dob ? fmtDate(pet.dob).toUpperCase() : 'N/A'],
-                  ['PawLife ID', displayId],
+                  ['Shelter ID', shelterDisplayId],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3.5">
                     <p className="text-[13px] text-[#8E8E93] mb-1">{label}</p>

@@ -50,7 +50,7 @@ const SHELTER_MENU: MenuItem[] = [
     label: 'Hồ sơ nhận nuôi',
     icon: <Image src="/images/dang-ky-nhan-nuoi.png" alt="Hồ sơ nhận nuôi" width={22} height={22} />,
     path: '/shelter/applications',
-    // disabled: false,
+    disabled: true,
   },
   {
     id: 'post-adoption',
@@ -64,7 +64,7 @@ const SHELTER_MENU: MenuItem[] = [
     label: 'Cài đặt',
     icon: <Image src="/images/cai-dat.png" alt="Cài đặt" width={22} height={22} />,
     path: '/shelter/profile',
-    disabled: true,
+    disabled: false,
   },
 ];
 

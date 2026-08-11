@@ -92,9 +92,28 @@ interface NoteItem { id: string; author: string; avatar: string | null; content:
 
 
 
+type MedicalRecordType = 'VACCINATION' | 'ANNUAL_CHECKUP' | 'DENTAL_CARE' | 'OTHER';
+type VaccineCategory = 'RABIES' | 'CORE' | 'OTHER';
+
+const MEDICAL_TYPE_OPTIONS: { value: MedicalRecordType; label: string }[] = [
+  { value: 'VACCINATION', label: 'Tiêm chủng' },
+  { value: 'ANNUAL_CHECKUP', label: 'Khám tổng quát' },
+  { value: 'DENTAL_CARE', label: 'Khám răng miệng' },
+  { value: 'OTHER', label: 'Khác' },
+];
+
+const CORE_VACCINE_IDS = ['DOG_DHP', 'DOG_DHPP', 'CAT_FVRCP'];
+
+const getVaccineCategory = (id: string): VaccineCategory => {
+  if (id.endsWith('_RABIES')) return 'RABIES';
+  if (CORE_VACCINE_IDS.includes(id)) return 'CORE';
+  return 'OTHER';
+};
+
 interface MedicalRecordItem {
   id?: string;                 // có id = record đã tồn tại trên DB
-  type: string;
+  type: MedicalRecordType;
+  vaccineCategory?: VaccineCategory; // chỉ có khi type === 'VACCINATION'
   recordName: string;          // lưu tiếng Việt, gửi lên backend backend tự nhân bản vi/en
   recordDate: string;          // ISO string
   images: string[];
@@ -134,7 +153,8 @@ const fmtAppDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('v
 const mapInitialMedicalRecords = (raw: any[]): MedicalRecordItem[] =>
   (Array.isArray(raw) ? raw : []).map((r) => ({
     id: r.id,
-    type: r.type,
+    type: (r.type || 'OTHER') as MedicalRecordType,
+    vaccineCategory: r.vaccineCategory || undefined,
     recordName: typeof r.recordName === 'object' ? (r.recordName?.vi || r.recordName?.en || '') : (r.recordName || ''),
     recordDate: r.recordDate ? String(r.recordDate).slice(0, 10) : '',
     images: sanitizeImageArray(r.images),   // ← sửa dòng này
@@ -516,13 +536,13 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   useEffect(() => {
     if (!medicalType) return;
 
-    if (medicalType === 'Khác') {
+    if (medicalType === 'OTHER') {
       setMedicalHasReminder(false);
       setMedicalNextDueDetail('');
       setMedicalNextDueDate('');
       return;
     }
-    if (medicalType === 'Tiêm chủng' && !vaccineId) {
+    if (medicalType === 'VACCINATION' && !vaccineId) {
       // Chưa chọn vaccine cụ thể → chưa đủ dữ liệu để tính lịch nhắc
       setMedicalHasReminder(false);
       setMedicalNextDueDetail('');
@@ -534,7 +554,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     const base = medicalDate ? new Date(medicalDate) : new Date();
     const next = new Date(base);
 
-    if (medicalType === 'Tiêm chủng') {
+    if (medicalType === 'VACCINATION') {
       if (vaccineId === 'DOG_RABIES' || vaccineId === 'CAT_RABIES') {
         next.setDate(next.getDate() + 365);
       } else if (vaccineId === 'DOG_BORDETELLA') {
@@ -545,9 +565,9 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         next.setDate(next.getDate() + 28);
       }
 
-    } else if (medicalType === 'Khám tổng quát') {
+    } else if (medicalType === 'ANNUAL_CHECKUP') {
       next.setFullYear(next.getFullYear() + 1);
-    } else if (medicalType === 'Khám răng miệng') {
+    } else if (medicalType === 'DENTAL_CARE') {
       next.setMonth(next.getMonth() + 6);
     }
 
@@ -569,6 +589,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
       const newRecord: MedicalRecordItem = {
         type: medicalType,
+        vaccineCategory: medicalType === 'VACCINATION' ? getVaccineCategory(vaccineId) : undefined,
         recordName: medicalDetail || medicalType,
         recordDate: medicalDate ? new Date(medicalDate).toISOString() : new Date().toISOString(),
         images,
@@ -626,6 +647,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       medicalRecords: medicalList.map((r) => ({
         ...(r.id ? { id: r.id } : {}),
         type: r.type,
+        ...(r.vaccineCategory ? { vaccineCategory: r.vaccineCategory } : {}),
         recordName: r.recordName,
         recordDate: r.recordDate,
         images: sanitizeImageArray(r.images),   // ← chặn lần cuối
@@ -659,7 +681,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         { id: '2', type: 'ANNUAL_CHECKUP', title: 'Annual Checkup', description: 'Health examination completed', date: '2026-01-01' },
         { id: '3', type: 'VACCINE', title: 'DHPP Vaccination', description: 'Vaccinated: hepatitis, rabies, parvo, and parainfluenza', date: '2026-01-01' },
         { id: '4', type: 'QR_LINKED', title: 'QR Code Registered', description: 'PawLife QR tag activated and linked to Luna', date: '2025-01-01' },
-        { id: '5', type: 'BIRTH', title: 'Date of Birth', description: 'Luna was born', date: '2026-01-01' },
+        { id: '5', type: 'BIRTH', title: 'Sinh nhật', description: 'Sinh nhật của Luna', date: '2026-01-01' },
       ];
   const sortedHistory = [...pawHistory].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -887,7 +909,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   />
                 </div>
 
-                <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
+                {/* <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">PawLife ID</label>
                   <input
                     type="text"
@@ -897,10 +919,10 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                     placeholder="VD: PL-00000"
                     className="w-full bg-transparent text-[14px] font-semibold text-black outline-none uppercase tracking-wide disabled:text-black"
                   />
-                </div>
+                </div> */}
 
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
-                  <label className="text-[11px] text-[#8E8E93] block mb-1">Shelter ID</label>
+                  <label className="text-[11px] text-[#8E8E93] block mb-1">Pet ID</label>
                   <input
                     type="text"
                     value={shelterInternalId}
@@ -1288,10 +1310,9 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
                           >
                             <option value="">Chọn loại hồ sơ</option>
-                            <option value="Tiêm chủng">Tiêm chủng</option>
-                            <option value="Khám tổng quát">Khám tổng quát</option>
-                            <option value="Khám răng miệng">Khám răng miệng</option>
-                            <option value="Khác">Khác</option>
+                            {MEDICAL_TYPE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                           </select>
                           <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
@@ -1300,7 +1321,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
-                          {medicalType === 'Tiêm chủng' ? (
+                          {medicalType === 'VACCINATION' ? (
                             <div className="relative">
                               <select
                                 value={vaccineId}
@@ -1340,7 +1361,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                           />
                         </div>
                       </div>
-                      {medicalType === 'Tiêm chủng' && vaccineId && vaccineId !== 'DOG_RABIES' && vaccineId !== 'CAT_RABIES' && vaccineId !== 'DOG_BORDETELLA' && (
+                      {medicalType === 'VACCINATION' && vaccineId && vaccineId !== 'DOG_RABIES' && vaccineId !== 'CAT_RABIES' && vaccineId !== 'DOG_BORDETELLA' && (
                         <div className="col-span-2 flex items-center justify-between bg-[#FAFAFA] px-3 py-2.5 rounded-xl border border-gray-200">
                           {[1, 2, 3].map((dose) => (
                             <button
@@ -1388,7 +1409,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                           }}
                         />
                       </div>
-                      {medicalType !== 'Khác' && (
+                      {medicalType !== 'OTHER' && (
                         <>
                           <div className="flex items-center justify-between">
                             <label className="text-[13px] font-medium text-black">Nhắc lịch</label>

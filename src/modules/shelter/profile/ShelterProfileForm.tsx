@@ -12,11 +12,14 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Check
+  Check,
+  Lock,
+  Clock
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
 import { ShelterProfileFormValues, defaultOpeningHours } from '@/types/shelter';
+import { OpeningHoursEditor } from '@/components/OpeningHoursEditor';
 
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   ssr: false,
@@ -45,7 +48,6 @@ const MOCK_MEMBERS = [
   { id: 4, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Bác sĩ thú y', roleColor: 'pink' },
 ];
 
-// --- DỮ LIỆU BẢNG QUYỀN HẠN ---
 const PERMISSIONS_DATA = [
   { name: 'Thêm pet mới', admin: true, vet: true, member: true, volunteer: true },
   { name: 'Sửa thông tin pet', admin: true, vet: true, member: true, volunteer: true },
@@ -177,7 +179,7 @@ export const ShelterProfileForm = () => {
 
   return (
     <div className="w-full max-w-[1000px] mx-auto flex flex-col font-sans mb-20">
-      
+
       {/* HEADER */}
       <div className="flex justify-between items-start mb-6">
         <div>
@@ -192,29 +194,41 @@ export const ShelterProfileForm = () => {
 
       {/* TABS */}
       <div className="bg-gray-100 p-1.5 rounded-full flex w-full mb-8">
-        <button 
+        <button
           onClick={() => setActiveTab('info')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${
-            activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
         >
           Thông tin trạm cứu hộ
         </button>
-        <button 
-          onClick={() => setActiveTab('members')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${
-            activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Tài khoản & thành viên
-        </button>
+
+        {/* Tab 2: Bị khóa không thể click/activate */}
+        <div className="relative group flex-1">
+          <button
+            type="button"
+            disabled
+            className="w-full flex items-center justify-center gap-2 font-semibold text-[14px] py-2.5 rounded-full text-gray-400 bg-transparent cursor-not-allowed opacity-70 transition-all select-none"
+          >
+            <span>Tài khoản & thành viên</span>
+            <Lock size={15} className="text-amber-500 shrink-0" />
+          </button>
+
+          {/* Popup Tooltip khi Hover */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-all duration-200">
+            <div className="w-2.5 h-2.5 bg-gray-900 rotate-45 -mb-1 rounded-sm"></div>
+            <div className="bg-gray-900 text-white text-[12px] font-medium px-3.5 py-2 rounded-xl shadow-xl whitespace-nowrap flex items-center gap-1.5">
+              <Lock size={13} className="text-amber-400" />
+              <span>Tính năng đang trong giai đoạn phát triển</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* TAB 1: THÔNG TIN TRẠM CỨU HỘ */}
       {activeTab === 'info' && (
         <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-in fade-in duration-300">
-          <div 
-            className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group"
+          <div
+            className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group cursor-pointer"
             onClick={() => isEditing && coverInputRef.current?.click()}
           >
             {coverPreview && <Image src={coverPreview} alt="Cover" fill className="object-cover" />}
@@ -230,8 +244,8 @@ export const ShelterProfileForm = () => {
 
           <div className="px-8 pb-8">
             <div className="flex justify-between items-end -mt-[50px] mb-6 relative z-10">
-              <div 
-                className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden"
+              <div
+                className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden cursor-pointer"
                 onClick={() => isEditing && fileInputRef.current?.click()}
               >
                 {logoPreview && <Image src={logoPreview} alt="Logo" fill className="object-cover" />}
@@ -243,9 +257,10 @@ export const ShelterProfileForm = () => {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
               </div>
 
+              {/* ACTION BUTTONS */}
               <div className="mb-2">
                 {!isEditing ? (
-                  <button 
+                  <button
                     onClick={() => setIsEditing(true)}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border border-gray-200 text-gray-700 font-medium text-[14px] hover:bg-gray-50 transition-colors"
                   >
@@ -253,14 +268,14 @@ export const ShelterProfileForm = () => {
                   </button>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <button 
+                    <button
                       onClick={handleSubmit}
                       disabled={isSubmitting}
                       className="px-6 py-2.5 rounded-[10px] bg-[#E89B5A] text-white font-bold text-[14px] hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
                     >
                       {isSubmitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                     </button>
-                    <button 
+                    <button
                       onClick={handleCancel}
                       disabled={isSubmitting}
                       className="px-6 py-2.5 rounded-[10px] border border-gray-200 text-gray-500 font-medium text-[14px] hover:bg-gray-50 transition-colors"
@@ -284,7 +299,7 @@ export const ShelterProfileForm = () => {
                     {values.bio || 'Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.'}
                   </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-2">
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Mail size={18} /></div>
                       <div className="flex flex-col">
@@ -296,7 +311,7 @@ export const ShelterProfileForm = () => {
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><MapPin size={18} /></div>
                       <div className="flex flex-col">
-                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Address</span>
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Địa chỉ</span>
                         <span className="text-[15px] font-medium text-gray-900 leading-snug">{values.address || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
@@ -304,7 +319,7 @@ export const ShelterProfileForm = () => {
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Phone size={18} /></div>
                       <div className="flex flex-col">
-                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Phone</span>
+                        <span className="text-[12px] text-gray-400 font-medium mb-0.5">Số điện thoại</span>
                         <span className="text-[15px] font-medium text-gray-900">{values.phone || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
@@ -314,6 +329,21 @@ export const ShelterProfileForm = () => {
                       <div className="flex flex-col">
                         <span className="text-[12px] text-gray-400 font-medium mb-0.5">Website</span>
                         <span className="text-[15px] font-medium text-gray-900">{values.website || 'Chưa cập nhật'}</span>
+                      </div>
+                    </div>
+
+                    {/* Khối Giờ hoạt động ở View Mode */}
+                    <div className="col-span-1 md:col-span-2 flex items-start gap-4 bg-[#FFF8F3]/60 border border-[#FCE8D5] p-5 rounded-[16px] mt-2">
+                      <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5 border border-[#FCE8D5]">
+                        <Clock size={18} />
+                      </div>
+                      <div className="flex flex-col w-full">
+                        <span className="text-[12px] text-[#E89B5A] font-bold mb-2">Giờ hoạt động</span>
+                        <OpeningHoursEditor
+                          value={values.openingHours}
+                          isEditing={false}
+                          onChange={() => { }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -336,6 +366,7 @@ export const ShelterProfileForm = () => {
                   </div>
                 </>
               ) : (
+                /* FORM EDIT MODE */
                 <div className="flex flex-col gap-5 mt-2">
                   <div>
                     <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (Bio)</label>
@@ -353,8 +384,8 @@ export const ShelterProfileForm = () => {
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
                         <Mail size={18} className="text-gray-400 shrink-0" />
-                        <input 
-                          type="email" 
+                        <input
+                          type="email"
                           value={values.email}
                           onChange={(e) => setValues(p => ({ ...p, email: e.target.value }))}
                           className="w-full bg-transparent outline-none text-[14px] text-gray-900"
@@ -363,7 +394,7 @@ export const ShelterProfileForm = () => {
                     </div>
 
                     <div>
-                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Address</label>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Địa chỉ</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 border border-transparent focus-within:border-[#E89B5A] transition-colors">
                         <MapPin size={18} className="text-gray-400 shrink-0" />
                         <div className="flex-1 w-full -ml-3">
@@ -378,11 +409,11 @@ export const ShelterProfileForm = () => {
                     </div>
 
                     <div>
-                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Phone</label>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Số điện thoại</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
                         <Phone size={18} className="text-gray-400 shrink-0" />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={values.phone}
                           onChange={(e) => setValues(p => ({ ...p, phone: e.target.value }))}
                           className="w-full bg-transparent outline-none text-[14px] text-gray-900"
@@ -394,14 +425,29 @@ export const ShelterProfileForm = () => {
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Website</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
                         <Globe size={18} className="text-gray-400 shrink-0" />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={values.website}
                           onChange={(e) => setValues(p => ({ ...p, website: e.target.value }))}
                           placeholder="https://"
                           className="w-full bg-transparent outline-none text-[14px] text-gray-900"
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Section Cấu hình Giờ hoạt động ở Edit Mode */}
+                  <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock size={16} className="text-[#E89B5A]" />
+                      <label className="text-[13px] font-bold text-gray-700">Cấu hình Giờ hoạt động</label>
+                    </div>
+                    <div className="bg-[#F9FAFB] p-5 rounded-[16px] border border-gray-100">
+                      <OpeningHoursEditor
+                        value={values.openingHours}
+                        isEditing={isEditing}
+                        onChange={(next: any) => setValues((p) => ({ ...p, openingHours: next }))}
+                      />
                     </div>
                   </div>
                 </div>
@@ -414,14 +460,12 @@ export const ShelterProfileForm = () => {
       {/* TAB 2: TÀI KHOẢN & THÀNH VIÊN */}
       {activeTab === 'members' && (
         <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-          
-          {/* Card: Current Account (Admin) */}
           <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-4">
-                <img 
-                  src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100" 
-                  alt="Avatar" 
+                <img
+                  src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"
+                  alt="Avatar"
                   className="w-[84px] h-[84px] rounded-full object-cover border border-gray-100"
                 />
                 <div className="flex flex-col">
@@ -440,17 +484,17 @@ export const ShelterProfileForm = () => {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="text-[12px] text-gray-400 mb-1.5 block">Tên đầy đủ</label>
-                <input 
-                  type="text" 
-                  defaultValue="Nguyễn Thị Qyn Phan" 
+                <input
+                  type="text"
+                  defaultValue="Nguyễn Thị Qyn Phan"
                   className="w-full bg-white border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#E89B5A]"
                 />
               </div>
               <div>
                 <label className="text-[12px] text-gray-400 mb-1.5 block">Email</label>
-                <input 
-                  type="text" 
-                  defaultValue="sannhanhieucho@gmail.com" 
+                <input
+                  type="text"
+                  defaultValue="sannhanhieucho@gmail.com"
                   readOnly
                   className="w-full bg-[#FAFAFA] border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-500 outline-none"
                 />
@@ -458,7 +502,6 @@ export const ShelterProfileForm = () => {
             </div>
           </div>
 
-          {/* Section: Team Member List */}
           <div>
             <div className="flex justify-between items-center mb-4 mt-2">
               <h3 className="text-[20px] font-bold text-gray-900">Team Member</h3>
@@ -479,9 +522,9 @@ export const ShelterProfileForm = () => {
                 {MOCK_MEMBERS.map((member) => (
                   <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100" 
-                        alt={member.name} 
+                      <img
+                        src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"
+                        alt={member.name}
                         className="w-8 h-8 rounded-full object-cover"
                       />
                       <span className="text-[14px] font-bold text-gray-900">{member.name}</span>
@@ -506,7 +549,6 @@ export const ShelterProfileForm = () => {
             </div>
           </div>
 
-          {/* Section: Bảng Quyền Hạn */}
           <div>
             <div className="flex justify-between items-center mb-4 mt-2">
               <h3 className="text-[20px] font-bold text-gray-900">Quyền Hạn</h3>
@@ -542,7 +584,6 @@ export const ShelterProfileForm = () => {
               </div>
             </div>
           </div>
-
         </div>
       )}
 

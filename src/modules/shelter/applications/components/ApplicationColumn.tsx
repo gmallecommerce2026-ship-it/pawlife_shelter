@@ -15,6 +15,7 @@ interface ApplicationColumnProps {
   movingIds: string[];
   isDropTarget: boolean;
   onOpenDetail: (app: AdoptionApplication) => void;
+  onCardClick: (app: AdoptionApplication) => void;
   onOpenProfile: (app: AdoptionApplication) => void;
   onRemove: (app: AdoptionApplication) => void;
   onOpenDocuments: (app: AdoptionApplication) => void;
@@ -38,6 +39,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
   movingIds,
   isDropTarget,
   onOpenDetail,
+  onCardClick,
   onOpenProfile,
   onRemove,
   onOpenDocuments,
@@ -106,6 +108,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
                     isMoving={movingIds.includes(app.id)}
                     onOpenProfile={onOpenProfile}
                     onOpenDetail={onOpenDetail}
+                    onCardClick={onCardClick}
                     onRemove={onRemove}
                     showRedDot={status === 'SUBMITTED' && index === 0}
                     showMenu={true}

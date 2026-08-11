@@ -218,6 +218,7 @@ interface ApplicationCardProps {
   showMenu?: boolean;
   onOpenProfile: (app: AdoptionApplication) => void;
   onOpenDetail: (app: AdoptionApplication) => void;
+  onCardClick: (app: AdoptionApplication) => void;
   onRemove: (app: AdoptionApplication) => void;
   onOpenDocuments: (app: AdoptionApplication) => void;
   onOpenQuickView: (app: AdoptionApplication) => void; // Khai báo prop ở đây
@@ -230,6 +231,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   showMenu,
   onOpenProfile,
   onOpenDetail,
+  onCardClick,
   onRemove,
   onOpenDocuments,
   onOpenQuickView
@@ -252,7 +254,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...listeners}
       {...attributes}
       tabIndex={-1}
-      onClick={() => onOpenDetail(application)} // Gắn click vào thẻ để mở Quick View
+      onClick={() => onCardClick(application)} // Gắn click vào thẻ để mở Quick View
       className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
         } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
