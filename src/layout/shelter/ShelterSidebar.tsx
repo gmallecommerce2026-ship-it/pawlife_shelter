@@ -209,7 +209,7 @@ const ShelterSidebar = () => {
   const user = session?.user as any;
 
   // Tài khoản test/nội bộ -> luôn thấy đầy đủ tính năng, kể cả mục đang disable
-  const isTestUser = user?.email?.toLowerCase() === 'hcm@pawlife.vn';
+  const isTestUser = user?.email?.toLowerCase() === 'admin@pawlife.vn';
 
   const menuItems = React.useMemo(
     () => (isTestUser ? enableAllItems(SHELTER_MENU) : SHELTER_MENU),
