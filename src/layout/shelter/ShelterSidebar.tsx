@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { logout } from '@/actions/logout';
 import { Lightbulb } from 'lucide-react';
 import { WriteMessageModal } from '@/components/WriteMessageModal';
+import { getUserFromToken } from '@/utils/getUserFromToken';
 
 interface MenuItem {
   id: string;
@@ -206,13 +207,16 @@ const SidebarItem = ({
 
 const ShelterSidebar = () => {
   const { data: session } = useSession();
-  const user = session?.user as any;
-  console.log('SESSION STATUS:', session);
   // Tài khoản test/nội bộ -> luôn thấy đầy đủ tính năng, kể cả mục đang disable
-  const isTestUser = user?.email?.toLowerCase() === 'admin@pawlife.vn';
+  const [user, setUser] = useState<any>(null);
 
-  console.log('DEBUG session.user:', user);
-  console.log('DEBUG isTestUser:', isTestUser, user?.email);
+  useEffect(() => {
+    setUser(getUserFromToken());
+  }, []);
+
+  const isTestUser = user?.email?.toLowerCase() === "admin@pawlife.vn";
+
+
   const menuItems = React.useMemo(
     () => (isTestUser ? enableAllItems(SHELTER_MENU) : SHELTER_MENU),
     [isTestUser]

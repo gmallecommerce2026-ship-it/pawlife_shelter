@@ -41,7 +41,7 @@ export default function LoginPage() {
     <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-8 md:p-10 border border-gray-100">
       <div className="flex flex-col items-center mb-8">
         <div className="h-[80px] flex items-center justify-between px-6 border-b border-gray-100">
-          <Link href="/shelter/dashboard" className="block transition-transform hover:scale-105 shrink-0 pt-1">
+          <Link href="/shelter/pets" className="block transition-transform hover:scale-105 shrink-0 pt-1">
             <Image
               src="/images/logo/pawlife-logo.png"
               alt="PawLife Logo"
