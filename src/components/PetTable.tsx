@@ -50,10 +50,10 @@ const formatSpecies = (species: unknown): string => {
 
 // ✅ FIX: đồng bộ đúng logic lấy PawLife ID với trang Pet Detail
 // (ưu tiên tags[0].id -> code -> fallback id)
-const formatPetId = (pet: Pet): string =>
-  (pet as any).tags?.[0]?.id?.toString()?.slice(0, 8)?.toUpperCase() ||
-  (pet as any).code ||
-  pet.id.slice(0, 8).toUpperCase();
+const formatShelterId = (pet: Pet): string => {
+  const shelterInternalId = (pet as any).shelterInternalId;
+  return shelterInternalId ? String(shelterInternalId).toUpperCase() : 'N/A';
+};
 
 // Tinh chỉnh lại tỷ lệ Grid để giống với khoảng cách trong ảnh
 const COLUMNS_CLASS =
@@ -94,7 +94,7 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
         <span className="text-[14px] font-medium text-gray-500">Loại</span>
         <span className="text-[14px] font-medium text-gray-500">Giống</span>
         <span className="text-[14px] font-medium text-gray-500">Tuổi</span>
-        <span className="text-[14px] font-medium text-gray-500">PawLife ID</span>
+        <span className="text-[14px] font-medium text-gray-500">Shelter ID</span>
         <span className="text-[14px] font-medium text-gray-500">Trạng thái</span>
         <span />
       </div>
@@ -144,7 +144,7 @@ export const PetTable: React.FC<PetTableProps> = ({ pets, onView, onEdit, onDele
             </span>
             {/* ✅ FIX: dùng formatPetId đã đồng bộ với Pet Detail */}
             <span className="text-[15px] font-normal text-gray-500 truncate">
-              {formatPetId(pet)}
+              {formatShelterId(pet)}
             </span>
 
             {/* Status Badge */}

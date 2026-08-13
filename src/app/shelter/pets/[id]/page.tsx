@@ -131,7 +131,12 @@ const showText = (val: MaybeBilingual): string => {
 };
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '');
-
+const isAgeOnlyDob = (dob?: string | null): boolean => {
+  if (!dob) return false;
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getUTCMonth() === 0 && d.getUTCDate() === 1;
+};
 const getAgeLabel = (dob?: string | null): string => {
   if (!dob) return 'Chưa rõ';
   const dobDate = new Date(dob);
@@ -294,6 +299,38 @@ const NEXT_STATUS_MAP: Partial<Record<AdoptionApplication['status'], Application
   INTERVIEW_SCHEDULED: 'APPROVED',
   // APPROVED, ADOPTION_COMPLETED, CLOSED: không có bước kế tiếp -> fallback xem chi tiết
 };
+type VaccineCategory = 'RABIES' | 'CORE' | 'OTHER';
+const CORE_VACCINE_IDS = ['DOG_DHP', 'DOG_DHPP', 'CAT_FVRCP'];
+
+const getVaccineCategory = (id: string): VaccineCategory => {
+  if (id.endsWith('_RABIES')) return 'RABIES';
+  if (CORE_VACCINE_IDS.includes(id)) return 'CORE';
+  return 'OTHER';
+};
+const MEDICAL_TYPE_LABEL: Record<string, string> = {
+  VACCINATION: 'Tiêm chủng',
+  ANNUAL_CHECKUP: 'Khám tổng quát',
+  DENTAL_CARE: 'Khám răng miệng',
+  OTHER: 'Khác',
+  // fallback cho record cũ đã lỡ lưu tiếng Việt trước khi sửa
+  'Tiêm chủng': 'Tiêm chủng',
+  'Khám tổng quát': 'Khám tổng quát',
+  'Khám răng miệng': 'Khám răng miệng',
+  'Khác': 'Khác',
+};
+type VaccinationStatusKey = 'NOT_VACCINATED' | 'IN_PROGRESS' | 'VACCINATED';
+
+const VACCINATION_STATUS_CONFIG: Record<VaccinationStatusKey, { label: string; color: string; bgIcon: string }> = {
+  NOT_VACCINATED: { label: 'Chưa tiêm', color: '#8E8E93', bgIcon: '#F0F0F0' },
+  IN_PROGRESS: { label: 'Đang tiêm', color: '#E8A53C', bgIcon: '#FFF4DE' },
+  VACCINATED: { label: 'Đầy đủ', color: '#E89B5A', bgIcon: '#FFF4EC' },
+};
+
+// Fallback giống PetForm: pet cũ chưa có vaccinationStatus thì suy ra từ isVaccinated
+const getVaccinationStatusKey = (pet: Record<string, any>): VaccinationStatusKey => {
+  if (pet?.vaccinationStatus) return pet.vaccinationStatus as VaccinationStatusKey;
+  return pet?.isVaccinated === false ? 'NOT_VACCINATED' : 'VACCINATED';
+};
 export default function PetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const router = useRouter();
@@ -349,17 +386,18 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     setDoseNumber(1);
   }, [medicalType]);
   const safeSpecies = resolveSpeciesKey(pet?.species);
+
   // Effect 2: tính lại Nhắc lịch mỗi khi Chi tiết / Ngày / Mũi tiêm đổi — KHÔNG đụng medicalDetail
   useEffect(() => {
     if (!medicalType) return;
 
-    if (medicalType === 'Khác') {
+    if (medicalType === 'OTHER') {
       setMedicalHasReminder(false);
       setMedicalNextDueDetail('');
       setMedicalNextDueDate('');
       return;
     }
-    if (medicalType === 'Tiêm chủng' && !vaccineId) {
+    if (medicalType === 'VACCINATION' && !vaccineId) {
       // Chưa chọn vaccine cụ thể → chưa đủ dữ liệu để tính lịch nhắc
       setMedicalHasReminder(false);
       setMedicalNextDueDetail('');
@@ -371,7 +409,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     const base = medicalDate ? new Date(medicalDate) : new Date();
     const next = new Date(base);
 
-    if (medicalType === 'Tiêm chủng') {
+    if (medicalType === 'VACCINATION') {
       if (vaccineId === 'DOG_RABIES' || vaccineId === 'CAT_RABIES') {
         next.setDate(next.getDate() + 365);
       } else if (vaccineId === 'DOG_BORDETELLA') {
@@ -381,9 +419,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       } else {
         next.setDate(next.getDate() + 28);
       }
-    } else if (medicalType === 'Khám tổng quát') {
+    } else if (medicalType === 'ANNUAL_CHECKUP') {
       next.setFullYear(next.getFullYear() + 1);
-    } else if (medicalType === 'Khám răng miệng') {
+    } else if (medicalType === 'DENTAL_CARE') {
       next.setMonth(next.getMonth() + 6);
     }
 
@@ -545,6 +583,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
       const newRecord = {
         type: medicalType,
+        vaccineCategory: medicalType === 'VACCINATION' ? getVaccineCategory(vaccineId) : undefined, // ✅ thêm dòng này
         recordName: medicalDetail || medicalType,
         recordDate: medicalDate ? new Date(medicalDate).toISOString() : new Date().toISOString(),
         images: uploadedImages,
@@ -613,9 +652,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     : [];
   const primaryImage = images[0] || pet.avatarUrl || null;
   const genderLower = String(pet.gender || '').toLowerCase();
-  const genderLabel = ['male', 'nam'].includes(genderLower) ? 'Male' : ['female', 'nữ', 'nu'].includes(genderLower) ? 'Female' : 'Unknown';
+  const genderLabel = ['male', 'nam'].includes(genderLower) ? 'đực' : ['female', 'nữ', 'nu'].includes(genderLower) ? 'cái' : 'không rõ';
   const shelterDisplayId = pet.shelterInternalId ? String(pet.shelterInternalId).toUpperCase() : 'N/A';
   const statusBadge = STATUS_PHOTO_BADGE[pet.status] || STATUS_PHOTO_BADGE.AVAILABLE;
+  const vaccinationStatusKey = getVaccinationStatusKey(pet);
   const traits: MaybeBilingual[] = Array.isArray(pet.traitsList) ? pet.traitsList.map((t: any) => t?.name ?? t) : Array.isArray(pet.traits) ? pet.traits : [];
   const goodWith: MaybeBilingual[] = Array.isArray(pet.goodWith) ? pet.goodWith : [];
   const badWith: MaybeBilingual[] = Array.isArray(pet.badWith) ? pet.badWith : [];
@@ -738,17 +778,25 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['Giới tính', genderLabel.toUpperCase()],
-                  ['Màu sắc', (showText(pet.color) || 'N/A').toUpperCase()],
-                  ['Sinh nhật', pet.dob ? fmtDate(pet.dob).toUpperCase() : 'N/A'],
-                  ['Shelter ID', shelterDisplayId],
-                ].map(([label, value]) => (
-                  <div key={label} className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3.5">
-                    <p className="text-[13px] text-[#8E8E93] mb-1">{label}</p>
-                    <p className="text-[14px] font-semibold text-black tracking-wide">{value}</p>
-                  </div>
-                ))}
+                {(() => {
+                  const dobIsAgeOnly = isAgeOnlyDob(pet.dob);
+                  const birthdayFieldLabel = dobIsAgeOnly ? 'Tuổi' : 'Sinh nhật';
+                  const birthdayFieldValue = pet.dob
+                    ? (dobIsAgeOnly ? getAgeLabel(pet.dob) : fmtDate(pet.dob).toUpperCase())
+                    : 'N/A';
+
+                  return [
+                    ['Giới tính', genderLabel],
+                    ['Màu sắc', (showText(pet.color) || 'N/A')],
+                    [birthdayFieldLabel, birthdayFieldValue],
+                    ['Shelter ID', shelterDisplayId],
+                  ].map(([label, value]) => (
+                    <div key={label} className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3.5">
+                      <p className="text-[13px] text-[#8E8E93] mb-1">{label}</p>
+                      <p className="text-[14px] font-semibold text-black tracking-wide">{value}</p>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -869,21 +917,35 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     <p className="text-sm font-medium text-black mb-3">Chăm sóc sức khỏe</p>
                     <div className="flex gap-3">
                       <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
-                        <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                          <Syringe size={18} className="text-[#E89B5A]" />
+                        <div
+                          className="w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: VACCINATION_STATUS_CONFIG[vaccinationStatusKey].bgIcon }}
+                        >
+                          <Syringe size={18} style={{ color: VACCINATION_STATUS_CONFIG[vaccinationStatusKey].color }} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[12px] text-[#8E8E93]">Vắc-xin</p>
-                          <p className="text-[13px] font-medium text-black truncate">{pet.isVaccinated ? 'Fully vaccinated' : 'Chưa tiêm'}</p>
+                          <p className="text-[12px] text-[#8E8E93]">Tiêm chủng</p>
+                          <p
+                            className="text-[13px] font-medium truncate"
+                            style={{ color: VACCINATION_STATUS_CONFIG[vaccinationStatusKey].color }}
+                          >
+                            {VACCINATION_STATUS_CONFIG[vaccinationStatusKey].label}
+                          </p>
                         </div>
                       </div>
                       <div className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2">
                         <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                          <FiCheck size={18} className="text-[#E89B5A]" />
+                          {pet.isSpayedNeutered ? (
+                            <FiCheck size={18} className="text-[#E89B5A]" />
+                          ) : (
+                            <FiX size={18} className="text-red-500" />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="text-[12px] text-[#8E8E93]">Trạng thái</p>
-                          <p className="text-[13px] font-medium text-black truncate">{pet.isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}</p>
+                          <p className={`text-[13px] font-medium truncate ${pet.isSpayedNeutered ? 'text-black' : 'text-black'}`}>
+                            {pet.isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1014,7 +1076,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             </button>
                           </div>
                           <p className="text-[11px] text-gray-400 pl-5">
-                            Loại: {item.type} | Ngày: {fmtDate(item.recordDate)}
+                            Loại: {MEDICAL_TYPE_LABEL[item.type] || item.type} | Ngày: {fmtDate(item.recordDate)}
                           </p>
                           {item.hasNextDueDate && item.nextDueDate && (
                             <p className="text-[11px] text-[#E89B5A] font-semibold pl-5">
@@ -1038,10 +1100,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
                           >
                             <option value="">Chọn loại hồ sơ</option>
-                            <option value="Tiêm chủng">Tiêm chủng</option>
-                            <option value="Khám tổng quát">Khám tổng quát</option>
-                            <option value="Khám răng miệng">Khám răng miệng</option>
-                            <option value="Khác">Khác</option>
+                            <option value="VACCINATION">Tiêm chủng</option>
+                            <option value="ANNUAL_CHECKUP">Khám tổng quát</option>
+                            <option value="DENTAL_CARE">Khám răng miệng</option>
+                            <option value="OTHER">Khác</option>
                           </select>
                           <FiChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
@@ -1050,7 +1112,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
-                          {medicalType === 'Tiêm chủng' ? (
+                          {medicalType === 'VACCINATION' ? (
                             <div className="relative">
                               <select
                                 value={vaccineId}
@@ -1091,7 +1153,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                           />
                         </div>
                       </div>
-                      {medicalType === 'Tiêm chủng' && vaccineId && vaccineId !== 'DOG_RABIES' && vaccineId !== 'CAT_RABIES' && vaccineId !== 'DOG_BORDETELLA' && (
+                      {medicalType === 'VACCINATION' && vaccineId && vaccineId !== 'DOG_RABIES' && vaccineId !== 'CAT_RABIES' && vaccineId !== 'DOG_BORDETELLA' && (
                         <div className="col-span-2 flex items-center justify-between bg-[#FAFAFA] px-3 py-2.5 rounded-xl border border-gray-200">
                           {[1, 2, 3].map((dose) => (
                             <button
@@ -1140,7 +1202,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         />
                       </div>
 
-                      {medicalType !== 'Khác' && (
+                      {medicalType !== 'OTHER' && (
                         <>
                           <div className="flex items-center justify-between">
                             <label className="text-[13px] font-medium text-black">Nhắc lịch</label>

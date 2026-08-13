@@ -19,6 +19,7 @@ export interface Pet {
   isVaccinated?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  shelterInternalId?: string;
 }
 
 // Payload gửi lên khi tạo/sửa pet (chưa có id, ảnh xử lý riêng qua FormData)

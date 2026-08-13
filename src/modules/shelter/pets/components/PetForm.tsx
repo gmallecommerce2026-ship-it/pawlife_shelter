@@ -206,6 +206,22 @@ const sanitizeImageArray = (arr: unknown): string[] =>
   (Array.isArray(arr) ? arr : [])
     .map(toUrlString)
     .filter((x): x is string => Boolean(x));
+
+// Dịch tự động Tiếng Việt -> Tiếng Anh cho thẻ tuỳ chỉnh (dùng MyMemory, miễn phí, không cần API key)
+async function translateViToEn(text: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=vi|en`
+    );
+    if (!res.ok) throw new Error('Translate request failed');
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText;
+    return typeof translated === 'string' && translated.trim() ? translated.trim() : text;
+  } catch (err) {
+    console.error('[PetForm] Dịch thẻ thất bại, giữ nguyên tiếng Việt:', err);
+    return text; // fallback: dùng lại tiếng Việt nếu dịch lỗi
+  }
+}
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }> = ({
   checked,
   onChange,
@@ -315,11 +331,14 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [weight, setWeight] = useState<number | undefined>(undefined);
   const [pawLifeId, setPawLifeId] = useState('');
   const [status, setStatus] = useState<PetStatus>('AVAILABLE');
-  const [dobMode, setDobMode] = useState<'date' | 'age'>('date');
+  const [dobMode, setDobMode] = useState<'date' | 'age'>('age');
   const [ageYears, setAgeYears] = useState<number | undefined>(undefined);
 
   const [description, setDescription] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagValue[]>([]);
+  const [showAddTagInput, setShowAddTagInput] = useState(false);
+  const [newTagVi, setNewTagVi] = useState('');
+  const [isTranslatingTag, setIsTranslatingTag] = useState(false);
   const [goodWith, setGoodWith] = useState('');
   const [badWith, setBadWith] = useState('');
   const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
@@ -394,7 +413,12 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           : initialPet.color || ''
       );
 
-      setDob(initialPet.dob ? String(initialPet.dob).slice(0, 10) : '');
+      const initialDob = initialPet.dob ? String(initialPet.dob).slice(0, 10) : '';
+      setDob(initialDob);
+      if (initialDob) {
+        const age = new Date().getFullYear() - new Date(initialDob).getFullYear();
+        setAgeYears(age >= 0 ? age : 0);
+      }
       setWeight(initialPet.weight ?? initialPet.weightKg ?? undefined);
       setPawLifeId(initialPet.code || initialPet.tags?.[0]?.id || '');
       setStatus(initialPet.status || 'AVAILABLE');
@@ -424,7 +448,15 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       setImages(normalizedImages);
       setSelectedTags(
         Array.isArray(initialPet.traits)
-          ? initialPet.traits.map((t: any) => (typeof t === 'string' ? t : t?.name?.vi || t?.name?.en || t?.vi || t?.en || '')).filter(Boolean)
+          ? initialPet.traits
+            .map((t: any): TagValue | null => {
+              if (typeof t === 'string') return { vi: t, en: t };
+              const vi = t?.name?.vi || t?.vi || '';
+              const en = t?.name?.en || t?.en || vi;
+              if (!vi) return null;
+              return { vi, en, isCustom: t?.isCustom };
+            })
+            .filter((t: TagValue | null): t is TagValue => Boolean(t))
           : []
       );
       setGoodWith(
@@ -510,10 +542,38 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
   };
 
-  const toggleTag = (tag: string) => {
+  // Bấm vào thẻ gợi ý sẵn (SUGGESTED_TAGS) để thêm/bỏ chọn
+  const toggleTag = (tagVi: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.some((t) => t.vi === tagVi)
+        ? prev.filter((t) => t.vi !== tagVi)
+        : [...prev, { vi: tagVi, en: tagVi }]
     );
+  };
+
+  // Xoá 1 thẻ đã chọn (gợi ý hoặc tự thêm) theo index
+  const removeTag = (index: number) => {
+    setSelectedTags((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Thêm thẻ tuỳ chỉnh: chỉ cần nhập tiếng Việt, tiếng Anh tự động dịch
+  const handleAddCustomTag = async () => {
+    const vi = newTagVi.trim();
+    if (!vi) return;
+    const alreadyExists = selectedTags.some((t) => t.vi.toLowerCase() === vi.toLowerCase());
+    if (alreadyExists) {
+      alert('Thẻ này đã được chọn.');
+      return;
+    }
+    try {
+      setIsTranslatingTag(true);
+      const en = await translateViToEn(vi);
+      setSelectedTags((prev) => [...prev, { vi, en, isCustom: true }]);
+      setNewTagVi('');
+      setShowAddTagInput(false);
+    } finally {
+      setIsTranslatingTag(false);
+    }
   };
 
   const toggleRequirement = (req: string) => {
@@ -640,7 +700,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       isSpayedNeutered,
       code: pawLifeId,
       shelterInternalId,
-      traits: selectedTags,
+      traits: selectedTags.map((t) => ({ vi: t.vi, en: t.en, isCustom: !!t.isCustom })),
       adoptionRequirementKeys: selectedRequirements,
       goodWith: goodWith.split(',').map((s) => s.trim()).filter(Boolean),
       badWith: badWith.split(',').map((s) => s.trim()).filter(Boolean),
@@ -888,7 +948,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                         }
                         disabled={!isEditing}
                         placeholder="VD: 3"
-                        className="w-20 bg-transparent text-[14px] font-semibold text-black outline-none disabled:text-black"
+                        className="w-20 bg-transparent text-[14px] font-semibold text-black outline-none disabled:text-black [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0"
                       />
                       <span className="text-[12px] text-[#8E8E93]">
                         tuổi
@@ -1012,20 +1072,20 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="text-sm font-medium text-black">Thẻ</h3>
-                      <span className="text-xs text-gray-400">Đã chọn {selectedTags.length}/3</span>
+                      <span className="text-xs text-gray-400">Đã chọn {selectedTags.length}</span>
                     </div>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {selectedTags.map((tag, idx) => {
                         const style = TAG_COLOR_STYLES[idx % TAG_COLOR_STYLES.length];
                         return (
                           <span
-                            key={tag}
+                            key={`${tag.vi}_${idx}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
                             style={{ backgroundColor: style.bg, borderColor: style.border, color: style.color }}
                           >
-                            {tag}
+                            {tag.vi}
                             {isEditing && (
-                              <button type="button" onClick={() => toggleTag(tag)}>
+                              <button type="button" onClick={() => removeTag(idx)}>
                                 <X size={12} className="hover:text-red-500" />
                               </button>
                             )}
@@ -1034,8 +1094,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                       })}
                     </div>
                     {isEditing && (
-                      <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
-                        {SUGGESTED_TAGS.filter((t) => !selectedTags.includes(t)).map((t) => (
+                      <div className="flex flex-wrap gap-1.5 items-center text-xs text-gray-500">
+                        {SUGGESTED_TAGS.filter((t) => !selectedTags.some((s) => s.vi === t)).map((t) => (
                           <button
                             key={t}
                             type="button"
@@ -1045,6 +1105,53 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             + {t}
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          onClick={() => setShowAddTagInput((v) => !v)}
+                          className="font-semibold text-[#E89B5A] hover:text-[#D68B4E] transition-colors"
+                        >
+                          + Thêm thẻ mới
+                        </button>
+                      </div>
+                    )}
+                    {isEditing && showAddTagInput && (
+                      <div className="flex flex-col gap-2 mt-3 p-3 bg-[#F9FAFB] border border-gray-200 rounded-xl">
+                        <div>
+                          <label className="text-[10px] text-gray-400 block mb-1">Tên thẻ (Tiếng Việt) *</label>
+                          <input
+                            type="text"
+                            value={newTagVi}
+                            onChange={(e) => setNewTagVi(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomTag();
+                              }
+                            }}
+                            placeholder="VD: Hay sủa"
+                            disabled={isTranslatingTag}
+                            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A] disabled:opacity-60"
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1">Tiếng Anh sẽ được tự động dịch khi bạn bấm "Thêm thẻ"</p>
+                        </div>
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => { setShowAddTagInput(false); setNewTagVi(''); }}
+                            disabled={isTranslatingTag}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddCustomTag}
+                            disabled={!newTagVi.trim() || isTranslatingTag}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#E89B5A] text-white hover:bg-[#D68B4E] disabled:opacity-50 transition-colors"
+                          >
+                            {isTranslatingTag ? 'Đang dịch...' : 'Thêm thẻ'}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1143,11 +1250,17 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                         className="flex-1 flex items-center gap-3 bg-[#F7F7F7] rounded-full h-[50px] px-2 text-left"
                       >
                         <div className="bg-white w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0">
-                          <Check size={18} className="text-[#E89B5A]" />
+                          {isSpayedNeutered ? (
+                            <Check size={18} className="text-[#E89B5A]" />
+                          ) : (
+                            <X size={18} className="text-red-500" />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="text-[12px] text-[#8E8E93]">Trạng thái</p>
-                          <p className="text-[13px] font-medium text-black truncate">{isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}</p>
+                          <p className={`text-[13px] font-medium truncate ${isSpayedNeutered ? 'text-black' : 'text-black'}`}>
+                            {isSpayedNeutered ? 'Đã triệt sản' : 'Chưa triệt sản'}
+                          </p>
                         </div>
                       </button>
                     </div>

@@ -10,6 +10,7 @@ import {
   PetFormValues,
   defaultPetFilter,
 } from '@/types/pet';
+import { useMemo } from 'react';
 
 
 // ... (Các hàm sanitizePayload, normalizeEnums, mapAdoptionRequirements, preparePayload, uploadOne giữ nguyên) ...
@@ -68,8 +69,7 @@ async function uploadOne(file: File, folder: string): Promise<string> {
 }
 
 interface PetState {
-  items: Pet[];
-  total: number;
+  rawItems: Pet[]; 
   filter: PetFilter;
   isLoading: boolean;
   isSubmitting: boolean;
@@ -83,10 +83,34 @@ interface PetActions {
   updatePet: (id: string, values: PetFormValues, newImages: File[], keepImageUrls: string[]) => Promise<boolean>;
   deletePet: (id: string) => Promise<boolean>;
 }
+const FE_FETCH_SIZE = 500; // đủ lớn để lấy hết pet của 1 shelter, tự search/paginate ở FE
 
+function normalizeText(v: unknown): string {
+  return String(v ?? '').toLowerCase().trim();
+}
+
+function getBreedText(breed: Pet['breed']): string {
+  if (!breed) return '';
+  if (typeof breed === 'string') return breed;
+  return `${breed.vi ?? ''} ${breed.en ?? ''}`;
+}
+
+function matchesSearch(pet: Pet, rawSearch: string): boolean {
+  const q = normalizeText(rawSearch);
+  if (!q) return true;
+  const haystacks = [pet.name, pet.shelterInternalId, getBreedText(pet.breed)];
+  return haystacks.some((h) => normalizeText(h).includes(q));
+}
+
+function filterAndPaginate(rawItems: Pet[], filter: PetFilter) {
+  const filtered = rawItems.filter((p) => matchesSearch(p, filter.search));
+  const total = filtered.length;
+  const start = (filter.page - 1) * filter.pageSize;
+  const items = filtered.slice(start, start + filter.pageSize);
+  return { items, total };
+}
 const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
-  items: [],
-  total: 0,
+  rawItems: [],
   filter: defaultPetFilter,
   isLoading: false,
   isSubmitting: false,
@@ -95,7 +119,13 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     const nextFilter = { ...get().filter, ...patch };
     if (!('page' in patch)) nextFilter.page = 1;
     set({ filter: nextFilter });
-    get().fetchPets(nextFilter);
+
+    // Chỉ gọi lại BE khi filter theo species/status đổi (cần dữ liệu mới từ BE).
+    // Search & page chỉ cần lọc/paginate lại trên rawItems đã có -> tức thì, không loading.
+    const needsRefetch = 'species' in patch || 'status' in patch || get().rawItems.length === 0;
+    if (needsRefetch) {
+      get().fetchPets(nextFilter);
+    }
   },
 
   fetchPets: async (override) => {
@@ -103,19 +133,19 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
     set({ isLoading: true, filter });
     try {
       const params = new URLSearchParams();
-      if (filter.search) params.set('search', filter.search);
       if (filter.species !== 'ALL') params.set('type', filter.species);
       if (filter.status && filter.status !== 'ALL') params.set('status', filter.status);
-      params.set('page', String(filter.page));
-      params.set('pageSize', String(filter.pageSize));
+      // ⚠️ Không gửi `search` lên BE nữa vì BE chưa hỗ trợ search theo shelterInternalId.
+      // Lấy hết danh sách rồi search/paginate thuần FE.
+      params.set('page', '1');
+      params.set('pageSize', String(FE_FETCH_SIZE));
 
       const res = await apiClient.get(`/pets/shelter/manage?${params.toString()}`);
-
-      set({ items: res.data ?? [], total: res.meta?.total ?? 0 });
+      set({ rawItems: res.data ?? [] });
     } catch (error) {
       console.error('[usePetStore] fetchPets error:', error);
       toast.error('Không thể tải danh sách pet. Vui lòng thử lại.');
-      set({ items: [], total: 0 });
+      set({ rawItems: [] });
     } finally {
       set({ isLoading: false });
     }
@@ -180,27 +210,33 @@ const usePetStoreBase = create<PetState & PetActions>()((set, get) => ({
   },
 
   deletePet: async (id) => {
-    const prevItems = get().items;
-    set({ items: prevItems.filter((p) => p.id !== id) });
+    const prevRawItems = get().rawItems;
+    set({ rawItems: prevRawItems.filter((p) => p.id !== id) });
     try {
       await apiClient.delete(`/pets/${id}`);
       toast.success('Đã xóa pet.');
       return true;
     } catch (error) {
       console.error('Delete pet error:', error);
-      set({ items: prevItems });
+      set({ rawItems: prevRawItems });
       toast.error('Xóa thất bại. Vui lòng thử lại.');
       return false;
     }
   },
 }));
 
-export const usePetList = () =>
-  usePetStoreBase(useShallow((state) => ({
-    items: state.items,
-    total: state.total,
-    isLoading: state.isLoading,
-  })));
+export const usePetList = () => {
+  const rawItems = usePetStoreBase((state) => state.rawItems);
+  const filter = usePetStoreBase((state) => state.filter);
+  const isLoading = usePetStoreBase((state) => state.isLoading);
+
+  const { items, total } = useMemo(
+    () => filterAndPaginate(rawItems, filter),
+    [rawItems, filter],
+  );
+
+  return { items, total, isLoading };
+};
 
 export const usePetFilter = () =>
   usePetStoreBase(useShallow((state) => ({
