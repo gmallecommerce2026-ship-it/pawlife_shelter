@@ -1,19 +1,47 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Phone, Mail, Download, ChevronUp, ChevronDown, Send, Mars, Venus, CheckCircle2, Plus } from 'lucide-react';
+import { X, Phone, Mail, Download, ChevronUp, ChevronDown, Send, Mars, Venus, Plus, Eye } from 'lucide-react';
 import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
 import { applicationService } from '@/services/applicationService'; // Gọi API thật, tránh mất dữ liệu khi reload
+import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDocuments';
+import { DocumentReviewModal, DocumentReviewData } from './DocumentReviewModal';
+import { RequestedDocument } from './RequestDocumentsModal';
+// Item tài liệu hiển thị trong modal: `requested = true` là đã chính thức yêu
+// cầu (từ RequestDocumentsModal hoặc đã bấm "Yêu cầu"); `requested = false`
+// là mới thêm qua "+ Thêm tài liệu bổ sung", đang chờ xác nhận gửi.
+type RequiredDocRow = RequiredDocument & {
+  id?: string; // chỉ có khi đã tồn tại thật trong DB (đã "Yêu cầu" thành công)
+  requested: boolean;
+  submitted: boolean;
+  reviewStatus?: 'accepted' | 'rejected';
+  rejectionReason?: string;
+};
+
+// Map 1 ApplicationDocument từ BE -> row hiển thị ở FE
+const mapBackendDoc = (doc: RequestedDocument): RequiredDocRow => ({
+  key: doc.key,
+  label: doc.label,
+  description: doc.description,
+  id: doc.id,
+  requested: true,
+  submitted: doc.status !== 'PENDING_SUBMISSION',
+  reviewStatus: doc.status === 'ACCEPTED' ? 'accepted' : doc.status === 'REJECTED' ? 'rejected' : undefined,
+  rejectionReason: doc.rejectionReason || undefined,
+});
 
 interface NeedMoreInfoModalProps {
   application: AdoptionApplication;
+  /** Danh sách tài liệu ĐÃ tạo thật ở BE (có id), truyền từ RequestDocumentsModal */
+  initialDocuments?: RequestedDocument[];
   onClose: () => void;
   onSubmit: (data: any) => void;
-  onRefresh?: () => void; // Cho phép board cha refetch lại danh sách sau khi add note
+  onRefresh?: () => void;
 }
 
 export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   application,
+  initialDocuments,
   onClose,
   onSubmit,
   onRefresh,
@@ -31,18 +59,170 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
 
   // LOGIC NGHIỆP VỤ: Quản lý danh sách Ghi chú động (khởi tạo từ dữ liệu thật)
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
-  const [selectedDoc, setSelectedDoc] = useState('Chấp thuận từ chủ nhà');
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 
+  // LOGIC NGHIỆP VỤ: Danh sách tài liệu yêu cầu — khởi tạo từ initialDocuments
+  // (chọn ở RequestDocumentsModal). Nếu không có gì truyền vào (ví dụ mở
+  // trực tiếp modal này) thì fallback về "Chấp thuận từ chủ nhà" để không rỗng.
+  const [requiredDocs, setRequiredDocs] = useState<RequiredDocRow[]>(
+    () => (initialDocuments ?? []).map(mapBackendDoc)
+  );
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [isAddDocPickerOpen, setIsAddDocPickerOpen] = useState(false);
+  const [reviewingDocKey, setReviewingDocKey] = useState<string | null>(null);
   const isMale = application.pet?.gender !== 'FEMALE';
+  // Chấp nhận tài liệu sau khi xem trong DocumentReviewModal
+  const handleAcceptDocument = async (key: string) => {
+    const doc = requiredDocs.find((d) => d.key === key);
+    if (!doc?.id) return;
+    try {
+      const updated: RequestedDocument = await applicationService.reviewDocument(
+        application.id,
+        doc.id,
+        { status: 'ACCEPTED' },
+      );
+      setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
+    } catch (error) {
+      console.error('Lỗi khi chấp nhận tài liệu:', error);
+    } finally {
+      setReviewingDocKey(null);
+    }
+  };
 
-  // Đồng bộ lại notes/tags mỗi khi mở modal cho 1 application khác
+  const handleRejectDocument = async (key: string, reason: string) => {
+    const doc = requiredDocs.find((d) => d.key === key);
+    if (!doc?.id) return;
+
+    try {
+      const updated: RequestedDocument = await applicationService.reviewDocument(
+        application.id,
+        doc.id,
+        { status: 'REJECTED', reason: reason || undefined },
+      );
+      setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
+    } catch (error) {
+      console.error('Lỗi khi từ chối tài liệu:', error);
+    } finally {
+      setReviewingDocKey(null);
+    }
+
+    // Ghi lại lý do từ chối vào Internal Notes (giữ nguyên logic cũ)
+    if (reason.trim()) {
+      try {
+        const response = await applicationService.addNote(
+          application.id,
+          `Từ chối tài liệu "${doc.label}": ${reason.trim()}`
+        );
+        const addedNote = response?.data || response;
+        setNotes((prev) => [
+          {
+            id: addedNote?.id || Date.now().toString(),
+            authorId: addedNote?.authorId || 'current-user',
+            authorName: addedNote?.author?.name || 'Staff Member',
+            authorAvatar:
+              addedNote?.author?.avatarUrl ||
+              'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
+            content: addedNote?.content || `Từ chối tài liệu "${doc.label}": ${reason.trim()}`,
+            createdAt: 'Vừa xong',
+          },
+          ...prev,
+        ]);
+        if (onRefresh) onRefresh();
+      } catch (error) {
+        console.error('Lỗi khi ghi lại lý do từ chối:', error);
+      }
+    }
+  };
+
+  const reviewingDoc = requiredDocs.find((d) => d.key === reviewingDocKey) ?? null;
+  // Đồng bộ lại notes/tags/requiredDocs mỗi khi mở modal cho 1 application khác
   // (phòng trường hợp component không bị unmount giữa 2 lần mở)
   useEffect(() => {
     setNotes(application.notes || []);
     setTags(application.tags ? application.tags.map((t: any) => t.tag || t) : []);
+
+    if (initialDocuments && initialDocuments.length > 0) {
+      setRequiredDocs(initialDocuments.map(mapBackendDoc));
+      return;
+    }
+
+    // Mở modal trực tiếp (không qua RequestDocumentsModal) -> lấy dữ liệu thật từ BE
+    let cancelled = false;
+    setIsLoadingDocs(true);
+    applicationService
+      .getApplicationDocuments(application.id)
+      .then((docs: RequestedDocument[]) => {
+        if (!cancelled) setRequiredDocs(docs.map(mapBackendDoc));
+      })
+      .catch((error) => {
+        console.error('Lỗi khi tải danh sách tài liệu:', error);
+        if (!cancelled) setRequiredDocs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingDocs(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [application.id]);
+
+  // Danh sách tài liệu còn có thể thêm (loại trừ những cái đã có trong requiredDocs)
+  const availableDocOptions = DOCUMENT_TYPE_OPTIONS.filter(
+    (opt) => !requiredDocs.some((d) => d.key === opt.key)
+  );
+
+  // Thêm 1 tài liệu bổ sung vào cuối danh sách, ở trạng thái "chưa yêu cầu"
+  const handleAddDocument = (doc: RequiredDocument) => {
+    setRequiredDocs((prev) => [...prev, { ...doc, requested: false, submitted: false }]);
+    setIsAddDocPickerOpen(false);
+  };
+
+  // Chính thức "Yêu cầu" 1 tài liệu bổ sung mới thêm
+  const handleRequestDocument = async (key: string) => {
+    const doc = requiredDocs.find((d) => d.key === key);
+    if (!doc || doc.requested) return;
+    try {
+      const created: RequestedDocument[] = await applicationService.requestDocuments(
+        application.id,
+        [{ key: doc.key, label: doc.label, description: doc.description }],
+      );
+      setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(created[0]) : d)));
+    } catch (error) {
+      console.error('Lỗi khi gửi yêu cầu tài liệu:', error);
+    }
+  };
+  const handleSimulateSubmit = async (key: string) => {
+    const doc = requiredDocs.find((d) => d.key === key);
+    if (!doc?.id) return;
+    try {
+      const updated: RequestedDocument = await applicationService.simulateSubmitDocument(
+        application.id,
+        doc.id,
+      );
+      setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
+    } catch (error) {
+      console.error('Lỗi khi mô phỏng nộp tài liệu:', error);
+    }
+  };
+  // Gỡ 1 tài liệu khỏi danh sách yêu cầu
+  const handleRemoveDocument = async (key: string) => {
+    const doc = requiredDocs.find((d) => d.key === key);
+    if (!doc) return;
+
+    if (doc.id) {
+      try {
+        await applicationService.removeDocument(application.id, doc.id);
+      } catch (error) {
+        console.error('Lỗi khi gỡ tài liệu:', error);
+        return; // không xoá khỏi UI nếu API lỗi, tránh lệch state với BE
+      }
+    }
+
+    setRequiredDocs((prev) => prev.filter((d) => d.key !== key));
+  };
 
   // Thêm Tag mới - Gọi API thực sự tới BE (find-or-create theo tên)
   const handleAddTag = async () => {
@@ -51,7 +231,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       const added = await applicationService.addTag(application.id, { name: newTagName.trim() });
       const newTag: ApplicationTag | undefined = added?.tag ?? added;
 
-      // Guard: không push nếu API trả về dữ liệu không hợp lệ (thiếu id/name)
       if (!newTag || !newTag.id || !newTag.name) {
         console.error('addTag trả về dữ liệu không hợp lệ:', added);
         return;
@@ -73,12 +252,11 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       setTags((prev) => prev.filter((t) => t.id !== tagId));
     } catch (error) {
       console.error('Lỗi khi xóa tag:', error);
-      // Vẫn xóa khỏi UI để tránh kẹt trạng thái, tag không tồn tại ở server sẽ tự hết khi refetch
       setTags((prev) => prev.filter((t) => t.id !== tagId));
     }
   };
 
-  // Thêm Ghi chú nội bộ - Gọi API thực sự tới BE (trước đây chỉ lưu local -> mất khi reload)
+  // Thêm Ghi chú nội bộ - Gọi API thực sự tới BE
   const handleAddNote = async () => {
     if (!noteInput.trim() || isSubmittingNote) return;
     setIsSubmittingNote(true);
@@ -100,7 +278,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       setNotes((prev) => [newNoteObj, ...prev]);
       setNoteInput('');
 
-      // Cho board cha cập nhật lại dữ liệu từ backend ngay lập tức
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Lỗi khi thêm ghi chú:', error);
@@ -109,12 +286,15 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     }
   };
 
+  // Gộp danh sách tài liệu ĐÃ yêu cầu thành reviewNote khi chuyển trạng thái
   const handleSubmit = () => {
-    const reviewNote = selectedDoc
-      ? `Cần bổ sung tài liệu: ${selectedDoc}${noteInput ? '. ' + noteInput : ''}`
-      : (noteInput || 'Yêu cầu bổ sung tài liệu');
+    const requestedLabels = requiredDocs.filter((d) => d.requested).map((d) => d.label);
+    const reviewNote =
+      requestedLabels.length > 0
+        ? `Cần bổ sung tài liệu: ${requestedLabels.join(', ')}${noteInput ? '. ' + noteInput : ''}`
+        : noteInput || 'Yêu cầu bổ sung tài liệu';
 
-    onSubmit({ reviewNote, tags, notes, selectedDoc });
+    onSubmit({ reviewNote, tags, notes, requiredDocuments: requiredDocs });
   };
 
   return (
@@ -226,7 +406,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               </div>
             </div>
 
-            {/* Bổ sung tài liệu */}
+            {/* Bổ sung tài liệu (Động — dữ liệu thật từ RequestDocumentsModal) */}
             <div>
               <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsDocsOpen(!isDocsOpen)}>
                 <h3 className="font-bold text-[14px] text-gray-900">Bổ sung tài liệu</h3>
@@ -234,93 +414,151 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               </div>
 
               {isDocsOpen && (
-                <div className="flex flex-col gap-5">
-                  {/* Select Dropdown */}
-                  <div className="relative w-full">
-                    <select
-                      value={selectedDoc}
-                      onChange={(e) => setSelectedDoc(e.target.value)}
-                      className="w-full appearance-none bg-white border border-gray-200 rounded-[10px] px-4 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#E89B5A] cursor-pointer"
+                <div className="flex flex-col gap-4">
+                  {requiredDocs.length === 0 ? (
+                    <p className="text-[12px] text-gray-400 italic">Chưa có tài liệu nào được yêu cầu.</p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {requiredDocs.map((doc) => (
+                        <div key={doc.key} className="flex gap-4 items-start border border-gray-100 rounded-[12px] p-3.5">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="font-bold text-[13px] text-gray-900">{doc.label}</span>
+                              {!doc.requested && (
+                                <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  Chưa gửi yêu cầu
+                                </span>
+                              )}
+                              {doc.requested && !doc.submitted && (
+                                <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  Chờ nộp tài liệu
+                                </span>
+                              )}
+                              {doc.requested && doc.submitted && doc.reviewStatus === 'accepted' && (
+                                <span className="bg-[#E7F8ED] text-[#16A34A] text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  Đã chấp nhận
+                                </span>
+                              )}
+                              {doc.requested && doc.submitted && doc.reviewStatus === 'rejected' && (
+                                <span className="bg-red-50 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  Đã từ chối
+                                </span>
+                              )}
+                              {doc.requested && doc.submitted && !doc.reviewStatus && (
+                                <span className="bg-[#FFF8E6] text-[#E89B5A] text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  Chờ duyệt
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[12px] text-gray-500 leading-relaxed pr-2">{doc.description}</p>
+                          </div>
+                          <div className="flex flex-col gap-2 shrink-0 w-[100px]">
+                            {doc.requested ? (
+                              !doc.submitted ? (
+                                // Bước 2: đã yêu cầu nhưng người nộp đơn chưa "gửi" tài liệu
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSimulateSubmit(doc.key)}
+                                    className="w-full bg-[#EEF3FF] hover:bg-[#E3ECFF] transition-colors text-[#5982E6] font-bold text-[12px] py-2 rounded-lg"
+                                  >
+                                    Simulate submit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveDocument(doc.key)}
+                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                  >
+                                    Đóng
+                                  </button>
+                                </>
+                              ) : !doc.reviewStatus ? (
+                                // Bước 3: đã nộp, đang chờ staff Duyệt (Accept/Reject)
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setReviewingDocKey(doc.key)}
+                                    className="w-full flex items-center justify-center gap-1 bg-[#FFF8E6] hover:bg-[#FDEFC9] transition-colors text-[#E89B5A] font-bold text-[12px] py-2 rounded-lg"
+                                  >
+                                    <Eye size={13} /> Duyệt
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveDocument(doc.key)}
+                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                  >
+                                    Đóng
+                                  </button>
+                                </>
+                              ) : (
+                                // Bước 4: đã duyệt xong (accepted/rejected) -> chỉ Xem lại, read-only
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setReviewingDocKey(doc.key)}
+                                    className="w-full flex items-center justify-center gap-1 bg-[#EEF3FF] hover:bg-[#E3ECFF] transition-colors text-[#5982E6] font-bold text-[12px] py-2 rounded-lg"
+                                  >
+                                    <Eye size={13} /> Xem
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveDocument(doc.key)}
+                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                  >
+                                    Đóng
+                                  </button>
+                                </>
+                              )
+                            ) : (
+                              // Bước 1: chưa yêu cầu
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestDocument(doc.key)}
+                                  className="w-full bg-[#F3A571] hover:bg-[#E89B5A] transition-colors text-white font-bold text-[12px] py-2 rounded-lg shadow-sm"
+                                >
+                                  Yêu cầu
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDocument(doc.key)}
+                                  className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                >
+                                  Hủy
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Thêm tài liệu bổ sung — chọn từ cùng danh mục với RequestDocumentsModal */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDocPickerOpen((v) => !v)}
+                      disabled={availableDocOptions.length === 0}
+                      className="flex items-center gap-1.5 text-[#E89B5A] hover:text-[#D68B4E] transition-colors text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      <option value="Chấp thuận từ chủ nhà">Chọn tài liệu cần bổ sung</option>
-                      <option value="Chấp thuận từ chủ nhà">Chấp thuận từ chủ nhà</option>
-                      <option value="Xác nhận thu nhập">Xác nhận thu nhập</option>
-                      <option value="Ảnh không gian sống">Ảnh không gian sống</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                  </div>
+                      <Plus size={14} /> Thêm tài liệu bổ sung
+                    </button>
 
-                  <div className="flex flex-col gap-6">
-                    {/* State 1: Missing */}
-                    <div className="flex gap-4 items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-bold text-[13px] text-gray-900">{selectedDoc}</span>
-                          <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">Missing</span>
-                        </div>
-                        <p className="text-[12px] text-gray-500 leading-relaxed pr-2">
-                          Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo rằng thú cưng được phép sống an toàn tại nơi ở của bạn.
-                        </p>
+                    {isAddDocPickerOpen && (
+                      <div className="mt-2 border border-gray-200 rounded-[12px] overflow-hidden divide-y divide-gray-100 bg-white shadow-sm max-h-[220px] overflow-y-auto">
+                        {availableDocOptions.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => handleAddDocument(opt)}
+                            className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
-                      <div className="flex flex-col gap-2 shrink-0 w-[100px]">
-                        <button onClick={handleSubmit} className="w-full bg-[#F3A571] hover:bg-[#E89B5A] transition-colors text-white font-bold text-[12px] py-2 rounded-lg shadow-sm">Yêu cầu</button>
-                        <button onClick={onClose} className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg">Hủy</button>
-                      </div>
-                    </div>
-
-                    {/* State 2: Đã yêu cầu */}
-                    <div className="flex gap-4 items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-bold text-[13px] text-gray-900">Chấp thuận từ chủ nhà</span>
-                          <span className="bg-[#FFF8E6] text-[#E89B5A] text-[10px] font-medium px-2 py-0.5 rounded-full">Đã yêu cầu</span>
-                        </div>
-                        <p className="text-[12px] text-gray-500 leading-relaxed pr-2">
-                          Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo rằng thú cưng được phép sống an toàn tại nơi ở của bạn.
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2 shrink-0 w-[100px]">
-                        <button onClick={onClose} className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg">Hủy</button>
-                      </div>
-                    </div>
-
-                    {/* State 3: Đã bổ sung */}
-                    <div className="flex gap-4 items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-bold text-[13px] text-gray-900">Chấp thuận từ chủ nhà</span>
-                          <span className="bg-[#EBF1FF] text-[#5982E6] text-[10px] font-medium px-2 py-0.5 rounded-full">Đã bổ sung</span>
-                        </div>
-                        <p className="text-[12px] text-gray-500 leading-relaxed pr-2">
-                          Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo rằng thú cưng được phép sống an toàn tại nơi ở của bạn.
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2 shrink-0 w-[100px]">
-                        <button onClick={handleSubmit} className="w-full bg-[#5982E6] hover:bg-[#4a72d4] transition-colors text-white font-bold text-[12px] py-2.5 rounded-lg shadow-sm">Xem tài liệu</button>
-                      </div>
-                    </div>
-
-                    {/* State 4: Chấp nhận */}
-                    <div className="flex gap-4 items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-bold text-[13px] text-gray-900">Chấp thuận từ chủ nhà</span>
-                          <span className="bg-[#E7F8ED] text-[#16A34A] text-[10px] font-medium px-2 py-0.5 rounded-full">Chấp nhận</span>
-                        </div>
-                        <p className="text-[12px] text-gray-500 leading-relaxed pr-2">
-                          Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo rằng thú cưng được phép sống an toàn tại nơi ở của bạn.
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2 shrink-0 w-[100px]">
-                        <button onClick={handleSubmit} className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2.5 rounded-lg">Xem</button>
-                      </div>
-                    </div>
-
-                    {/* Success Message */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <CheckCircle2 size={18} className="text-[#16A34A]" strokeWidth={2.5} />
-                      <span className="text-[#16A34A] font-bold text-[13px]">Tất cả tài liệu đã được chấp nhận</span>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -384,6 +622,16 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
             Bước tiếp theo
           </button>
         </div>
+
+        {reviewingDoc && (
+          <DocumentReviewModal
+            document={{ ...reviewingDoc, submittedAt: application.updatedAt || application.createdAt }}
+            onClose={() => setReviewingDocKey(null)}
+            onAccept={() => handleAcceptDocument(reviewingDoc.key)}
+            onReject={(reason) => handleRejectDocument(reviewingDoc.key, reason)}
+            readOnly={!!reviewingDoc.reviewStatus} // đã duyệt rồi -> chỉ xem, không cho đổi quyết định
+          />
+        )}
       </div>
     </div>
   );

@@ -1,323 +1,446 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Phone, Mail, Download, ChevronUp, ChevronDown, Send, Check, MoreHorizontal, Mars, Venus, Plus } from 'lucide-react';
+import {
+  X,
+  Phone,
+  Mail,
+  Download,
+  ChevronDown,
+  Send,
+  Plus,
+  FileText,
+  ChevronRight,
+  Mars,
+  Venus,
+} from 'lucide-react';
 import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
-import { applicationService } from '@/services/applicationService'; // Import Service gọi API BE
+import { applicationService } from '@/services/applicationService';
+import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 
-// --- Sub-components (GIỮ NGUYÊN 100% UI) ---
-const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="mb-3 bg-white border border-gray-200 rounded-[8px] overflow-hidden">
-    <div className="px-4 py-2.5 border-b border-gray-100 bg-[#FAFAFA]">
-      <h3 className="font-bold text-[12px] text-gray-900">{title}</h3>
-    </div>
-    <div className="px-4 py-3">
-      {children}
-    </div>
-  </div>
-);
+// Bảng màu đồng bộ chuẩn với ApplicationCard
+const TAG_COLOR_PALETTE = [
+  'bg-[#EEF3FF] text-[#5982E6]', // Xanh dương
+  'bg-[#FFF4E6] text-[#FF922B]', // Cam
+  'bg-[#EBFBEE] text-[#40C057]', // Xanh lá
+  'bg-[#F3F0FF] text-[#7950F2]', // Tím
+];
 
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
-  <div className="flex flex-col">
-    <span className="font-sans text-[11px] text-gray-400 mb-0.5 leading-none">
-      {label}
-    </span>
-    <span className="font-sans text-[12px] text-gray-900 font-medium leading-snug">
-      {value || '-'}
-    </span>
-  </div>
-);
-
-const CommitmentCheck = ({ label }: { label: string }) => (
-  <div className="flex items-center gap-2">
-    <Check size={14} className="text-[#34C759] shrink-0" strokeWidth={3} />
-    <span className="font-sans text-[12px] text-gray-900 font-medium">
-      {label}
-    </span>
-  </div>
-);
+// Hàm chuẩn hóa mọi cấu trúc Tag từ Prisma / Backend về dạng { id, name }
+const normalizeTags = (rawTags: any[]): ApplicationTag[] => {
+  if (!Array.isArray(rawTags)) return [];
+  return rawTags
+    .map((item: any) => {
+      if (!item) return null;
+      if (typeof item === 'string') return { id: item, name: item };
+      if (item.tag && typeof item.tag === 'object') {
+        return {
+          id: item.tag.id || item.tagId || item.id || String(Date.now()),
+          name: item.tag.name || item.name || '',
+          color: item.tag.color || item.color,
+        };
+      }
+      return {
+        id: item.id || item.tagId || String(Date.now()),
+        name: item.name || '',
+        color: item.color,
+      };
+    })
+    .filter((t): t is ApplicationTag => Boolean(t && t.name && t.name.trim() !== ''));
+};
 
 interface ApplicationQuickViewModalProps {
   application: AdoptionApplication;
   onClose: () => void;
   onRefresh?: () => void;
+  buttonLabel?: string;
+  onActionClick?: () => void;
 }
 
 export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps> = ({
   application,
   onClose,
   onRefresh,
+  buttonLabel = 'Move to Pending Review',
+  onActionClick,
 }) => {
-  const [isAppOpen, setIsAppOpen] = useState(true);
-  const [isNotesOpen, setIsNotesOpen] = useState(true);
+  const [isAppOpen, setIsAppOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
-  // LOGIC NGHIỆP VỤ: Quản lý danh sách Tag động (khởi tạo từ dữ liệu thật, không dùng mock mặc định)
-  const [tags, setTags] = useState<ApplicationTag[]>(
-    application.tags ? application.tags.map((t: any) => t.tag || t) : []
-  );
+  // Khởi tạo danh sách tags đã được chuẩn hóa an toàn
+  const [tags, setTags] = useState<ApplicationTag[]>(() => normalizeTags(application.tags || []));
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
 
-  // LOGIC NGHIỆP VỤ: Quản lý danh sách Ghi chú động (khởi tạo từ dữ liệu thật)
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 
   const isMale = application.pet?.gender !== 'FEMALE';
+  const petName = application.pet?.name || 'Max';
+  const applicantFullName = application.fullName || application.user?.name || 'Michael Rodriguez';
+  const applicantFirstName = applicantFullName.split(' ')[0] || 'Michael';
+  const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'G. Retriever';
 
-  // Đồng bộ lại notes/tags mỗi khi mở modal cho 1 application khác
+  // CHỈ nạp lại khi mở một đơn khác (application.id đổi)
   useEffect(() => {
     setNotes(application.notes || []);
-    setTags(application.tags ? application.tags.map((t: any) => t.tag || t) : []);
+    setTags(normalizeTags(application.tags || []));
   }, [application.id]);
 
-  // Thêm Tag mới - Gọi API thực sự tới BE (find-or-create theo tên)
+  // Thêm tag hiển thị ngay lập tức
   const handleAddTag = async () => {
-    if (!newTagName.trim()) return;
-    try {
-      const added = await applicationService.addTag(application.id, { name: newTagName.trim() });
-      const newTag: ApplicationTag | undefined = added?.tag ?? added;
+    const tagName = newTagName.trim();
+    if (!tagName) return;
 
-      // Guard: không push nếu API trả về dữ liệu không hợp lệ (thiếu id/name)
-      if (!newTag || !newTag.id || !newTag.name) {
-        console.error('addTag trả về dữ liệu không hợp lệ:', added);
-        return;
+    // 1. Tạo tag tạm thời với ID duy nhất
+    const tempTag: ApplicationTag = {
+      id: `temp-${Date.now()}`,
+      name: tagName,
+    };
+
+    // 2. Cập nhật state tags NGAY LẬP TỨC (đã bọc safe check toLowerCase)
+    setTags((prev) => {
+      const currentList = normalizeTags(prev);
+      const isExist = currentList.some(
+        (t) => (t.name || '').toLowerCase() === tagName.toLowerCase()
+      );
+      if (isExist) return currentList;
+      return [...currentList, tempTag];
+    });
+
+    setNewTagName('');
+    setIsAddingTag(false);
+
+    try {
+      // 3. Gửi API lên server
+      const response = await applicationService.addTag(application.id, { name: tagName });
+
+      const resData = response?.data?.data || response?.data || response;
+      const tagObj = resData?.tag || resData;
+      const realTagId = tagObj?.id || resData?.tagId;
+
+      // 4. Cập nhật lại ID thật từ database
+      if (realTagId) {
+        setTags((prev) =>
+          normalizeTags(prev).map((t) =>
+            t.id === tempTag.id
+              ? { ...t, id: String(realTagId), name: tagObj?.name || tagName }
+              : t
+          )
+        );
       }
 
-      setTags((prev) => [...prev, newTag]);
-      setNewTagName('');
-      setIsAddingTag(false);
-      if (onRefresh) onRefresh();
+      // 5. Báo component cha cập nhật Board
+      onRefresh?.();
     } catch (error) {
       console.error('Lỗi khi thêm tag:', error);
+      // Hoàn tác nếu lỗi API
+      setTags((prev) => prev.filter((t) => t.id !== tempTag.id));
     }
   };
 
-  // Xóa Tag - Gọi API thực sự tới BE
   const handleRemoveTag = async (tagId: string) => {
+    const prevTags = [...tags];
+    setTags((prev) => prev.filter((t) => t.id !== tagId));
+
     try {
       await applicationService.removeTag(application.id, tagId);
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      onRefresh?.();
     } catch (error) {
       console.error('Lỗi khi xóa tag:', error);
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      setTags(prevTags);
     }
   };
 
-  // Thêm Ghi chú nội bộ - Gọi API thực sự tới BE
   const handleAddNote = async () => {
-    if (!noteInput.trim() || isSubmittingNote) return;
+    const content = noteInput.trim();
+    if (!content || isSubmittingNote) return;
+
+    const tempNote: ApplicationNote = {
+      id: `temp-${Date.now()}`,
+      authorId: 'current-user',
+      authorName: 'Staff Member',
+      authorAvatar:
+        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
+      content,
+      createdAt: 'Vừa xong',
+    };
+
+    setNotes((prev) => [tempNote, ...prev]);
+    setNoteInput('');
     setIsSubmittingNote(true);
+
     try {
-      const response = await applicationService.addNote(application.id, noteInput.trim());
+      const response = await applicationService.addNote(application.id, content);
       const addedNote = response?.data || response;
-
-      const newNoteObj: ApplicationNote = {
-        id: addedNote?.id || Date.now().toString(),
-        authorId: addedNote?.authorId || 'current-user',
-        authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Staff Member',
-        authorAvatar:
-          addedNote?.author?.avatarUrl ||
-          'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
-        content: addedNote?.content || noteInput.trim(),
-        createdAt: 'Vừa xong',
-      };
-
-      setNotes((prev) => [newNoteObj, ...prev]);
-      setNoteInput('');
-
-      if (onRefresh) onRefresh();
+      if (addedNote?.id) {
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === tempNote.id
+              ? {
+                  ...n,
+                  id: addedNote.id,
+                  authorName: addedNote.author?.name || n.authorName,
+                  authorAvatar: addedNote.author?.avatarUrl || n.authorAvatar,
+                }
+              : n
+          )
+        );
+      }
+      onRefresh?.();
     } catch (error) {
       console.error('Lỗi khi thêm ghi chú:', error);
+      setNotes((prev) => prev.filter((n) => n.id !== tempNote.id));
     } finally {
       setIsSubmittingNote(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
-        className="bg-white w-full max-w-[460px] max-h-[90vh] rounded-[20px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-[420px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors p-1.5 bg-white hover:bg-gray-100 rounded-full z-10">
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors p-1 bg-transparent hover:bg-gray-50 rounded-full z-10"
+        >
           <X size={18} strokeWidth={2} />
         </button>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          {/* 1. Header & Applicant Profile */}
-          <div className="flex gap-5 mb-8 mt-2">
-            <img
-              src={application.user?.avatarUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
-              className="w-[100px] h-[100px] rounded-full object-cover border border-gray-100 shrink-0"
-              alt={application.fullName || application.user?.name || "Maria Garcia"}
-            />
-            <div className="flex flex-col justify-center">
-              <h2 className="text-[18px] font-bold text-gray-900 leading-tight mb-2.5">{application.fullName || application.user?.name || "Maria Garcia"}</h2>
-              <div className="flex items-center gap-2.5 text-gray-500 mb-1.5">
-                <Phone size={14} />
-                <span className="text-[13px]">{application.phone}</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-gray-500 mb-2.5">
-                <Mail size={14} />
-                <span className="text-[13px]">{application.zalo || 'adopter@pawlife.vn'}</span>
-              </div>
-              <button className="flex items-center gap-2 text-gray-600 hover:text-[#E89B5A] transition-colors text-[13px]">
-                <Download size={14} />
-                <u>Tải đơn <span className="font-semibold">{application.fullName || application.user?.name || "Maria Garcia".split(' ')[0]} - Application.pdf</span></u>
-              </button>
+          {/* Header */}
+          <div className="flex items-start gap-4 mb-5">
+            <div className="relative w-[94px] h-[94px] rounded-full border-[2.5px] border-[#F3A571] p-[2px] shrink-0">
+              <img
+                src={
+                  application.user?.avatarUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200'
+                }
+                className="w-full h-full rounded-full object-cover"
+                alt={applicantFullName}
+              />
+            </div>
 
-              {/* Mini Pet Card */}
-              <div className="mt-4 border border-gray-200 rounded-[12px] p-2 flex items-center gap-3 w-full bg-white shadow-sm">
-                <img src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=100"} className="w-11 h-11 rounded-lg object-cover" alt={application.pet?.name || 'Luna'} />
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="font-bold text-[14px] text-gray-900">{application.pet?.name || 'Luna'}</span>
+            <div className="flex-1 min-w-0 flex flex-col justify-start">
+              <h2 className="text-[18px] font-bold text-gray-900 leading-tight mb-2 truncate">
+                {applicantFullName}
+              </h2>
+              <div className="flex items-center gap-2 text-gray-500 mb-1.5">
+                <Phone size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
+                <span className="text-[13px] text-gray-500 font-normal truncate">
+                  {application.phone || '(555) 321-7651'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 mb-1.5">
+                <Mail size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
+                <span className="text-[13px] text-gray-500 font-normal truncate">
+                  {application.user?.email || application.zalo || 'mike.rodriguez@email.com'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 mb-2">
+                <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
+                <span className="text-[13px] text-gray-500 font-normal">Is applying for</span>
+              </div>
+              <div className="flex items-center gap-2.5 mt-0.5">
+                <img
+                  src={
+                    application.pet?.avatarUrl ||
+                    application.pet?.images?.[0]?.url ||
+                    'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=100'
+                  }
+                  className="w-10 h-10 rounded-[10px] object-cover shrink-0 border border-gray-100"
+                  alt={petName}
+                />
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-[14px] text-gray-900 leading-none">
+                      {petName}
+                    </span>
                     {isMale ? (
-                      <Mars size={14} strokeWidth={2.5} className="text-[#3DB2FF]" />
+                      <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF] shrink-0" />
                     ) : (
-                      <Venus size={14} strokeWidth={2.5} className="text-[#FF6B93]" />
+                      <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93] shrink-0" />
                     )}
                   </div>
-                  <span className="text-[11px] text-gray-500">2 years • Golden British</span>
+                  <span className="text-[11.5px] text-gray-400 mt-0.5 truncate leading-none">
+                    2 years • {petBreedFormatted}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 2. Tags Section (Động) */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-[14px] text-gray-900">Gắn thẻ</h3>
-              <button onClick={() => setIsAddingTag(!isAddingTag)} className="text-gray-400 hover:text-gray-600 text-[12px] flex items-center gap-1">+ thẻ</button>
+          {/* PDF Box */}
+          <div className="border border-gray-200 rounded-[16px] p-3.5 px-4 flex items-center justify-between bg-white hover:bg-gray-50/50 transition-colors mb-6 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-[10px] bg-[#FFF8F3] border border-[#FFE8D6] flex items-center justify-center shrink-0">
+                <FileText size={18} className="text-[#F3A571]" strokeWidth={1.8} />
+              </div>
+              <span className="text-[13.5px] font-semibold text-gray-900 truncate">
+                {applicantFirstName} - Application.pdf
+              </span>
             </div>
+            <button
+              type="button"
+              title="Download"
+              className="text-gray-400 hover:text-gray-700 transition-colors p-1"
+            >
+              <Download size={17} strokeWidth={2} />
+            </button>
+          </div>
 
+          {/* Tags */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[15px] text-gray-900">Tags</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddingTag(!isAddingTag)}
+                className="text-[13.5px] font-semibold text-[#F3A571] hover:text-[#E89B5A] transition-colors"
+              >
+                + Add
+              </button>
+            </div>
             {isAddingTag && (
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mt-3">
                 <input
                   type="text"
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                  placeholder="Tên thẻ mới..."
-                  className="bg-[#F6F6F6] text-[12px] px-3 py-1.5 rounded-full outline-none border border-gray-200 focus:border-[#E89B5A]"
+                  placeholder="Tag name..."
+                  className="flex-1 bg-[#F6F6F6] text-[12px] px-3.5 py-1.5 rounded-full outline-none border border-gray-200 focus:border-[#F3A571]"
                   autoFocus
                 />
-                <button onClick={handleAddTag} className="p-1 bg-[#E89B5A] text-white rounded-full"><Plus size={12} /></button>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {tags.filter((tag) => tag && tag.id && tag.name).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-3.5 py-1.5 bg-[#EEF3FF] text-[#5982E6] text-[12px] font-medium rounded-full flex items-center gap-1.5 cursor-pointer hover:bg-[#E3ECFF] transition-colors"
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className="p-1.5 bg-[#F3A571] text-white rounded-full hover:bg-[#E89B5A]"
                 >
-                  {tag.name} <X size={12} onClick={() => handleRemoveTag(tag.id)} className="hover:text-red-500 transition-colors" />
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. Đơn nhận nuôi (Accordion) */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsAppOpen(!isAppOpen)}>
-              <h3 className="font-bold text-[14px] text-gray-900">Đơn nhận nuôi</h3>
-              {isAppOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-            </div>
-            {isAppOpen && (
-              <div className="flex flex-col">
-                <SectionCard title="B - Living Conditions">
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                    <Field label="Location" value={application.location || 'Cầu Giấy, Hà Nội'} />
-                    <Field label="Housing Type" value={application.housing || 'Apartment (allows pet ownership)'} />
-                    <Field label="Children" value={application.children || 'Yes, 3 children'} />
-                    <Field label="Cage Plan For" value={application.cage || 'No'} />
-                  </div>
-                </SectionCard>
-                <SectionCard title="C - Pet Experience">
-                  <div className="flex flex-col gap-4">
-                    <Field label="Previous Pet" value={application.petExperience || 'Yes, 3 cats & 2 dogs'} />
-                    <Field label="Housing Type" value={application.prevPetHistory || 'My previous dogs passed away due to old age after 12 years together.'} />
-                  </div>
-                </SectionCard>
-                <SectionCard title="D - Employment & Personal">
-                  <Field label="Employment" value={application.employmentStatus || 'Currently employed'} />
-                </SectionCard>
-                <SectionCard title="E - Adoption Commitment">
-                  <div className="mb-4">
-                    <Field label="Reason for Adoption" value={application.adoptionReason || 'Because I want to give them a forever home'} />
-                  </div>
-                  <div className="w-full h-px bg-gray-100 mb-4" />
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-                    <CommitmentCheck label="Yearly vaccinations" />
-                    <CommitmentCheck label="Provide status updates" />
-                    <CommitmentCheck label="Hospital treatment when needed" />
-                    <CommitmentCheck label="Allow home visits" />
-                    <CommitmentCheck label="Cover pre-adoption expenses" />
-                    <CommitmentCheck label="Willing to provide needed personal info" />
-                  </div>
-                </SectionCard>
+                  <Plus size={13} />
+                </button>
+              </div>
+            )}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {tags.map((tag, idx) => {
+                  const colorClass = TAG_COLOR_PALETTE[idx % TAG_COLOR_PALETTE.length];
+                  return (
+                    <span
+                      key={tag.id || `tag-${idx}`}
+                      className={`px-3 py-1 text-[11.5px] font-semibold rounded-full flex items-center gap-1.5 ${colorClass}`}
+                    >
+                      {tag.name}
+                      <X
+                        size={12}
+                        onClick={() => handleRemoveTag(tag.id)}
+                        className="cursor-pointer hover:opacity-70 transition-opacity"
+                      />
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* 4. Ghi chú nội bộ (Accordion Động) */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsNotesOpen(!isNotesOpen)}>
-              <h3 className="font-bold text-[14px] text-gray-900">Ghi chú nội bộ</h3>
-              {isNotesOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+          {/* Application Details */}
+          <div className="mb-5">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none py-1"
+              onClick={() => setIsAppOpen(!isAppOpen)}
+            >
+              <h3 className="font-bold text-[15px] text-gray-900">Application Details</h3>
+              <ChevronDown
+                size={18}
+                className={`text-gray-400 transition-transform duration-200 ${
+                  isAppOpen ? 'rotate-180' : ''
+                }`}
+                strokeWidth={2}
+              />
+            </div>
+          </div>
+
+          {/* Internal Notes */}
+          <div className="mb-6">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none py-1"
+              onClick={() => setIsNotesOpen(!isNotesOpen)}
+            >
+              <h3 className="font-bold text-[15px] text-gray-900">Internal Notes</h3>
+              <ChevronDown
+                size={18}
+                className={`text-gray-400 transition-transform duration-200 ${
+                  isNotesOpen ? 'rotate-180' : ''
+                }`}
+                strokeWidth={2}
+              />
             </div>
             {isNotesOpen && (
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3 mt-3 animate-in fade-in duration-200">
                 {notes.map((note) => (
-                  <div key={note.id} className="flex gap-3">
+                  <div key={note.id} className="flex gap-2.5 items-start">
                     <img
-                      src={note.authorAvatar || (note as any).author?.avatarUrl || "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"}
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
+                      src={
+                        note.authorAvatar ||
+                        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'
+                      }
+                      className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
                       alt="Staff"
                     />
-                    <div className="flex flex-col w-full">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-[13px] text-gray-900">{note.authorName || (note as any).author?.name || 'Staff Member'}</span>
-                        <span className="text-[11px] text-gray-400">{typeof note.createdAt === 'string' ? note.createdAt : 'Vừa xong'}</span>
+                    <div className="flex flex-col flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[12px] text-gray-900">
+                          {note.authorName || 'Staff Member'}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{note.createdAt}</span>
                       </div>
-                      <p className="text-[13px] text-gray-500">{note.content}</p>
+                      <p className="text-[12px] text-gray-600 mt-0.5">{note.content}</p>
                     </div>
-                    <MoreHorizontal size={16} className="text-[#C4C4C4] shrink-0 cursor-pointer" />
                   </div>
                 ))}
-
-                {/* Input Add Note */}
-                <div className="relative w-full">
+                <div className="relative w-full mt-1">
                   <input
                     type="text"
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                    placeholder="Add note... (type @ to mention a member)"
-                    className="w-full bg-[#F6F6F6] rounded-[14px] pl-4 pr-10 py-3.5 text-[13px] outline-none placeholder-gray-400 border border-transparent focus:border-[#E89B5A] transition-colors"
+                    placeholder="Add internal note..."
+                    className="w-full bg-[#F6F6F6] rounded-[12px] pl-3.5 pr-9 py-2.5 text-[12.5px] outline-none placeholder-gray-400 border border-transparent focus:border-[#F3A571]"
                   />
                   <button
+                    type="button"
                     onClick={handleAddNote}
                     disabled={isSubmittingNote}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] transition-colors disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#F3A571] hover:text-[#E89B5A] disabled:opacity-50"
                   >
-                    <Send size={16} />
+                    <Send size={14} />
                   </button>
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Bottom Fixed Action Button */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0">
-          <button onClick={onClose} className="w-full bg-[#E89B5A] hover:bg-[#D68B4E] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[12px] shadow-sm shadow-orange-100">
-            Bước tiếp theo
-          </button>
+          {/* Action Button */}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={onActionClick || onClose}
+              className="w-full bg-[#F3A571] hover:bg-[#E89B5A] active:scale-[0.99] transition-all text-white font-semibold text-[14.5px] py-3.5 px-6 rounded-[16px] shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>{buttonLabel}</span>
+              <ChevronRight size={16} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default ApplicationQuickViewModal;

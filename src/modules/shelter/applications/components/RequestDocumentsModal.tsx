@@ -1,59 +1,38 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Pencil, Check } from 'lucide-react';
+import { X, Pencil, Check, Loader2 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
+import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDocuments';
+import { applicationService } from '@/services/applicationService';
 
-export interface RequiredDocument {
-  key: string;
-  label: string;
-  description: string;
-}
-
-const DOCUMENT_TYPE_OPTIONS: RequiredDocument[] = [
-  {
-    key: 'landlord_consent',
-    label: 'Chấp thuận từ chủ nhà',
-    description:
-      'Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo được phép nuôi thú cưng tại nơi ở của bạn.',
-  },
-  {
-    key: 'income_verification',
-    label: 'Xác minh thu nhập',
-    description:
-      'Cung cấp bằng chứng thu nhập ổn định (bảng lương, sao kê ngân hàng...) để đảm bảo khả năng chăm sóc thú cưng lâu dài.',
-  },
-  {
-    key: 'identity_document',
-    label: 'Giấy tờ tùy thân',
-    description: 'Ảnh chụp CMND/CCCD hoặc hộ chiếu còn hiệu lực để xác minh danh tính người đăng ký.',
-  },
-  {
-    key: 'residence_confirmation',
-    label: 'Xác nhận nơi cư trú',
-    description: 'Hóa đơn điện nước hoặc hợp đồng thuê nhà xác nhận địa chỉ cư trú hiện tại.',
-  },
-  {
-    key: 'other',
-    label: 'Tài liệu khác',
-    description: 'Mô tả loại tài liệu khác mà bạn cần người đăng ký bổ sung.',
-  },
-];
+// Document đã tồn tại thật trong DB (có id) — dùng để truyền tiếp sang
+// NeedMoreInfoModal, nơi cần id để gọi submit/review/remove.
+export type RequestedDocument = RequiredDocument & {
+  id: string;
+  status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
+  rejectionReason?: string | null;
+};
 
 interface RequestDocumentsModalProps {
   application: AdoptionApplication;
   onClose: () => void;
-  /** Gọi khi xác nhận danh sách tài liệu cần yêu cầu -> board sẽ mở tiếp NeedMoreInfoModal hiện tại */
-  onNext: (documents: RequiredDocument[]) => void;
+  /** Gọi sau khi đã tạo thành công ở BE -> board mở tiếp NeedMoreInfoModal với danh sách có id thật */
+  onNext: (documents: RequestedDocument[]) => void;
 }
 
-export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({ onClose, onNext }) => {
-  // Mặc định chọn sẵn "Chấp thuận từ chủ nhà", giống trạng thái mở đầu trong thiết kế
-  const [selectedKeys, setSelectedKeys] = useState<string[]>(['landlord_consent']);
+export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
+  application,
+  onClose,
+  onNext,
+}) => {
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [descriptions, setDescriptions] = useState<Record<string, string>>(() =>
     Object.fromEntries(DOCUMENT_TYPE_OPTIONS.map((o) => [o.key, o.description]))
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const toggleSelect = (key: string) => {
     setSelectedKeys((prev) => {
@@ -76,12 +55,32 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({ on
     setDescriptions((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleNext = () => {
-    if (selectedKeys.length === 0) return;
-    const documents: RequiredDocument[] = DOCUMENT_TYPE_OPTIONS.filter((o) => selectedKeys.includes(o.key)).map(
+  const handleNext = async () => {
+    if (selectedKeys.length === 0 || isSubmitting) return;
+
+    const payload = DOCUMENT_TYPE_OPTIONS.filter((o) => selectedKeys.includes(o.key)).map(
       (o) => ({ key: o.key, label: o.label, description: descriptions[o.key] })
     );
-    onNext(documents);
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      // BE trả về mảng ApplicationDocument đã tạo, có id thật
+      const created: RequestedDocument[] = await applicationService.requestDocuments(
+        application.id,
+        payload,
+      );
+      onNext(created);
+    } catch (error: any) {
+      // 400: "Các tài liệu này đã được yêu cầu trước đó." (đã trùng key với DB)
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Không thể gửi yêu cầu tài liệu. Vui lòng thử lại.';
+      setErrorMessage(Array.isArray(message) ? message.join(', ') : message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -107,6 +106,12 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({ on
             <X size={20} />
           </button>
         </div>
+
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-[12.5px] rounded-xl px-3.5 py-2.5">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Một khối duy nhất: mục đã chọn hiện mở rộng, mục chưa chọn hiện dạng dòng đơn */}
         <div className="border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
@@ -167,17 +172,19 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({ on
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-[46px] rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+            disabled={isSubmitting}
+            className="flex-1 h-[46px] rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Hủy
           </button>
           <button
             type="button"
             onClick={handleNext}
-            disabled={selectedKeys.length === 0}
-            className="flex-1 h-[46px] rounded-xl bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white font-bold text-sm shadow-sm transition-colors"
+            disabled={selectedKeys.length === 0 || isSubmitting}
+            className="flex-1 h-[46px] rounded-xl bg-[#E89B5A] hover:bg-[#D68B4E] disabled:opacity-50 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
           >
-            Gửi yêu cầu
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
           </button>
         </div>
       </div>

@@ -30,6 +30,8 @@ import { ApproveApplicationModal } from './components/ApproveApplicationModal';
 import { NeedMoreInfoModal } from './components/NeedMoreInfoModal';
 import { MoveToPendingModal } from './components/MoveToPendingModal';
 import { RequestDocumentsModal } from './components/RequestDocumentsModal';
+import { RequiredDocument } from '@/constants/adoptionDocuments';
+
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 
@@ -57,6 +59,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
+  const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrollable, setIsScrollable] = useState(false);
 
@@ -177,53 +180,75 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const { active, over } = event;
     isDraggingRef.current = false;
     setActiveApp(null);
-    setOverColumn(null);
 
     const activeId = active.id as string;
     const originalItem = items.find((a) => a.id === activeId);
-    if (!over || !originalItem) {
+
+    // FIX: dnd-kit quirk — sau khi handleDragOver reorder localItems để
+    // preview card ở cột mới, lúc THẢ TAY, `event.over.id` thường bị dnd-kit
+    // báo TRÙNG với chính `active.id` (vì vị trí thả giờ trùng slot của
+    // chính card đang kéo). Nếu dùng thẳng `over.id` để tra `items`, ta sẽ
+    // tra ra CHÍNH card đó với trạng thái CŨ -> tưởng "không đổi gì" -> snap
+    // back. Do đó ưu tiên dùng `overColumn` (state đã track đúng suốt lúc
+    // kéo trong handleDragOver) làm nguồn xác định cột đích.
+    let finalStatus: ApplicationStatus | undefined;
+
+    if (over) {
+      const overId = over.id as string;
+      if (overId === activeId) {
+        // over đang tự trỏ vào chính nó -> dùng overColumn làm fallback
+        finalStatus = overColumn ?? undefined;
+      } else {
+        const overIsColumn = isColumnId(overId);
+        const overItem = items.find((a) => a.id === overId);
+        finalStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
+      }
+    }
+
+    setOverColumn(null);
+
+    if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
       setLocalItems(items);
       return;
     }
 
-    const finalItem = localItems.find((a) => a.id === activeId);
-    if (!finalItem || finalItem.status === originalItem.status) return;
+    // QUAN TRỌNG: KHÔNG gọi setLocalItems(items) ở các nhánh dưới —
+    // localItems đã được handleDragOver cập nhật sang cột mới, giữ nguyên để
+    // card đứng ở cột mới trong lúc modal xác nhận đang mở. Mỗi modal khi
+    // onClose (Hủy) đều tự gọi fetchApplications() -> items cập nhật từ
+    // server -> useEffect tự đồng bộ lại localItems = items, tự trả card về
+    // chỗ cũ ĐÚNG LÚC user hủy, thay vì bị trả về ngay khi vừa thả tay.
 
     // 1. Chuyển từ Mới -> Đang xem xét (PENDING)
-    if (finalItem.status === 'PENDING' && originalItem.status === 'SUBMITTED') {
-      setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
+    if (finalStatus === 'PENDING' && originalItem.status === 'SUBMITTED') {
       setPendingApp(originalItem);
       return;
     }
 
     // 2. Chuyển sang Yêu cầu bổ sung (NEED_MORE_INFO)
-    if (finalItem.status === 'NEED_MORE_INFO') {
-      setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
+    if (finalStatus === 'NEED_MORE_INFO') {
       setRequestDocsApp(originalItem);
       return;
     }
 
     // 3. Chuyển sang Hẹn phỏng vấn (INTERVIEW_SCHEDULED)
-    if (finalItem.status === 'INTERVIEW_SCHEDULED') {
-      setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
+    if (finalStatus === 'INTERVIEW_SCHEDULED') {
       setInterviewApp(originalItem);
       return;
     }
 
     // 4. Cho phép kéo từ BẤT KỲ cột nào sang ĐÃ DUYỆT (APPROVED)
-    if (finalItem.status === 'APPROVED') {
-      setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
+    if (finalStatus === 'APPROVED') {
       setApproveApp(originalItem);
       return;
     }
 
-    if (REQUIRES_CONFIRM.includes(finalItem.status)) {
-      setLocalItems((prev) => prev.map((a) => (a.id === activeId ? { ...a, status: originalItem.status } : a)));
+    if (REQUIRES_CONFIRM.includes(finalStatus)) {
       setSelectedApp(originalItem);
       return;
     }
 
-    moveApplication(activeId, finalItem.status);
+    moveApplication(activeId, finalStatus);
   };
 
   // Click thẳng vào thẻ: mở modal chuyển sang bước kế tiếp (giống kéo-thả),
@@ -412,7 +437,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setRequestDocsApp(null);
             fetchApplications();
           }}
-          onNext={() => {
+          onNext={(documents) => {
+            setPendingRequiredDocs(documents); // 👈 lưu danh sách tài liệu đã chọn
             setNeedInfoApp(requestDocsApp);
             setRequestDocsApp(null);
           }}
@@ -422,15 +448,18 @@ export const ApplicationKanbanBoard: React.FC = () => {
       {needInfoApp && (
         <NeedMoreInfoModal
           application={needInfoApp}
+          initialDocuments={pendingRequiredDocs} // 👈 truyền xuống modal
           onClose={() => {
             setNeedInfoApp(null);
+            setPendingRequiredDocs([]);
             fetchApplications();
           }}
-          onRefresh={fetchApplications}   // 👈 thêm dòng này
+          onRefresh={fetchApplications}
           onSubmit={async (data) => {
             await moveApplication(needInfoApp.id, 'NEED_MORE_INFO', data?.reviewNote);
             await fetchApplications();
             setNeedInfoApp(null);
+            setPendingRequiredDocs([]);
           }}
         />
       )}

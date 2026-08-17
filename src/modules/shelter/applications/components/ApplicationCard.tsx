@@ -1,3 +1,4 @@
+// components/ApplicationCard.tsx (hoặc file chứa ApplicationCardContent)
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -51,6 +52,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
+  const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
 
   useEffect(() => {
     setMounted(true);
@@ -111,7 +115,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
 
   return (
     <div className="flex flex-col w-full relative group/content">
-      <div className="absolute top-[-4px] right-[-4px] z-[5] opacity-0 group-hover/content:opacity-100 transition-opacity">
+      <div className="absolute top-[-4px] right-[-4px] z- opacity-0 group-hover/content:opacity-100 transition-opacity">
         <button
           ref={buttonRef}
           className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-all"
@@ -122,7 +126,6 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         </button>
         {mounted && isMenuOpen && createPortal(
           <div ref={menuRef} style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }} className="w-[220px] bg-white rounded-[16px] shadow-xl border border-gray-100 py-2.5 flex flex-col origin-top-right">
-            {/* Giữ nguyên popup cũ, không có Quick View */}
             <button onClick={(e) => handleMenuAction(e, 'applicantProfile')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><User size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Applicant Profile</span></button>
             <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">View Application</span></button>
             <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">All Documents</span></button>
@@ -147,7 +150,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onOpenProfile(application); }}
             >
-              {application.fullName || application.user?.name || "Maria Garcia" || "Maria Garcia"}
+              {application.fullName || application.user?.name || "Maria Garcia"}
             </span>
             {showRedDot && (
               <span className="w-[7px] h-[7px] bg-[#FF6B6B] rounded-full shrink-0"></span>
@@ -170,19 +173,38 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         <div className="flex items-center gap-3 w-full">
           <Mail size={14} className="text-[#888888] shrink-0" strokeWidth={2} />
           <span className="font-sans text-[13px] text-[#888888] font-normal truncate">
-            {application.zalo || "mariagarcia@email.com"}
+            {application.user?.email || application.zalo || "mariagarcia@email.com"}
           </span>
         </div>
       </div>
 
-      {/* 3. Chips */}
-      <div className="flex items-center gap-2.5 mb-[18px]">
-        <div className="px-3.5 py-[5px] bg-[#EEF3FF] rounded-full">
-          <span className="font-sans text-[12px] text-[#5982E6] font-semibold">Follow-up</span>
-        </div>
-        <div className="px-3.5 py-[5px] bg-[#FAFAFA] border border-[#E8E8E8] rounded-full">
-          <span className="font-sans text-[12px] text-[#888888] font-medium">First-time</span>
-        </div>
+      {/* 3. Chips (Hiển thị Tag Động) */}
+      <div className="flex flex-wrap items-center gap-2 mb-[18px] min-h-[26px]">
+        {displayTags.length === 0 ? (
+          <span className="text-[12px] text-gray-400 italic">No tags</span>
+        ) : (
+          displayTags.map((tag: any, idx: number) => {
+            // Danh sách màu luân phiên nếu tag không có mã màu riêng
+            const colorPalette = [
+              'bg-[#EEF3FF] text-[#5982E6]',
+              'bg-[#FFF4E6] text-[#FF922B]',
+              'bg-[#EBFBEE] text-[#40C057]',
+              'bg-[#F3F0FF] text-[#7950F2]',
+            ];
+            const colorClass = colorPalette[idx % colorPalette.length];
+
+            return (
+              <div
+                key={tag.id || idx}
+                className={`px-3 py-[4px] rounded-full ${colorClass}`}
+              >
+                <span className="font-sans text-[11.5px] font-semibold tracking-tight">
+                  {tag.name}
+                </span>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 4. Divider */}
@@ -197,13 +219,17 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title="Notes count">
             <MessageCircle size={13} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[12px] text-[#888888] font-semibold">12</span>
+            <span className="font-sans text-[12px] text-[#888888] font-semibold">
+              {application.notes?.length || 0}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title="Tags count">
             <File size={13} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[12px] text-[#888888] font-semibold">0</span>
+            <span className="font-sans text-[12px] text-[#888888] font-semibold">
+              {displayTags.length}
+            </span>
           </div>
         </div>
       </div>
@@ -221,7 +247,7 @@ interface ApplicationCardProps {
   onCardClick: (app: AdoptionApplication) => void;
   onRemove: (app: AdoptionApplication) => void;
   onOpenDocuments: (app: AdoptionApplication) => void;
-  onOpenQuickView: (app: AdoptionApplication) => void; // Khai báo prop ở đây
+  onOpenQuickView: (app: AdoptionApplication) => void;
 }
 
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({
@@ -254,9 +280,10 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...listeners}
       {...attributes}
       tabIndex={-1}
-      onClick={() => onCardClick(application)} // Gắn click vào thẻ để mở Quick View
-      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
-        } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      onClick={() => onCardClick(application)}
+      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${
+        isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
+      } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <ApplicationCardContent
         application={application}
@@ -266,7 +293,6 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         onOpenDetail={onOpenDetail}
         onRemove={onRemove}
         onOpenDocuments={onOpenDocuments}
-        // Không truyền onOpenQuickView xuống đây nữa
       />
     </div>
   );
