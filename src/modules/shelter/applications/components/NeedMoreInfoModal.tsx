@@ -1,27 +1,38 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { X, Phone, Mail, Download, ChevronUp, ChevronDown, Send, Mars, Venus, Plus, Eye } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  X,
+  Phone,
+  Mail,
+  Download,
+  ChevronUp,
+  ChevronDown,
+  Send,
+  Mars,
+  Venus,
+  CheckCircle2,
+} from 'lucide-react';
 import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
-import { applicationService } from '@/services/applicationService'; // Gọi API thật, tránh mất dữ liệu khi reload
+import { applicationService } from '@/services/applicationService';
 import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDocuments';
-import { DocumentReviewModal, DocumentReviewData } from './DocumentReviewModal';
+import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
+import { SelectTagsModal } from './SelectTagsModal';
+import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 
-// Item tài liệu hiển thị trong modal: `requested = true` là đã chính thức yêu
-// cầu (từ RequestDocumentsModal hoặc đã bấm "Yêu cầu"); `requested = false`
-// là mới thêm qua "+ Thêm tài liệu bổ sung", đang chờ xác nhận gửi.
-// `submitted = true` nghĩa là APPLICANT đã tự nộp file thật từ mobile app
-// (AdoptionStatusScreen) — staff KHÔNG có nút nào tự chuyển trạng thái này.
 type RequiredDocRow = RequiredDocument & {
-  id?: string; // chỉ có khi đã tồn tại thật trong DB (đã "Yêu cầu" thành công)
+  id?: string;
   requested: boolean;
   submitted: boolean;
   reviewStatus?: 'accepted' | 'rejected';
   rejectionReason?: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  submittedAt?: string | null;
+  fileSizeLabel?: string;
 };
 
-// Map 1 ApplicationDocument từ BE -> row hiển thị ở FE
 const mapBackendDoc = (doc: RequestedDocument): RequiredDocRow => ({
   key: doc.key,
   label: doc.label,
@@ -31,11 +42,14 @@ const mapBackendDoc = (doc: RequestedDocument): RequiredDocRow => ({
   submitted: doc.status !== 'PENDING_SUBMISSION',
   reviewStatus: doc.status === 'ACCEPTED' ? 'accepted' : doc.status === 'REJECTED' ? 'rejected' : undefined,
   rejectionReason: doc.rejectionReason || undefined,
+  fileUrl: (doc as any).fileUrl || null,
+  fileName: (doc as any).fileName || null,
+  submittedAt: (doc as any).submittedAt || null,
+  fileSizeLabel: (doc as any).fileSizeLabel || undefined,
 });
 
 interface NeedMoreInfoModalProps {
   application: AdoptionApplication;
-  /** Danh sách tài liệu ĐÃ tạo thật ở BE (có id), truyền từ RequestDocumentsModal */
   initialDocuments?: RequestedDocument[];
   onClose: () => void;
   onSubmit: (data: any) => void;
@@ -52,12 +66,13 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
+  const addTagBtnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [tags, setTags] = useState<ApplicationTag[]>(
     application.tags ? application.tags.map((t: any) => t.tag || t) : []
   );
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
@@ -73,12 +88,22 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [reviewingDocKey, setReviewingDocKey] = useState<string | null>(null);
   const isMale = application.pet?.gender !== 'FEMALE';
 
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAddDocPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const extractErrorMessage = (error: any, fallback: string) => {
     const message = error?.response?.data?.message || error?.message || fallback;
     return Array.isArray(message) ? message.join(', ') : message;
   };
 
-  // Chấp nhận tài liệu sau khi xem trong DocumentReviewModal
   const handleAcceptDocument = async (key: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
     if (!doc?.id) return;
@@ -130,7 +155,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           {
             id: addedNote?.id || Date.now().toString(),
             authorId: addedNote?.authorId || 'current-user',
-            authorName: addedNote?.author?.name || 'Staff Member',
+            authorName: addedNote?.author?.name || 'Nhân viên trạm',
             authorAvatar:
               addedNote?.author?.avatarUrl ||
               'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
@@ -148,7 +173,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
 
   const reviewingDoc = requiredDocs.find((d) => d.key === reviewingDocKey) ?? null;
 
-  // Đồng bộ lại notes/tags/requiredDocs mỗi khi mở modal cho 1 application khác
   useEffect(() => {
     setNotes(application.notes || []);
     setTags(application.tags ? application.tags.map((t: any) => t.tag || t) : []);
@@ -158,12 +182,10 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       return;
     }
 
-    // Mở modal trực tiếp (không qua RequestDocumentsModal, ví dụ click lại
-    // vào card ở cột NEED_MORE_INFO) -> lấy dữ liệu thật từ BE
     let cancelled = false;
     setIsLoadingDocs(true);
     applicationService
-      .getDocuments(application.id) // FIX: đổi từ getApplicationDocuments (không tồn tại) sang getDocuments
+      .getDocuments(application.id)
       .then((docs: RequestedDocument[]) => {
         if (!cancelled) setRequiredDocs((Array.isArray(docs) ? docs : []).map(mapBackendDoc));
       })
@@ -178,7 +200,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [application.id]);
 
   const availableDocOptions = DOCUMENT_TYPE_OPTIONS.filter(
@@ -204,17 +225,11 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       console.error('Lỗi khi gửi yêu cầu tài liệu:', error);
       setDocsErrorMessage(extractErrorMessage(error, 'Không thể gửi yêu cầu tài liệu.'));
       try {
-        const docs: RequestedDocument[] = await applicationService.getDocuments(application.id); // FIX: đổi tên hàm
+        const docs: RequestedDocument[] = await applicationService.getDocuments(application.id);
         setRequiredDocs((Array.isArray(docs) ? docs : []).map(mapBackendDoc));
-      } catch {}
+      } catch { }
     }
   };
-
-  // ĐÃ XOÁ handleSimulateSubmit — endpoint /simulate-submit không tồn tại ở
-  // backend. Việc nộp tài liệu thật (PENDING_SUBMISSION -> PENDING_REVIEW)
-  // giờ chỉ xảy ra khi APPLICANT tự upload từ mobile app (AdoptionStatusScreen),
-  // gọi POST /applications/:id/documents/:docId/submit. Staff ở dashboard
-  // không có quyền tự ý chuyển trạng thái này thay applicant.
 
   const handleRemoveDocument = async (key: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
@@ -234,33 +249,56 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     setRequiredDocs((prev) => prev.filter((d) => d.key !== key));
   };
 
-  const handleAddTag = async () => {
-    if (!newTagName.trim()) return;
+  const handleAddTagWithColor = async (tagData: { name: string; color: string }) => {
+    const tagName = tagData.name.trim();
+    if (!tagName) return;
+
+    const tempTag: ApplicationTag = {
+      id: `temp-${Date.now()}`,
+      name: tagName,
+      color: tagData.color,
+    };
+
+    setTags((prev) => {
+      const isExist = prev.some((t) => t.name.toLowerCase() === tagName.toLowerCase());
+      if (isExist) return prev;
+      return [...prev, tempTag];
+    });
+
     try {
-      const added = await applicationService.addTag(application.id, { name: newTagName.trim() });
-      const newTag: ApplicationTag | undefined = added?.tag ?? added;
-
-      if (!newTag || !newTag.id || !newTag.name) {
-        console.error('addTag trả về dữ liệu không hợp lệ:', added);
-        return;
+      const added = await applicationService.addTag(application.id, {
+        name: tagName,
+        color: tagData.color,
+      });
+      const newTag = added?.tag ?? added;
+      if (newTag?.id) {
+        setTags((prev) =>
+          prev.map((t) => (t.id === tempTag.id ? { ...t, id: String(newTag.id), color: newTag.color || tagData.color } : t))
+        );
       }
-
-      setTags((prev) => [...prev, newTag]);
-      setNewTagName('');
-      setIsAddingTag(false);
       if (onRefresh) onRefresh();
     } catch (error) {
-      console.error('Lỗi khi thêm tag:', error);
+      console.error('Lỗi khi thêm thẻ:', error);
+      setTags((prev) => prev.filter((t) => t.id !== tempTag.id));
     }
   };
 
   const handleRemoveTag = async (tagId: string) => {
+    const prev = [...tags];
+    setTags((t) => t.filter((item) => item.id !== tagId));
     try {
       await applicationService.removeTag(application.id, tagId);
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      if (onRefresh) onRefresh();
     } catch (error) {
-      console.error('Lỗi khi xóa tag:', error);
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      console.error('Lỗi khi xóa thẻ:', error);
+      setTags(prev);
+    }
+  };
+
+  const handleRemoveTagByName = async (tagName: string) => {
+    const targetTag = tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase());
+    if (targetTag) {
+      await handleRemoveTag(targetTag.id);
     }
   };
 
@@ -303,336 +341,452 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     onSubmit({ reviewNote, tags, notes, requiredDocuments: requiredDocs });
   };
 
+  const allAccepted =
+    requiredDocs.length > 0 &&
+    requiredDocs.every((doc) => doc.requested && doc.submitted && doc.reviewStatus === 'accepted');
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
-        className="bg-white w-full max-w-[500px] max-h-[90vh] rounded-[20px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-[460px] max-h-[92vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors p-1.5 bg-white hover:bg-gray-100 rounded-full z-10">
+        {/* Nút đóng modal */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors p-1 z-10"
+        >
           <X size={18} strokeWidth={2} />
         </button>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          {/* 1. Header & Applicant Profile */}
-          <div className="flex gap-5 mb-6 mt-2">
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
+          {/* 1. Header & Thông tin người đăng ký */}
+          <div className="flex gap-4 mb-5 items-start">
             <img
-              src={application.user?.avatarUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
-              className="w-[100px] h-[100px] rounded-full object-cover border border-gray-100 shrink-0"
-              alt={application.fullName || application.user?.name || "Maria Garcia"}
+              src={
+                application.user?.avatarUrl ||
+                'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=140'
+              }
+              className="w-[92px] h-[92px] rounded-full object-cover shrink-0 border border-gray-100"
+              alt={application.fullName || application.user?.name || 'Applicant'}
             />
-            <div className="flex flex-col justify-center">
-              <h2 className="text-[18px] font-bold text-gray-900 leading-tight mb-2.5">
+            <div className="flex flex-col flex-1 pt-0.5">
+              <h2 className="text-[17px] font-bold text-gray-900 leading-tight mb-2">
                 {application.fullName || application.user?.name || 'Julia Nguyen'}
               </h2>
-              <div className="flex items-center gap-2.5 text-gray-500 mb-1.5">
-                <Phone size={14} />
-                <span className="text-[13px]">{application.phone || '09876543210'}</span>
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <Phone size={13} className="text-gray-400 shrink-0" />
+                <span className="text-[12.5px]">{application.phone || '09876543210'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-gray-500 mb-2.5">
-                <Mail size={14} />
-                <span className="text-[13px]">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
+              <div className="flex items-center gap-2 text-gray-500 mb-2">
+                <Mail size={13} className="text-gray-400 shrink-0" />
+                <span className="text-[12.5px] truncate max-w-[200px]">
+                  {application.zalo || application.user?.email || 'adopter@pawlife.vn'}
+                </span>
               </div>
-              <button className="flex items-center gap-2 text-gray-600 hover:text-[#E89B5A] transition-colors text-[13px]">
-                <Download size={14} />
-                <u>Download <span className="font-semibold">{(application.fullName || application.user?.name || 'Julia').split(' ')[0]} - Application.pdf</span></u>
+              <button
+                type="button"
+                onClick={() => downloadApplicationPdf(application)}
+                className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors text-[12.5px] cursor-pointer text-left"
+              >
+                <Download size={13} className="text-gray-400 shrink-0" />
+                <span>
+                  Download <span className="font-semibold underline">{(application.fullName || application.user?.name || 'Julia').split(' ')[0]} - Application.pdf</span>
+                </span>
               </button>
-
-              <div className="mt-4 border border-gray-200 rounded-[12px] p-2 flex items-center gap-3 w-full bg-white shadow-sm">
-                <img
-                  src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=100"}
-                  className="w-11 h-11 rounded-lg object-cover"
-                  alt={application.pet?.name || 'Luna'}
-                />
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="font-bold text-[14px] text-gray-900">{application.pet?.name || 'Luna'}</span>
-                    {isMale ? (
-                      <Mars size={14} strokeWidth={2.5} className="text-[#3DB2FF]" />
-                    ) : (
-                      <Venus size={14} strokeWidth={2.5} className="text-[#FF6B93]" />
-                    )}
-                  </div>
-                  <span className="text-[11px] text-gray-500">2 years • Golden British</span>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* 2. Tags Section (Động) */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-[14px] text-gray-900">Gắn thẻ</h3>
-              <button onClick={() => setIsAddingTag(!isAddingTag)} className="text-gray-400 hover:text-gray-600 text-[12px] flex items-center gap-1">
-                + thẻ
-              </button>
-            </div>
-
-            {isAddingTag && (
-              <div className="flex items-center gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                  placeholder="Tên thẻ mới..."
-                  className="bg-[#F6F6F6] text-[12px] px-3 py-1.5 rounded-full outline-none border border-gray-200 focus:border-[#E89B5A]"
-                  autoFocus
-                />
-                <button onClick={handleAddTag} className="p-1 bg-[#E89B5A] text-white rounded-full">
-                  <Plus size={12} />
-                </button>
+          {/* Thẻ thông tin thú cưng */}
+          <div className="border border-gray-200/80 rounded-[14px] p-2.5 flex items-center gap-3 bg-white mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <img
+              src={
+                application.pet?.avatarUrl ||
+                application.pet?.images?.[0]?.url ||
+                'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=120'
+              }
+              className="w-11 h-11 rounded-[10px] object-cover"
+              alt={application.pet?.name || 'Pet'}
+            />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="font-bold text-[14px] text-gray-900">
+                  {application.pet?.name || 'Luna'}
+                </span>
+                {isMale ? (
+                  <Mars size={14} strokeWidth={2.5} className="text-[#3DB2FF]" />
+                ) : (
+                  <Venus size={14} strokeWidth={2.5} className="text-[#FF6B93]" />
+                )}
               </div>
-            )}
+              <span className="text-[12px] text-gray-400">2 years · Golden British</span>
+            </div>
+          </div>
+
+          {/* 2. Gắn thẻ (Tags) */}
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2.5">
+              <h3 className="font-bold text-[14px] text-gray-900">Gắn thẻ</h3>
+
+              <div className="relative">
+                <button
+                  ref={addTagBtnRef}
+                  type="button"
+                  onClick={() => setIsTagModalOpen((v) => !v)}
+                  className="text-gray-400 hover:text-gray-600 text-[13px] font-medium flex items-center gap-1 cursor-pointer select-none transition-colors"
+                >
+                  + tag
+                </button>
+
+                {isTagModalOpen && (
+                  <SelectTagsModal
+                    triggerRef={addTagBtnRef}
+                    existingTags={tags}
+                    onClose={() => setIsTagModalOpen(false)}
+                    onAddTag={handleAddTagWithColor}
+                    onRemoveTag={handleRemoveTagByName}
+                  />
+                )}
+              </div>
+            </div>
 
             <div className="flex flex-wrap gap-2">
-              {tags.filter((tag) => tag && tag.id && tag.name).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-3.5 py-1.5 bg-[#EEF3FF] text-[#5982E6] text-[12px] font-medium rounded-full flex items-center gap-1.5 cursor-pointer hover:bg-[#E3ECFF] transition-colors"
-                >
-                  {tag.name}
-                  <X size={12} onClick={() => handleRemoveTag(tag.id)} className="hover:text-red-500 transition-colors" />
-                </span>
-              ))}
+              {tags.length === 0 ? (
+                <span className="text-[12px] text-gray-400 italic">Chưa có thẻ nào</span>
+              ) : (
+                tags
+                  .filter((tag) => tag && tag.id && tag.name)
+                  .map((tag, idx) => {
+                    const isFirst = idx === 0;
+                    return (
+                      <span
+                        key={tag.id}
+                        className={`px-3 py-1 text-[12px] font-medium rounded-full flex items-center gap-1.5 transition-all ${
+                          isFirst
+                            ? 'bg-[#EBF2FF] text-[#4F75E2]'
+                            : 'bg-[#F4F5F7] text-gray-600'
+                        }`}
+                      >
+                        {tag.name}
+                        <X
+                          size={12}
+                          onClick={() => handleRemoveTag(tag.id)}
+                          className="cursor-pointer hover:opacity-70 transition-opacity"
+                        />
+                      </span>
+                    );
+                  })
+              )}
             </div>
           </div>
 
-          <div className="w-full h-px bg-gray-100 mb-6" />
+          {/* 3. Accordion: Đơn nhận nuôi */}
+          <div className="border-t border-gray-100 py-3.5">
+            <div
+              className="flex justify-between items-center cursor-pointer select-none"
+              onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
+            >
+              <h3 className="font-bold text-[14px] text-gray-900">Đơn nhận nuôi</h3>
+              {isAppDetailsOpen ? (
+                <ChevronUp size={18} className="text-gray-400" />
+              ) : (
+                <ChevronDown size={18} className="text-gray-400" />
+              )}
+            </div>
+          </div>
 
-          {/* Accordions */}
-          <div className="flex flex-col gap-6">
-            <div>
-              <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}>
-                <h3 className="font-bold text-[14px] text-gray-900">Đơn nhận nuôi</h3>
-                {isAppDetailsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-              </div>
+          {/* 4. Section: Bổ sung tài liệu */}
+          <div className="border-t border-gray-100 pt-4 pb-2">
+            <div
+              className="flex justify-between items-center mb-3 cursor-pointer select-none"
+              onClick={() => setIsDocsOpen(!isDocsOpen)}
+            >
+              <h3 className="font-bold text-[14px] text-gray-900">Bổ sung tài liệu</h3>
+              {isDocsOpen ? (
+                <ChevronUp size={18} className="text-gray-400" />
+              ) : (
+                <ChevronDown size={18} className="text-gray-400" />
+              )}
             </div>
 
-            {/* Bổ sung tài liệu (Động — dữ liệu thật từ BE) */}
-            <div>
-              <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsDocsOpen(!isDocsOpen)}>
-                <h3 className="font-bold text-[14px] text-gray-900">Bổ sung tài liệu</h3>
-                {isDocsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-              </div>
+            {isDocsOpen && (
+              <div className="flex flex-col">
+                {docsErrorMessage && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 text-[12px] rounded-xl px-3.5 py-2.5 mb-3 flex items-start justify-between gap-2">
+                    <span>{docsErrorMessage}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDocsErrorMessage(null)}
+                      className="text-red-400 hover:text-red-600 shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
 
-              {isDocsOpen && (
-                <div className="flex flex-col gap-4">
-                  {docsErrorMessage && (
-                    <div className="bg-red-50 border border-red-100 text-red-600 text-[12.5px] rounded-xl px-3.5 py-2.5 flex items-start justify-between gap-2">
-                      <span>{docsErrorMessage}</span>
-                      <button
-                        type="button"
-                        onClick={() => setDocsErrorMessage(null)}
-                        className="text-red-400 hover:text-red-600 shrink-0"
-                      >
-                        <X size={14} />
-                      </button>
+                {/* Dropdown "Chọn tài liệu cần bổ sung" ngay đầu phần Bổ sung tài liệu */}
+                <div className="relative mb-4" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddDocPickerOpen((v) => !v)}
+                    className="w-full flex items-center justify-between border border-gray-200 rounded-[12px] px-4 py-2.5 bg-white hover:border-gray-300 transition-colors text-left"
+                  >
+                    <span className="text-[13px] text-gray-400">Chọn tài liệu cần bổ sung</span>
+                    <ChevronDown
+                      size={18}
+                      className={`text-gray-400 transition-transform duration-200 ${
+                        isAddDocPickerOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {isAddDocPickerOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 z-30 border border-gray-100 rounded-[14px] bg-white shadow-xl max-h-[220px] overflow-y-auto divide-y divide-gray-50 animate-in fade-in zoom-in-95 duration-150">
+                      {availableDocOptions.length === 0 ? (
+                        <div className="px-4 py-3 text-[12px] text-gray-400 text-center italic">
+                          Đã chọn hết tất cả các loại tài liệu
+                        </div>
+                      ) : (
+                        availableDocOptions.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => handleAddDocument(opt)}
+                            className="w-full text-left px-4 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors font-medium"
+                          >
+                            {opt.label}
+                          </button>
+                        ))
+                      )}
                     </div>
                   )}
+                </div>
 
-                  {isLoadingDocs ? (
-                    <p className="text-[12px] text-gray-400 italic">Đang tải danh sách tài liệu...</p>
-                  ) : requiredDocs.length === 0 ? (
-                    <p className="text-[12px] text-gray-400 italic">Chưa có tài liệu nào được yêu cầu.</p>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {requiredDocs.map((doc) => (
-                        <div key={doc.key} className="flex gap-4 items-start border border-gray-100 rounded-[12px] p-3.5">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="font-bold text-[13px] text-gray-900">{doc.label}</span>
-                              {!doc.requested && (
-                                <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Chưa gửi yêu cầu
+                {isLoadingDocs ? (
+                  <p className="text-[12px] text-gray-400 italic py-2">Đang tải danh sách tài liệu...</p>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {requiredDocs.map((doc) => {
+                      // Xác định trạng thái
+                      const isNotRequested = !doc.requested;
+                      const isPendingSubmission = doc.requested && !doc.submitted;
+                      const isSubmittedPendingReview = doc.requested && doc.submitted && !doc.reviewStatus;
+                      const isAccepted = doc.requested && doc.submitted && doc.reviewStatus === 'accepted';
+                      const isRejected = doc.requested && doc.submitted && doc.reviewStatus === 'rejected';
+
+                      return (
+                        <div key={doc.key} className="flex items-start justify-between gap-3 py-1">
+                          {/* Bên trái: Tên + Badge + Mô tả */}
+                          <div className="flex-1 min-w-0 pr-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-bold text-[13.5px] text-gray-900 leading-tight">
+                                {doc.label}
+                              </span>
+
+                              {/* Badges đúng màu chuẩn theo thiết kế */}
+                              {isNotRequested && (
+                                <span className="bg-[#F1F3F5] text-[#6C727F] text-[11px] font-medium px-2 py-0.5 rounded-[6px]">
+                                  Missing
                                 </span>
                               )}
-                              {doc.requested && !doc.submitted && (
-                                <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Chờ applicant nộp
+                              {isPendingSubmission && (
+                                <span className="bg-[#FEF9E7] text-[#E5A124] text-[11px] font-medium px-2 py-0.5 rounded-[6px]">
+                                  Đã yêu cầu
                                 </span>
                               )}
-                              {doc.requested && doc.submitted && doc.reviewStatus === 'accepted' && (
-                                <span className="bg-[#E7F8ED] text-[#16A34A] text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Đã chấp nhận
+                              {isSubmittedPendingReview && (
+                                <span className="bg-[#E8F1FF] text-[#3B82F6] text-[11px] font-medium px-2 py-0.5 rounded-[6px]">
+                                  Đã bổ sung
                                 </span>
                               )}
-                              {doc.requested && doc.submitted && doc.reviewStatus === 'rejected' && (
-                                <span className="bg-red-50 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Đã từ chối
+                              {isAccepted && (
+                                <span className="bg-[#E6F9EE] text-[#10B981] text-[11px] font-medium px-2 py-0.5 rounded-[6px]">
+                                  Chấp nhận
                                 </span>
                               )}
-                              {doc.requested && doc.submitted && !doc.reviewStatus && (
-                                <span className="bg-[#FFF8E6] text-[#E89B5A] text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Chờ duyệt
+                              {isRejected && (
+                                <span className="bg-[#FEE2E2] text-[#EF4444] text-[11px] font-medium px-2 py-0.5 rounded-[6px]">
+                                  Từ chối
                                 </span>
                               )}
                             </div>
-                            <p className="text-[12px] text-gray-500 leading-relaxed pr-2">{doc.description}</p>
+
+                            <p className="text-[12px] text-gray-500 leading-relaxed">
+                              {doc.description ||
+                                'Nếu bạn đang thuê nhà, chúng mình cần sự đồng ý từ chủ nhà để đảm bảo rằng thú cưng được phép sống an toàn tại nơi ở của bạn.'}
+                            </p>
                           </div>
-                          <div className="flex flex-col gap-2 shrink-0 w-[100px]">
-                            {doc.requested ? (
-                              !doc.submitted ? (
-                                // Bước 2: đã yêu cầu, đang chờ APPLICANT tự nộp từ mobile app —
-                                // staff không có hành động nào ở đây ngoài gỡ yêu cầu
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveDocument(doc.key)}
-                                  className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
-                                >
-                                  Gỡ yêu cầu
-                                </button>
-                              ) : !doc.reviewStatus ? (
-                                // Bước 3: applicant đã nộp, đang chờ staff Duyệt (Accept/Reject)
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setReviewingDocKey(doc.key)}
-                                    className="w-full flex items-center justify-center gap-1 bg-[#FFF8E6] hover:bg-[#FDEFC9] transition-colors text-[#E89B5A] font-bold text-[12px] py-2 rounded-lg"
-                                  >
-                                    <Eye size={13} /> Duyệt
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveDocument(doc.key)}
-                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
-                                  >
-                                    Đóng
-                                  </button>
-                                </>
-                              ) : (
-                                // Bước 4: đã duyệt xong -> chỉ Xem lại, read-only
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setReviewingDocKey(doc.key)}
-                                    className="w-full flex items-center justify-center gap-1 bg-[#EEF3FF] hover:bg-[#E3ECFF] transition-colors text-[#5982E6] font-bold text-[12px] py-2 rounded-lg"
-                                  >
-                                    <Eye size={13} /> Xem
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveDocument(doc.key)}
-                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
-                                  >
-                                    Đóng
-                                  </button>
-                                </>
-                              )
-                            ) : (
-                              // Bước 1: chưa yêu cầu
-                              <>
+
+                          {/* Bên phải: Nút hành động */}
+                          <div className="shrink-0 flex flex-col items-end min-w-[84px]">
+                            {/* Trạng thái 1: Missing (Chưa yêu cầu) */}
+                            {isNotRequested && (
+                              <div className="flex flex-col gap-1.5 w-[84px]">
                                 <button
                                   type="button"
                                   onClick={() => handleRequestDocument(doc.key)}
-                                  className="w-full bg-[#F3A571] hover:bg-[#E89B5A] transition-colors text-white font-bold text-[12px] py-2 rounded-lg shadow-sm"
+                                  className="w-full bg-[#FFA877] hover:bg-[#F39562] transition-colors text-white font-semibold text-[13px] py-1.5 rounded-[10px] shadow-sm text-center"
                                 >
                                   Yêu cầu
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveDocument(doc.key)}
-                                  className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                  className="w-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[13px] py-1.5 rounded-[10px] text-center"
                                 >
                                   Hủy
                                 </button>
-                              </>
+                              </div>
+                            )}
+
+                            {/* Trạng thái 2: Đã yêu cầu (Chờ người nộp) */}
+                            {isPendingSubmission && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDocument(doc.key)}
+                                className="w-[84px] border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[13px] py-1.5 rounded-[10px] text-center"
+                              >
+                                Hủy
+                              </button>
+                            )}
+
+                            {/* Trạng thái 3: Đã bổ sung (Chờ duyệt) */}
+                            {isSubmittedPendingReview && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewingDocKey(doc.key)}
+                                className="bg-[#4D88E5] hover:bg-[#3E7AD7] transition-colors text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] shadow-sm whitespace-nowrap text-center"
+                              >
+                                Xem tài liệu
+                              </button>
+                            )}
+
+                            {/* Trạng thái 4: Chấp nhận (Đã duyệt thành công) */}
+                            {isAccepted && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewingDocKey(doc.key)}
+                                className="w-[84px] border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-gray-600 font-medium text-[13px] py-1.5 rounded-[10px] text-center"
+                              >
+                                Xem
+                              </button>
+                            )}
+
+                            {/* Trạng thái 5: Bị từ chối */}
+                            {isRejected && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewingDocKey(doc.key)}
+                                className="w-[84px] border border-red-200 bg-red-50/50 hover:bg-red-50 transition-colors text-red-600 font-medium text-[13px] py-1.5 rounded-[10px] text-center"
+                              >
+                                Xem lại
+                              </button>
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddDocPickerOpen((v) => !v)}
-                      disabled={availableDocOptions.length === 0}
-                      className="flex items-center gap-1.5 text-[#E89B5A] hover:text-[#D68B4E] transition-colors text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Plus size={14} /> Thêm tài liệu bổ sung
-                    </button>
-
-                    {isAddDocPickerOpen && (
-                      <div className="mt-2 border border-gray-200 rounded-[12px] overflow-hidden divide-y divide-gray-100 bg-white shadow-sm max-h-[220px] overflow-y-auto">
-                        {availableDocOptions.map((opt) => (
-                          <button
-                            key={opt.key}
-                            type="button"
-                            onClick={() => handleAddDocument(opt)}
-                            className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-gray-800 hover:bg-gray-50 transition-colors"
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
+                    {/* Thông báo xanh: Tất cả tài liệu đã được chấp nhận */}
+                    {allAccepted && (
+                      <div className="flex items-center gap-2 text-[#10B981] font-semibold text-[13px] pt-2">
+                        <CheckCircle2 size={16} className="text-[#10B981]" />
+                        <span>Tất cả tài liệu đã được chấp nhận</span>
                       </div>
                     )}
                   </div>
-                </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 5. Section: Ghi chú nội bộ */}
+          <div className="border-t border-gray-100 pt-4 pb-2">
+            <div
+              className="flex justify-between items-center mb-3.5 cursor-pointer select-none"
+              onClick={() => setIsNotesOpen(!isNotesOpen)}
+            >
+              <h3 className="font-bold text-[14px] text-gray-900">Ghi chú nội bộ</h3>
+              {isNotesOpen ? (
+                <ChevronUp size={18} className="text-gray-400" />
+              ) : (
+                <ChevronDown size={18} className="text-gray-400" />
               )}
             </div>
 
-            {/* Ghi chú nội bộ (Động) */}
-            <div>
-              <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsNotesOpen(!isNotesOpen)}>
-                <h3 className="font-bold text-[14px] text-gray-900">Ghi chú nội bộ</h3>
-                {isNotesOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-              </div>
-              {isNotesOpen && (
-                <div className="flex flex-col gap-4">
-                  {notes.map((note) => (
-                    <div key={note.id} className="flex gap-3">
-                      <img
-                        src={note.authorAvatar || (note as any).author?.avatarUrl || "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"}
-                        className="w-8 h-8 rounded-full object-cover shrink-0"
-                        alt="Staff"
-                      />
-                      <div className="flex flex-col w-full">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-[13px] text-gray-900">{note.authorName || (note as any).author?.name || 'Staff Member'}</span>
-                          <span className="text-[11px] text-gray-400">{typeof note.createdAt === 'string' ? note.createdAt : 'Vừa xong'}</span>
-                        </div>
-                        <p className="text-[13px] text-gray-500">{note.content}</p>
+            {isNotesOpen && (
+              <div className="flex flex-col gap-3.5">
+                {notes.map((note) => (
+                  <div key={note.id} className="flex gap-2.5 items-start">
+                    <img
+                      src={
+                        note.authorAvatar ||
+                        (note as any).author?.avatarUrl ||
+                        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'
+                      }
+                      className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
+                      alt="Staff"
+                    />
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-semibold text-[12.5px] text-gray-900">
+                          {note.authorName || (note as any).author?.name || 'Staff Member'}
+                        </span>
+                        <span className="text-[11px] text-gray-400">
+                          {typeof note.createdAt === 'string' ? note.createdAt : '2h ago'}
+                        </span>
                       </div>
+                      <p className="text-[12px] text-gray-500 leading-snug">{note.content}</p>
                     </div>
-                  ))}
+                  </div>
+                ))}
 
-                  <div className="relative w-full">
+                {/* Input thêm ghi chú */}
+                <div className="relative w-full mt-1">
+                  <div className="bg-[#F5F6F8] rounded-[16px] px-4 py-3 flex items-center gap-2 border border-transparent focus-within:border-gray-200 transition-colors">
                     <input
                       type="text"
                       value={noteInput}
                       onChange={(e) => setNoteInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                      placeholder="Add note... (type @ to mention a member)"
-                      className="w-full bg-[#F6F6F6] rounded-[14px] pl-4 pr-10 py-3.5 text-[13px] outline-none placeholder-gray-400 border border-transparent focus:border-[#E89B5A] transition-colors"
+                      placeholder="Thêm ghi chú... (Nhập @ để tag thành viên khác)"
+                      className="w-full bg-transparent text-[13px] outline-none placeholder-gray-400 text-gray-700 pr-7"
                     />
                     <button
                       onClick={handleAddNote}
-                      disabled={isSubmittingNote}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#E89B5A] hover:text-[#D68B4E] transition-colors disabled:opacity-50"
+                      disabled={isSubmittingNote || !noteInput.trim()}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#FFA877] hover:text-[#F39562] transition-colors disabled:opacity-40"
                     >
-                      <Send size={16} />
+                      <Send size={15} />
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Nút hành động cố định ở chân Modal */}
         <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0">
           <button
             onClick={handleSubmit}
-            className="w-full bg-[#E89B5A] hover:bg-[#D68B4E] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[12px] shadow-sm shadow-orange-100"
+            className="w-full bg-[#E59754] hover:bg-[#D98844] active:bg-[#C97B38] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[14px] shadow-sm cursor-pointer text-center"
           >
-            Bước tiếp theo
+            Di chuyển tới hẹn phỏng vấn
           </button>
         </div>
 
+        {/* Modal chi tiết duyệt tài liệu */}
         {reviewingDoc && (
           <DocumentReviewModal
-            document={{ ...reviewingDoc, submittedAt: application.updatedAt || application.createdAt }}
+            document={{
+              ...reviewingDoc,
+              submittedAt:
+                reviewingDoc.submittedAt || application.updatedAt || application.createdAt,
+            }}
             onClose={() => setReviewingDocKey(null)}
             onAccept={() => handleAcceptDocument(reviewingDoc.key)}
             onReject={(reason) => handleRejectDocument(reviewingDoc.key, reason)}

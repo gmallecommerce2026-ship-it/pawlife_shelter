@@ -1,7 +1,6 @@
-// src/app/shelter/applications/components/ApproveApplicationModal.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   X,
   Phone,
@@ -22,6 +21,8 @@ import {
 import { AdoptionApplication, ApplicationNote } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
+import { SelectTagsModal } from './SelectTagsModal';
+import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 
 export interface InterviewMember {
   id: string;
@@ -45,6 +46,7 @@ interface ApplicationDocumentItem {
 interface TagItem {
   id: string;
   name: string;
+  color?: string | null;
 }
 
 interface ApproveApplicationModalProps {
@@ -62,7 +64,6 @@ const createEmptyMember = (): InterviewMember => ({
   note: '',
 });
 
-// Chuyển đổi an toàn đa ngôn ngữ { en, vi }
 export const pickLocale = (value: any, locale: 'vi' | 'en' = 'vi'): string => {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
@@ -96,7 +97,6 @@ export const getPetInfoLabel = (pet?: AdoptionApplication['pet']) => {
   );
 };
 
-// Chuyển ISO / Date sang YYYY-MM-DDTHH:mm theo giờ local
 const toDatetimeLocalValue = (dateOrIso?: string | Date | null) => {
   if (!dateOrIso) return '';
   const d = typeof dateOrIso === 'string' ? new Date(dateOrIso) : dateOrIso;
@@ -107,7 +107,6 @@ const toDatetimeLocalValue = (dateOrIso?: string | Date | null) => {
   )}:${pad(d.getMinutes())}`;
 };
 
-// Format thời gian tương đối
 const formatTimeAgo = (dateStr?: string | Date) => {
   if (!dateStr) return 'Vừa xong';
   const date = new Date(dateStr);
@@ -115,14 +114,13 @@ const formatTimeAgo = (dateStr?: string | Date) => {
   const now = new Date();
   const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
   if (diffMin < 1) return 'Vừa xong';
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 60) return `${diffMin} phút trước`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffHour < 24) return `${diffHour} giờ trước`;
   const diffDay = Math.floor(diffHour / 24);
-  return `${diffDay}d ago`;
+  return `${diffDay} ngày trước`;
 };
 
-// Parse members an toàn từ Array hoặc chuỗi JSON
 const parseMembersList = (rawMembers: any): InterviewMember[] => {
   if (!rawMembers) return [createEmptyMember()];
   let parsed = rawMembers;
@@ -149,13 +147,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 }) => {
   const existingAppointment = (application as any)?.appointment;
 
-  // Accordion Toggles
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isInterviewOpen, setIsInterviewOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
+  const addTagBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 👉 ĐỒNG BỘ 1:1 VỚI INTERVIEW MODAL
   const defaultTitle =
     existingAppointment?.title ||
     `Hẹn phỏng vấn nhận nuôi ${application.pet?.name || ''}`.trim();
@@ -184,29 +181,53 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     return parseMembersList(existingAppointment?.members);
   });
 
-  // Tags State
   const [tags, setTags] = useState<TagItem[]>(() => {
     const rawTags = (application as any).tags || [];
     return rawTags.map((t: any) => (t.tag ? t.tag : typeof t === 'string' ? { id: t, name: t } : t));
   });
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
 
-  // Documents State
   const [documents, setDocuments] = useState<ApplicationDocumentItem[]>(
     (application as any).documents || []
   );
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
-  // Notes State
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isSubmittingInterview, setIsSubmittingInterview] = useState(false);
 
   const isMale = application.pet?.gender !== 'FEMALE';
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
-  // 👉 HÀM GỌI API LẤY LINK GOOGLE MEET THẬT
+  const handleAddTagWithColor = async (tagData: { name: string; color: string }) => {
+    const tagName = tagData.name.trim();
+    if (!tagName) return;
+
+    try {
+      const res = await applicationService.addTag(application.id, { name: tagName, color: tagData.color });
+      const createdTag = res.data?.tag || res?.tag || { id: Date.now().toString(), name: tagName, color: tagData.color };
+      setTags((prev) => [...prev, createdTag]);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Lỗi thêm thẻ:', err);
+    }
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    try {
+      await applicationService.removeTag(application.id, tagId);
+      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Lỗi xoá thẻ:', err);
+    }
+  };
+
+  const handleRemoveTagByName = async (tagName: string) => {
+    const target = tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase());
+    if (target) handleRemoveTag(target.id);
+  };
+
   const fetchRealMeetLink = useCallback(async () => {
     try {
       setIsLoadingMeetLink(true);
@@ -225,7 +246,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     }
   }, []);
 
-  // 👉 TỰ ĐỘNG ĐỔ VÀ ĐỒNG BỘ MỌI DỮ LIỆU KHI APPLICATION THAY ĐỔI
   const appointmentKey = JSON.stringify((application as any)?.appointment ?? null);
 
   useEffect(() => {
@@ -256,7 +276,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   const fetchDocuments = async () => {
     try {
       setIsLoadingDocs(true);
-      const res = await applicationService.getApplicationDocuments(application.id);
+      const res = await applicationService.getDocuments(application.id);
       setDocuments(res.data || res || []);
     } catch (err) {
       console.error('Lỗi tải tài liệu:', err);
@@ -265,7 +285,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     }
   };
 
-  // Thông tin nhân sự đại diện hiển thị trên thanh mũi tên
   const primaryStaffName = useMemo(() => {
     return members.find((m) => m.name.trim())?.name || (application.pet as any)?.shelter?.name || 'Nhân sự trạm';
   }, [members, application.pet]);
@@ -282,36 +301,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     (application.pet as any)?.shelter?.avatarUrl ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120';
 
-  // 1. Quản lý Tags
-  const handleAddTag = async () => {
-    if (!newTagName.trim()) {
-      setIsAddingTag(false);
-      return;
-    }
-    try {
-      const tagName = newTagName.trim();
-      const res = await applicationService.addTagToApplication(application.id, undefined, tagName);
-      const createdTag = res.data?.tag || res?.tag || { id: Date.now().toString(), name: tagName };
-      setTags((prev) => [...prev, createdTag]);
-      setNewTagName('');
-      setIsAddingTag(false);
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Lỗi thêm tag:', err);
-    }
-  };
-
-  const handleRemoveTag = async (tagId: string) => {
-    try {
-      await applicationService.removeTagFromApplication(application.id, tagId);
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Lỗi xoá tag:', err);
-    }
-  };
-
-  // 2. Quản lý Members
   const handleAddMember = () => setMembers((prev) => [...prev, createEmptyMember()]);
 
   const handleMemberChange = (id: string, field: 'name' | 'note' | 'email', value: string) => {
@@ -328,7 +317,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     }
   };
 
-  // 3. Xử lý lưu lịch hẹn / Hoàn thành phỏng vấn
   const handleScheduleSubmit = async (isCompleted = false) => {
     const filledMembers = members.filter((m) => m.name.trim());
     const finalDate = dateSlot || new Date().toISOString();
@@ -343,7 +331,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
       members: filledMembers.map((m) => ({
         id: m.id,
         name: m.name.trim(),
-        email: m.email?.trim() || undefined, // tránh gửi '' làm fail @IsEmail() ở backend
+        email: m.email?.trim() || undefined,
         note: m.note?.trim() || undefined,
       })),
       reminderMinutesBefore: 10,
@@ -365,7 +353,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     }
   };
 
-  // 4. Thêm Internal Note
   const handleAddNote = async () => {
     if (!noteInput.trim() || isSubmittingNote) return;
     setIsSubmittingNote(true);
@@ -376,7 +363,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
       const newNoteObj: ApplicationNote = {
         id: addedNote?.id || Date.now().toString(),
         authorId: addedNote?.authorId || 'current-user',
-        authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Staff Member',
+        authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Nhân viên trạm',
         authorAvatar: addedNote?.author?.avatarUrl || primaryStaffAvatar,
         content: addedNote?.content || noteInput.trim(),
         createdAt: new Date().toISOString(),
@@ -392,7 +379,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     }
   };
 
-  // 5. Chuyển trạng thái đơn (Move to Pending)
   const handleAdvance = () => {
     onSubmit({
       applicationId: application.id,
@@ -401,8 +387,8 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     });
   };
 
-  const applicantName = application.fullName || application.user?.name || 'Julia Nguyen';
-  const firstName = applicantName.split(' ')[0] || 'Julia';
+  const applicantName = application.fullName || application.user?.name || 'Người đăng ký';
+  const firstName = applicantName.split(' ')[0] || 'Đơn';
 
   return (
     <div
@@ -410,10 +396,10 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Nút đóng X */}
+        {/* Nút đóng */}
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-20"
@@ -449,12 +435,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 text-gray-700 hover:text-[#E59858] text-[13px] transition-colors mb-3"
+                onClick={() => downloadApplicationPdf(application)}
+                className="flex items-center gap-1.5 text-gray-700 hover:text-[#E59858] text-[13px] transition-colors mb-3 cursor-pointer"
               >
                 <Download size={13} className="text-gray-500 shrink-0" />
                 <span>
-                  Download <span className="font-bold underline">{firstName} - Application.pdf</span>
+                  Tải về <span className="font-bold underline">{firstName} - Đơn nhận nuôi.pdf</span>
                 </span>
               </button>
 
@@ -467,12 +453,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                     'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
                   }
                   className="w-10 h-10 rounded-lg object-cover shrink-0"
-                  alt={application.pet?.name || 'Luna'}
+                  alt={application.pet?.name || 'Cún'}
                 />
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="font-bold text-[14px] text-gray-900 truncate">
-                      {application.pet?.name || 'Luna'}
+                      {application.pet?.name || 'Cún'}
                     </span>
                     {isMale ? (
                       <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF]" />
@@ -491,26 +477,41 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
           {/* Tags Section */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[16px] font-bold text-gray-900">Tags</span>
-              <button
-                type="button"
-                onClick={() => setIsAddingTag(true)}
-                className="text-gray-400 hover:text-gray-600 text-[13px] font-medium transition-colors"
-              >
-                + tag
-              </button>
+              <span className="text-[16px] font-bold text-gray-900">Gắn thẻ</span>
+              <div className="relative">
+                <button
+                  ref={addTagBtnRef}
+                  type="button"
+                  onClick={() => setIsTagModalOpen((v) => !v)}
+                  className="text-[#E89B5A] hover:text-[#D68B4E] text-[13px] font-semibold transition-colors cursor-pointer"
+                >
+                  + Thêm
+                </button>
+
+                {isTagModalOpen && (
+                  <SelectTagsModal
+                    triggerRef={addTagBtnRef}
+                    existingTags={tags}
+                    onClose={() => setIsTagModalOpen(false)}
+                    onAddTag={handleAddTagWithColor}
+                    onRemoveTag={handleRemoveTagByName}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {tags.map((tag) => {
-                const isBlueTag = tag.name.toLowerCase().includes('follow');
+                const tagColor = tag.color || '#5982E6';
                 return (
                   <span
                     key={tag.id}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-all ${isBlueTag
-                      ? 'bg-[#EBF3FE] text-[#4A86E8]'
-                      : 'bg-[#F4F4F5] text-gray-600'
-                      }`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold border transition-all"
+                    style={{
+                      backgroundColor: `${tagColor}15`,
+                      borderColor: `${tagColor}40`,
+                      color: tagColor,
+                    }}
                   >
                     {tag.name}
                     <button
@@ -523,35 +524,17 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   </span>
                 );
               })}
-
-              {isAddingTag && (
-                <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="Tên tag..."
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddTag();
-                      if (e.key === 'Escape') setIsAddingTag(false);
-                    }}
-                    onBlur={handleAddTag}
-                    className="text-[12px] bg-transparent outline-none w-20 px-1 text-gray-800"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
-          {/* 1. Accordion: Application Details */}
+          {/* 1. Accordion: Chi tiết đơn nhận nuôi */}
           <div className="border-t border-gray-100 pt-3">
             <button
               type="button"
               className="w-full flex justify-between items-center py-2"
               onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
             >
-              <span className="text-[16px] font-bold text-gray-900">Application Details</span>
+              <span className="text-[16px] font-bold text-gray-900">Chi tiết đơn nhận nuôi</span>
               {isAppDetailsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
             </button>
 
@@ -615,7 +598,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
             )}
           </div>
 
-          {/* 3. Accordion: Đặt lịch hẹn phỏng vấn (TỰ ĐỘNG ĐỔ ĐỦ 100% NHƯ INTERVIEW MODAL) */}
+          {/* 3. Accordion: Đặt lịch hẹn phỏng vấn */}
           <div className="border-t border-gray-100 pt-3">
             <button
               type="button"
@@ -632,15 +615,14 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   Thông tin buổi phỏng vấn
                 </span>
 
-                {/* Box Khung viền thông tin buổi hẹn */}
+                {/* Khung thông tin buổi hẹn */}
                 <div className="border border-gray-200 rounded-[18px] p-4 bg-white shadow-sm space-y-3.5">
-                  {/* Top Bar: Maria Garcia -------------> Luna ♂ */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <img
                         src={primaryStaffAvatar}
                         className="w-8 h-8 rounded-full object-cover"
-                        alt="Staff"
+                        alt="Nhân sự"
                       />
                       <div className="flex flex-col">
                         <span className="font-bold text-[13px] text-gray-900">{primaryStaffName}</span>
@@ -662,11 +644,11 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                           'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
                         }
                         className="w-8 h-8 rounded-full object-cover"
-                        alt="Pet"
+                        alt="Thú cưng"
                       />
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1">
-                          <span className="font-bold text-[13px] text-gray-900">{application.pet?.name || 'Luna'}</span>
+                          <span className="font-bold text-[13px] text-gray-900">{application.pet?.name || 'Cún'}</span>
                           {isMale ? (
                             <Mars size={11} strokeWidth={2.5} className="text-[#3DB2FF]" />
                           ) : (
@@ -690,7 +672,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="VD: Hẹn phỏng vấn nhận nuôi Luna"
+                        placeholder="VD: Hẹn phỏng vấn nhận nuôi Cún"
                         className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
                       />
                     </div>
@@ -817,7 +799,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                             <label className="text-[11px] text-gray-400 mb-1 block">Nội dung cần lưu ý</label>
                             <input
                               type="text"
-                              placeholder="Optional"
+                              placeholder="Tùy chọn"
                               value={member.note}
                               onChange={(e) => handleMemberChange(member.id, 'note', e.target.value)}
                               className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
@@ -871,14 +853,14 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
             )}
           </div>
 
-          {/* 4. Accordion: Internal Notes */}
+          {/* 4. Accordion: Ghi chú nội bộ */}
           <div className="border-t border-gray-100 pt-3">
             <button
               type="button"
               className="w-full flex justify-between items-center py-2 mb-2"
               onClick={() => setIsNotesOpen(!isNotesOpen)}
             >
-              <span className="text-[16px] font-bold text-gray-900">Internal Notes</span>
+              <span className="text-[16px] font-bold text-gray-900">Ghi chú nội bộ</span>
               {isNotesOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
             </button>
 
@@ -889,12 +871,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                     <img
                       src={note.authorAvatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100'}
                       className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
-                      alt="Staff"
+                      alt="Nhân sự"
                     />
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-[13px] text-gray-900">
-                          {note.authorName || 'Staff Member'}
+                          {note.authorName || 'Nhân viên trạm'}
                         </span>
                         <span className="text-[11px] text-gray-400">{formatTimeAgo(note.createdAt)}</span>
                       </div>
@@ -905,14 +887,13 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   </div>
                 ))}
 
-                {/* Input Add note */}
                 <div className="relative mt-2">
                   <input
                     type="text"
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                    placeholder="Add note... (type @ to mention a member)"
+                    placeholder="Thêm ghi chú nội bộ... (gõ @ để nhắc tên)"
                     className="w-full bg-[#F6F6F6] rounded-[20px] pl-4 pr-11 py-3 text-[12px] text-gray-800 placeholder-gray-400 outline-none border border-transparent focus:border-[#E59858] transition-colors"
                   />
                   <button
@@ -929,12 +910,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
           </div>
         </div>
 
-        {/* Nút to dưới cùng: bước tiếp theo */}
+        {/* Nút to dưới cùng */}
         <div className="p-5 pt-3 border-t border-gray-100 bg-white">
           <button
             type="button"
             onClick={handleAdvance}
-            className="w-full bg-[#F0BA8A] hover:bg-[#E59858] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[16px] shadow-sm tracking-wide"
+            className="w-full bg-[#F0BA8A] hover:bg-[#E59858] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[16px] shadow-sm tracking-wide cursor-pointer"
           >
             Bước tiếp theo
           </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X,
   Phone,
@@ -17,6 +17,7 @@ import {
 import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
+import { SelectTagsModal } from './SelectTagsModal';
 
 // Bảng màu đồng bộ chuẩn với ApplicationCard
 const TAG_COLOR_PALETTE = [
@@ -71,7 +72,7 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
   const [tags, setTags] = useState<ApplicationTag[]>(() => normalizeTags(application.tags || []));
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
-
+  const addTagBtnRef = useRef<HTMLButtonElement>(null);
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
@@ -81,7 +82,26 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
   const applicantFullName = application.fullName || application.user?.name || 'Michael Rodriguez';
   const applicantFirstName = applicantFullName.split(' ')[0] || 'Michael';
   const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'G. Retriever';
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
+  const handleAddTagWithColor = async (tagData: { name: string; color: string }) => {
+    const tagName = tagData.name.trim();
+    if (!tagName) return;
+
+    try {
+      const res = await applicationService.addTag(application.id, { name: tagName, color: tagData.color });
+      const createdTag = res.data?.tag || res?.tag || { id: Date.now().toString(), name: tagName, color: tagData.color };
+      setTags((prev) => [...prev, createdTag]);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Lỗi thêm tag:', err);
+    }
+  };
+
+  const handleRemoveTagByName = async (tagName: string) => {
+    const target = tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase());
+    if (target) handleRemoveTag(target.id);
+  };
   // CHỈ nạp lại khi mở một đơn khác (application.id đổi)
   useEffect(() => {
     setNotes(application.notes || []);
@@ -179,11 +199,11 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
           prev.map((n) =>
             n.id === tempNote.id
               ? {
-                  ...n,
-                  id: addedNote.id,
-                  authorName: addedNote.author?.name || n.authorName,
-                  authorAvatar: addedNote.author?.avatarUrl || n.authorAvatar,
-                }
+                ...n,
+                id: addedNote.id,
+                authorName: addedNote.author?.name || n.authorName,
+                authorAvatar: addedNote.author?.avatarUrl || n.authorAvatar,
+              }
               : n
           )
         );
@@ -297,44 +317,43 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
 
           {/* Tags */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2.5">
               <h3 className="font-bold text-[15px] text-gray-900">Tags</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddingTag(!isAddingTag)}
-                className="text-[13.5px] font-semibold text-[#F3A571] hover:text-[#E89B5A] transition-colors"
-              >
-                + Add
-              </button>
-            </div>
-            {isAddingTag && (
-              <div className="flex items-center gap-2 mt-3">
-                <input
-                  type="text"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                  placeholder="Tag name..."
-                  className="flex-1 bg-[#F6F6F6] text-[12px] px-3.5 py-1.5 rounded-full outline-none border border-gray-200 focus:border-[#F3A571]"
-                  autoFocus
-                />
+              <div className="relative">
                 <button
+                  ref={addTagBtnRef}
                   type="button"
-                  onClick={handleAddTag}
-                  className="p-1.5 bg-[#F3A571] text-white rounded-full hover:bg-[#E89B5A]"
+                  onClick={() => setIsTagModalOpen(!isTagModalOpen)}
+                  className="text-[13px] font-semibold text-[#F3A571] hover:text-[#E89B5A] transition-colors cursor-pointer"
                 >
-                  <Plus size={13} />
+                  + Add
                 </button>
+
+                {isTagModalOpen && (
+                  <SelectTagsModal
+                    triggerRef={addTagBtnRef}
+                    existingTags={tags}
+                    onClose={() => setIsTagModalOpen(false)}
+                    onAddTag={handleAddTagWithColor}
+                    onRemoveTag={handleRemoveTagByName}
+                  />
+                )}
               </div>
-            )}
+            </div>
+
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {tags.map((tag, idx) => {
-                  const colorClass = TAG_COLOR_PALETTE[idx % TAG_COLOR_PALETTE.length];
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => {
+                  const tagColor = tag.color || '#5982E6';
                   return (
                     <span
-                      key={tag.id || `tag-${idx}`}
-                      className={`px-3 py-1 text-[11.5px] font-semibold rounded-full flex items-center gap-1.5 ${colorClass}`}
+                      key={tag.id}
+                      className="px-3 py-1 text-[11.5px] font-semibold rounded-full flex items-center gap-1.5 border transition-all"
+                      style={{
+                        backgroundColor: `${tagColor}15`,
+                        borderColor: `${tagColor}40`,
+                        color: tagColor,
+                      }}
                     >
                       {tag.name}
                       <X
@@ -358,9 +377,8 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
               <h3 className="font-bold text-[15px] text-gray-900">Application Details</h3>
               <ChevronDown
                 size={18}
-                className={`text-gray-400 transition-transform duration-200 ${
-                  isAppOpen ? 'rotate-180' : ''
-                }`}
+                className={`text-gray-400 transition-transform duration-200 ${isAppOpen ? 'rotate-180' : ''
+                  }`}
                 strokeWidth={2}
               />
             </div>
@@ -375,9 +393,8 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
               <h3 className="font-bold text-[15px] text-gray-900">Internal Notes</h3>
               <ChevronDown
                 size={18}
-                className={`text-gray-400 transition-transform duration-200 ${
-                  isNotesOpen ? 'rotate-180' : ''
-                }`}
+                className={`text-gray-400 transition-transform duration-200 ${isNotesOpen ? 'rotate-180' : ''
+                  }`}
                 strokeWidth={2}
               />
             </div>

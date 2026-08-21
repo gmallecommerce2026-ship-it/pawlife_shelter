@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X,
   Phone,
@@ -11,23 +11,17 @@ import {
   Check,
   Mars,
   Venus,
-  Plus,
   FileText,
   ChevronRight,
 } from 'lucide-react';
 import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
+import { SelectTagsModal } from './SelectTagsModal';
+import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
+import { formatPetAge } from '@/utils/petAge';
 
-// Bảng màu đồng bộ chuẩn với ApplicationCard
-const TAG_COLOR_PALETTE = [
-  'bg-[#EEF3FF] text-[#5982E6]', // Xanh dương
-  'bg-[#FFF4E6] text-[#FF922B]', // Cam
-  'bg-[#EBFBEE] text-[#40C057]', // Xanh lá
-  'bg-[#F3F0FF] text-[#7950F2]', // Tím
-];
-
-// Hàm chuẩn hóa mọi cấu trúc Tag từ Prisma / Backend về dạng { id, name }
+// Hàm chuẩn hóa cấu trúc Tag từ Prisma / Backend về dạng { id, name, color }
 const normalizeTags = (rawTags: any[]): ApplicationTag[] => {
   if (!Array.isArray(rawTags)) return [];
   return rawTags
@@ -90,78 +84,62 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const [isAppOpen, setIsAppOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
 
-  // Khởi tạo danh sách tags chuẩn hóa
   const [tags, setTags] = useState<ApplicationTag[]>(() => normalizeTags(application.tags || []));
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
-
+  const addTagBtnRef = useRef<HTMLButtonElement>(null);
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 
   const isMale = application.pet?.gender !== 'FEMALE';
-  const petName = application.pet?.name || 'Max';
-  const applicantFullName = application.fullName || application.user?.name || 'Michael Rodriguez';
-  const applicantFirstName = applicantFullName.split(' ')[0] || 'Michael';
-  const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'G. Retriever';
+  const petName = application.pet?.name || 'Cún';
+  const applicantFullName = application.fullName || application.user?.name || 'Người đăng ký';
+  const applicantFirstName = applicantFullName.split(' ')[0] || 'Người đăng ký';
+  const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'Chưa rõ giống';
+  const petAgeFormatted = formatPetAge(application.pet?.dob); // đổi 'birthDate' theo đúng field trong type Pet
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
-  // CHỈ nạp lại khi mở một đơn khác
+  const handleAddTagWithColor = async (tagData: { name: string; color: string }) => {
+    const tagName = tagData.name.trim();
+    if (!tagName) return;
+
+    const tempTag: ApplicationTag = {
+      id: `temp-${Date.now()}`,
+      name: tagName,
+      color: tagData.color,
+    };
+
+    setTags((prev) => {
+      const isExist = prev.some((t) => t.name.toLowerCase() === tagName.toLowerCase());
+      if (isExist) return prev;
+      return [...prev, tempTag];
+    });
+
+    try {
+      const response = await applicationService.addTag(application.id, { name: tagName, color: tagData.color });
+      const resData = response?.data?.data || response?.data || response;
+      const tagObj = resData?.tag || resData;
+      const realTagId = tagObj?.id || resData?.tagId;
+      if (realTagId) {
+        setTags((prev) =>
+          prev.map((t) => (t.id === tempTag.id ? { ...t, id: String(realTagId), color: tagObj?.color || tagData.color } : t))
+        );
+      }
+      onRefresh?.();
+    } catch (error) {
+      setTags((prev) => prev.filter((t) => t.id !== tempTag.id));
+    }
+  };
+
+  const handleRemoveTagByName = async (tagName: string) => {
+    const target = tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase());
+    if (target) handleRemoveTag(target.id);
+  };
+
   useEffect(() => {
     setNotes(application.notes || []);
     setTags(normalizeTags(application.tags || []));
   }, [application.id]);
 
-  // Thêm Tag hiển thị tức thì (Optimistic Update)
-  const handleAddTag = async () => {
-    const tagName = newTagName.trim();
-    if (!tagName) return;
-
-    // 1. Tạo tag tạm thời và đẩy ngay vào UI (0ms delay)
-    const tempTag: ApplicationTag = {
-      id: `temp-${Date.now()}`,
-      name: tagName,
-    };
-
-    setTags((prev) => {
-      const currentList = normalizeTags(prev);
-      const isExist = currentList.some(
-        (t) => (t.name || '').toLowerCase() === tagName.toLowerCase()
-      );
-      if (isExist) return currentList;
-      return [...currentList, tempTag];
-    });
-
-    setNewTagName('');
-    setIsAddingTag(false);
-
-    try {
-      // 2. Gửi API lên server ngầm
-      const response = await applicationService.addTag(application.id, { name: tagName });
-      const resData = response?.data?.data || response?.data || response;
-      const tagObj = resData?.tag || resData;
-      const realTagId = tagObj?.id || resData?.tagId;
-
-      // 3. Cập nhật lại ID thật từ database cho tag
-      if (realTagId) {
-        setTags((prev) =>
-          normalizeTags(prev).map((t) =>
-            t.id === tempTag.id
-              ? { ...t, id: String(realTagId), name: tagObj?.name || tagName }
-              : t
-          )
-        );
-      }
-
-      // 4. Báo cho component cha tải lại dữ liệu ngoài board
-      onRefresh?.();
-    } catch (error) {
-      console.error('Lỗi khi thêm tag:', error);
-      // Hoàn tác nếu lỗi API
-      setTags((prev) => prev.filter((t) => t.id !== tempTag.id));
-    }
-  };
-
-  // Xóa Tag tức thì
   const handleRemoveTag = async (tagId: string) => {
     const prevTags = [...tags];
     setTags((prev) => prev.filter((t) => t.id !== tagId));
@@ -170,12 +148,11 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
       await applicationService.removeTag(application.id, tagId);
       onRefresh?.();
     } catch (error) {
-      console.error('Lỗi khi xóa tag:', error);
+      console.error('Lỗi khi xóa thẻ:', error);
       setTags(prevTags);
     }
   };
 
-  // Thêm Note
   const handleAddNote = async () => {
     const content = noteInput.trim();
     if (!content || isSubmittingNote) return;
@@ -183,7 +160,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
     const tempNote: ApplicationNote = {
       id: `temp-${Date.now()}`,
       authorId: 'current-user',
-      authorName: 'Staff Member',
+      authorName: 'Nhân viên trạm',
       authorAvatar:
         'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
       content,
@@ -222,7 +199,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
 
   const handleSubmit = () => {
     onSubmit({
-      reviewNote: noteInput || 'Đã chuyển sang Đang xem xét (Pending Review)',
+      reviewNote: noteInput || 'Đã chuyển sang Đang xem xét',
       tags,
       notes,
     });
@@ -234,10 +211,10 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[420px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-[420px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Nút Close */}
+        {/* Nút đóng */}
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors p-1 bg-transparent hover:bg-gray-50 rounded-full z-10"
@@ -247,7 +224,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
 
         {/* Nội dung cuộn */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          {/* 1. Header: Avatar viền cam + Thông tin Applicant & Pet */}
+          {/* 1. Header: Avatar + Thông tin Người nhận nuôi & Pet */}
           <div className="flex items-start gap-4 mb-5">
             <div className="relative w-[94px] h-[94px] rounded-full border-[2.5px] border-[#F3A571] p-[2px] shrink-0">
               <img
@@ -268,20 +245,20 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
               <div className="flex items-center gap-2 text-gray-500 mb-1.5">
                 <Phone size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
                 <span className="text-[13px] text-gray-500 font-normal truncate">
-                  {application.phone || '(555) 321-7651'}
+                  {application.phone || 'Chưa có SĐT'}
                 </span>
               </div>
 
               <div className="flex items-center gap-2 text-gray-500 mb-1.5">
                 <Mail size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
                 <span className="text-[13px] text-gray-500 font-normal truncate">
-                  {application.user?.email || application.zalo || 'mike.rodriguez@email.com'}
+                  {application.user?.email || application.zalo || 'adopter@pawlife.vn'}
                 </span>
               </div>
 
               <div className="flex items-center gap-2 text-gray-500 mb-2">
                 <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
-                <span className="text-[13px] text-gray-500 font-normal">Is applying for</span>
+                <span className="text-[13px] text-gray-500 font-normal">Đang xin nhận nuôi</span>
               </div>
 
               <div className="flex items-center gap-2.5 mt-0.5">
@@ -300,80 +277,80 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                       {petName}
                     </span>
                     {isMale ? (
-                      <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF] shrink-0" />
+                      <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF]" />
                     ) : (
-                      <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93] shrink-0" />
+                      <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
                     )}
                   </div>
                   <span className="text-[11.5px] text-gray-400 mt-0.5 truncate leading-none">
-                    2 years • {petBreedFormatted}
+                    {petAgeFormatted} • {petBreedFormatted}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 2. Khung file đính kèm Application.pdf */}
+          {/* 2. Khung tải file Đơn nhận nuôi */}
           <div className="border border-gray-200 rounded-[16px] p-3.5 px-4 flex items-center justify-between bg-white hover:bg-gray-50/50 transition-colors mb-6 shadow-xs">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-[10px] bg-[#FFF8F3] border border-[#FFE8D6] flex items-center justify-center shrink-0">
                 <FileText size={18} className="text-[#F3A571]" strokeWidth={1.8} />
               </div>
               <span className="text-[13.5px] font-semibold text-gray-900 truncate">
-                {applicantFirstName} - Application.pdf
+                {applicantFirstName} - Đơn nhận nuôi.pdf
               </span>
             </div>
             <button
               type="button"
-              title="Download Application"
-              className="text-gray-400 hover:text-gray-700 transition-colors p-1"
+              onClick={() => downloadApplicationPdf(application)}
+              title="Tải về đơn nhận nuôi (PDF)"
+              className="text-gray-400 hover:text-gray-700 transition-colors p-1 cursor-pointer"
             >
               <Download size={17} strokeWidth={2} />
             </button>
           </div>
 
-          {/* 3. Tags (Đồng bộ màu sắc & hiện ngay lập tức) */}
+          {/* 3. Thẻ phân loại (Tags) */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[15px] text-gray-900">Tags</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddingTag(!isAddingTag)}
-                className="text-[13.5px] font-semibold text-[#F3A571] hover:text-[#E89B5A] transition-colors"
-              >
-                + Add
-              </button>
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="font-bold text-[15px] text-gray-900">Gắn thẻ</h3>
+              <div className="relative">
+                <button
+                  ref={addTagBtnRef}
+                  type="button"
+                  onClick={() => setIsTagModalOpen((v) => !v)}
+                  className="text-[13px] font-semibold text-[#E89B5A] hover:text-[#D68B4E] transition-colors cursor-pointer"
+                >
+                  + Thêm
+                </button>
+
+                {isTagModalOpen && (
+                  <SelectTagsModal
+                    triggerRef={addTagBtnRef}
+                    existingTags={tags}
+                    onClose={() => setIsTagModalOpen(false)}
+                    onAddTag={handleAddTagWithColor}
+                    onRemoveTag={handleRemoveTagByName}
+                  />
+                )}
+              </div>
             </div>
 
-            {isAddingTag && (
-              <div className="flex items-center gap-2 mt-3">
-                <input
-                  type="text"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                  placeholder="Tag name..."
-                  className="flex-1 bg-[#F6F6F6] text-[12px] px-3.5 py-1.5 rounded-full outline-none border border-gray-200 focus:border-[#F3A571]"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={handleAddTag}
-                  className="p-1.5 bg-[#F3A571] text-white rounded-full hover:bg-[#E89B5A]"
-                >
-                  <Plus size={13} />
-                </button>
-              </div>
-            )}
-
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {tags.map((tag, idx) => {
-                  const colorClass = TAG_COLOR_PALETTE[idx % TAG_COLOR_PALETTE.length];
+            <div className="flex flex-wrap gap-2">
+              {tags.length === 0 ? (
+                <span className="text-[12px] text-gray-400 italic">Chưa có thẻ nào</span>
+              ) : (
+                tags.map((tag) => {
+                  const tagColor = tag.color || '#5982E6';
                   return (
                     <span
-                      key={tag.id || `tag-${idx}`}
-                      className={`px-3 py-1 text-[11.5px] font-semibold rounded-full flex items-center gap-1.5 ${colorClass}`}
+                      key={tag.id}
+                      className="px-3 py-1 text-[11.5px] font-semibold rounded-full flex items-center gap-1.5 border transition-all"
+                      style={{
+                        backgroundColor: `${tagColor}15`,
+                        borderColor: `${tagColor}40`,
+                        color: tagColor,
+                      }}
                     >
                       {tag.name}
                       <X
@@ -383,67 +360,65 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                       />
                     </span>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
 
-          {/* 4. Application Details (Accordion) */}
+          {/* 4. Chi tiết đơn nhận nuôi (Accordion) */}
           <div className="mb-5">
             <div
               className="flex items-center justify-between cursor-pointer select-none py-1"
               onClick={() => setIsAppOpen(!isAppOpen)}
             >
-              <h3 className="font-bold text-[15px] text-gray-900">Application Details</h3>
+              <h3 className="font-bold text-[15px] text-gray-900">Chi tiết đơn nhận nuôi</h3>
               <ChevronDown
                 size={18}
-                className={`text-gray-400 transition-transform duration-200 ${isAppOpen ? 'rotate-180' : ''
-                  }`}
+                className={`text-gray-400 transition-transform duration-200 ${isAppOpen ? 'rotate-180' : ''}`}
                 strokeWidth={2}
               />
             </div>
 
             {isAppOpen && (
               <div className="flex flex-col mt-3 animate-in fade-in duration-200">
-                <SectionCard title="A - Living Conditions">
+                <SectionCard title="A - Điều kiện sinh sống">
                   <div className="grid grid-cols-2 gap-y-3 gap-x-3">
-                    <Field label="Location" value={application.location || 'Hà Nội'} />
-                    <Field label="Housing Type" value={application.housing || 'Apartment'} />
-                    <Field label="Children" value={application.children || 'No'} />
-                    <Field label="Cage Plan" value={application.cage || 'No'} />
+                    <Field label="Khu vực / Địa chỉ" value={application.location || 'Hà Nội'} />
+                    <Field label="Loại nhà ở" value={application.housing || 'Chung cư'} />
+                    <Field label="Trẻ em trong nhà" value={application.children || 'Không'} />
+                    <Field label="Kế hoạch chuồng / lồng" value={application.cage || 'Không nhốt'} />
                   </div>
                 </SectionCard>
 
-                <SectionCard title="B - Pet Experience">
+                <SectionCard title="B - Kinh nghiệm nuôi dưỡng">
                   <div className="flex flex-col gap-2.5">
-                    <Field label="Previous Pet" value={application.petExperience || 'Yes, 1 dog'} />
-                    <Field label="History" value={application.prevPetHistory || '5 years experience'} />
+                    <Field label="Thú cưng từng nuôi" value={application.petExperience || 'Đã có kinh nghiệm'} />
+                    <Field label="Lịch sử nuôi trước đây" value={application.prevPetHistory || '5 năm kinh nghiệm'} />
                   </div>
                 </SectionCard>
 
-                <SectionCard title="C - Adoption Commitment">
+                <SectionCard title="C - Cam kết nhận nuôi">
                   <div className="grid grid-cols-2 gap-y-2 gap-x-3">
-                    <CommitmentCheck label="Yearly vaccinations" />
-                    <CommitmentCheck label="Provide status updates" />
-                    <CommitmentCheck label="Hospital treatment" />
-                    <CommitmentCheck label="Allow home visits" />
+                    <CommitmentCheck label="Tiêm phòng hàng năm" />
+                    <CommitmentCheck label="Cập nhật tình trạng định kỳ" />
+                    <CommitmentCheck label="Khám chữa bệnh khi cần" />
+                    <CommitmentCheck label="Sẵn sàng cho thăm nhà" />
                   </div>
                 </SectionCard>
               </div>
             )}
           </div>
 
-          {/* 5. Internal Notes (Accordion) */}
+          {/* 5. Ghi chú nội bộ (Accordion) */}
           <div className="mb-6">
             <div
               className="flex items-center justify-between cursor-pointer select-none py-1"
               onClick={() => setIsNotesOpen(!isNotesOpen)}
             >
-              <h3 className="font-bold text-[15px] text-gray-900">Internal Notes</h3>
+              <h3 className="font-bold text-[15px] text-gray-900">Ghi chú nội bộ</h3>
               <ChevronDown
                 size={18}
-                className={`text-gray-400 transition-transform duration-200 ${isNotesOpen ? 'rotate-180' : ''
-                  }`}
+                className={`text-gray-400 transition-transform duration-200 ${isNotesOpen ? 'rotate-180' : ''}`}
                 strokeWidth={2}
               />
             </div>
@@ -458,12 +433,12 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                         'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'
                       }
                       className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
-                      alt="Staff"
+                      alt="Nhân sự"
                     />
                     <div className="flex flex-col flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-[12px] text-gray-900">
-                          {note.authorName || 'Staff Member'}
+                          {note.authorName || 'Nhân viên trạm'}
                         </span>
                         <span className="text-[10px] text-gray-400">{note.createdAt}</span>
                       </div>
@@ -478,7 +453,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                    placeholder="Add internal note..."
+                    placeholder="Thêm ghi chú nội bộ... (gõ @ để nhắc tên)"
                     className="w-full bg-[#F6F6F6] rounded-[12px] pl-3.5 pr-9 py-2.5 text-[12.5px] outline-none placeholder-gray-400 border border-transparent focus:border-[#F3A571]"
                   />
                   <button
@@ -494,14 +469,14 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             )}
           </div>
 
-          {/* 6. Nút Move to Pending Review */}
+          {/* 6. Nút chuyển sang Đang xem xét */}
           <div className="mt-2">
             <button
               type="button"
               onClick={handleSubmit}
-              className="w-full bg-[#F3A571] hover:bg-[#E89B5A] active:scale-[0.99] transition-all text-white font-semibold text-[14.5px] py-3.5 px-6 rounded-[16px] shadow-sm flex items-center justify-center gap-1"
+              className="w-full bg-[#F3A571] hover:bg-[#E89B5A] active:scale-[0.99] transition-all text-white font-semibold text-[14.5px] py-3.5 px-6 rounded-[16px] shadow-sm flex items-center justify-center gap-1 cursor-pointer"
             >
-              <span>Move to Pending Review</span>
+              <span>Chuyển sang Đang xem xét</span>
               <ChevronRight size={16} strokeWidth={2.5} />
             </button>
           </div>

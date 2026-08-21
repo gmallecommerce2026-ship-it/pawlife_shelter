@@ -38,6 +38,7 @@ import { MoveToPendingModal } from './components/MoveToPendingModal';
 import { RequestDocumentsModal } from './components/RequestDocumentsModal';
 import { RequiredDocument } from '@/constants/adoptionDocuments';
 import { applicationService } from '@/services/applicationService';
+import { useTagColorStore } from '@/stores/useTagColorStore';
 
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
@@ -53,6 +54,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { filter } = useApplicationFilter();
   const { fetchApplications, moveApplication } = useApplicationActions();
+  const { getTagColor, setTagColor } = useTagColorStore();
 
   const [quickViewApp, setQuickViewApp] = useState<AdoptionApplication | null>(null);
   const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
@@ -78,9 +80,28 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const formattedItems = useMemo(() => {
     return localItems.map((app: any) => ({
       ...app,
-      tags: app.tags ? app.tags.map((t: any) => t.tag || t) : [],
+      tags: app.tags
+        ? app.tags.map((t: any) => {
+          const base = t && typeof t === 'object' && t.tag
+            ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
+            : t;
+          const syncedColor = getTagColor(base?.name) || base?.color;
+          return { ...base, color: syncedColor };
+        })
+        : [],
     }));
-  }, [localItems]);
+  }, [localItems, getTagColor]);
+  useEffect(() => {
+    items.forEach((app: any) => {
+      (app.tags || []).forEach((t: any) => {
+        const tagObj = t?.tag || t;
+        if (tagObj?.name && tagObj?.color) {
+          setTagColor(tagObj.name, tagObj.color);
+        }
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -234,11 +255,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
       console.log('[DragEnd] early return - bounce back');
       setLocalItems(items);
-      return;
-    }
-
-    if (finalStatus === 'PENDING' && originalItem.status === 'SUBMITTED') {
-      setPendingApp(originalItem);
       return;
     }
 
