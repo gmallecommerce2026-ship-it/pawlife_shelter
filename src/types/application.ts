@@ -67,6 +67,12 @@ export interface ApplicationNote {
   content: string;
   createdAt: string | Date;
 }
+export interface ApplicationDocumentSummary {
+  id: string;
+  key: string;
+  status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
+}
+
 export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;
@@ -90,7 +96,7 @@ export interface AdoptionApplication {
   notes?: ApplicationNote[];
   pet?: AdoptionApplicantPetSummary;
   user?: AdoptionApplicantUser; // include user{id,name,avatarUrl,email,phone} từ getMyApplications
-
+  documents?: ApplicationDocumentSummary[];
   createdAt: string;
   updatedAt?: string;
 }

@@ -1,3 +1,4 @@
+// src/app/shelter/applications/ApplicationKanbanBoard.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,7 +18,12 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { KANBAN_COLUMNS, ApplicationStatus, AdoptionApplication } from '@/types/application';
-import { useApplicationList, useApplicationActions, useApplicationFilter, selectFilteredApplications } from '@/stores/useApplicationStore';
+import {
+  useApplicationList,
+  useApplicationActions,
+  useApplicationFilter,
+  selectFilteredApplications,
+} from '@/stores/useApplicationStore';
 import { ApplicationColumn } from './components/ApplicationColumn';
 import { ApplicationCardContent } from './components/ApplicationCard';
 import { ApplicationDetailModal } from './components/ApplicationDetailModal';
@@ -31,17 +37,16 @@ import { NeedMoreInfoModal } from './components/NeedMoreInfoModal';
 import { MoveToPendingModal } from './components/MoveToPendingModal';
 import { RequestDocumentsModal } from './components/RequestDocumentsModal';
 import { RequiredDocument } from '@/constants/adoptionDocuments';
+import { applicationService } from '@/services/applicationService';
 
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 
-// Bước kế tiếp khi bấm thẳng vào thẻ (giống hành vi kéo-thả sang cột sau).
-// PENDING bỏ qua NEED_MORE_INFO, đi thẳng tới INTERVIEW_SCHEDULED.
 const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   SUBMITTED: 'PENDING',
   PENDING: 'INTERVIEW_SCHEDULED',
   INTERVIEW_SCHEDULED: 'APPROVED',
-  // NEED_MORE_INFO, APPROVED, ADOPTION_COMPLETED, CLOSED: không có bước kế tiếp -> fallback xem chi tiết
+  APPROVED: 'APPROVED',
 };
 
 export const ApplicationKanbanBoard: React.FC = () => {
@@ -52,7 +57,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [quickViewApp, setQuickViewApp] = useState<AdoptionApplication | null>(null);
   const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
   const isDraggingRef = useRef(false);
-
+  const justDraggedRef = useRef(false);
   // States quản lý Modal chuyển trạng thái
   const [approveApp, setApproveApp] = useState<AdoptionApplication | null>(null);
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
@@ -60,10 +65,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
+
+  // State xác nhận đóng/từ chối đơn
+  const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
+  const [closeReason, setCloseReason] = useState('');
+  const [isClosingApp, setIsClosingApp] = useState(false);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrollable, setIsScrollable] = useState(false);
 
-  // ĐỒNG BỘ: Phẳng hóa mảng Tags từ Backend
+  // Phẳng hóa mảng Tags
   const formattedItems = useMemo(() => {
     return localItems.map((app: any) => ({
       ...app,
@@ -126,7 +137,24 @@ export const ApplicationKanbanBoard: React.FC = () => {
       window.removeEventListener('resize', checkScrollable);
     };
   }, [columns]);
+  useEffect(() => {
+    if (approveApp) {
+      const fresh = items.find((a) => a.id === approveApp.id);
+      // Chỉ set lại khi thực sự có bản mới khác reference cũ, tránh loop vô ích
+      if (fresh && fresh !== approveApp) {
+        setApproveApp(fresh);
+      }
+    }
+  }, [items, approveApp]);
 
+  useEffect(() => {
+    if (interviewApp) {
+      const fresh = items.find((a) => a.id === interviewApp.id);
+      if (fresh && fresh !== interviewApp) {
+        setInterviewApp(fresh);
+      }
+    }
+  }, [items, interviewApp]);
   const handleDragStart = (event: DragStartEvent) => {
     isDraggingRef.current = true;
     const app = localItems.find((a) => a.id === event.active.id);
@@ -179,24 +207,19 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     isDraggingRef.current = false;
+    justDraggedRef.current = true;
+    setTimeout(() => { justDraggedRef.current = false; }, 200);
+
     setActiveApp(null);
 
     const activeId = active.id as string;
     const originalItem = items.find((a) => a.id === activeId);
 
-    // FIX: dnd-kit quirk — sau khi handleDragOver reorder localItems để
-    // preview card ở cột mới, lúc THẢ TAY, `event.over.id` thường bị dnd-kit
-    // báo TRÙNG với chính `active.id` (vì vị trí thả giờ trùng slot của
-    // chính card đang kéo). Nếu dùng thẳng `over.id` để tra `items`, ta sẽ
-    // tra ra CHÍNH card đó với trạng thái CŨ -> tưởng "không đổi gì" -> snap
-    // back. Do đó ưu tiên dùng `overColumn` (state đã track đúng suốt lúc
-    // kéo trong handleDragOver) làm nguồn xác định cột đích.
     let finalStatus: ApplicationStatus | undefined;
 
     if (over) {
       const overId = over.id as string;
       if (overId === activeId) {
-        // over đang tự trỏ vào chính nó -> dùng overColumn làm fallback
         finalStatus = overColumn ?? undefined;
       } else {
         const overIsColumn = isColumnId(overId);
@@ -204,58 +227,48 @@ export const ApplicationKanbanBoard: React.FC = () => {
         finalStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
       }
     }
+    console.log('[DragEnd]', { overId: over?.id, finalStatus, originalStatus: originalItem?.status });
 
     setOverColumn(null);
 
     if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
+      console.log('[DragEnd] early return - bounce back');
       setLocalItems(items);
       return;
     }
 
-    // QUAN TRỌNG: KHÔNG gọi setLocalItems(items) ở các nhánh dưới —
-    // localItems đã được handleDragOver cập nhật sang cột mới, giữ nguyên để
-    // card đứng ở cột mới trong lúc modal xác nhận đang mở. Mỗi modal khi
-    // onClose (Hủy) đều tự gọi fetchApplications() -> items cập nhật từ
-    // server -> useEffect tự đồng bộ lại localItems = items, tự trả card về
-    // chỗ cũ ĐÚNG LÚC user hủy, thay vì bị trả về ngay khi vừa thả tay.
-
-    // 1. Chuyển từ Mới -> Đang xem xét (PENDING)
     if (finalStatus === 'PENDING' && originalItem.status === 'SUBMITTED') {
       setPendingApp(originalItem);
       return;
     }
 
-    // 2. Chuyển sang Yêu cầu bổ sung (NEED_MORE_INFO)
     if (finalStatus === 'NEED_MORE_INFO') {
       setRequestDocsApp(originalItem);
       return;
     }
 
-    // 3. Chuyển sang Hẹn phỏng vấn (INTERVIEW_SCHEDULED)
     if (finalStatus === 'INTERVIEW_SCHEDULED') {
       setInterviewApp(originalItem);
       return;
     }
 
-    // 4. Cho phép kéo từ BẤT KỲ cột nào sang ĐÃ DUYỆT (APPROVED)
-    if (finalStatus === 'APPROVED') {
-      setApproveApp(originalItem);
-      return;
-    }
-
     if (REQUIRES_CONFIRM.includes(finalStatus)) {
-      setSelectedApp(originalItem);
+      setCloseAppTarget(originalItem);
       return;
     }
 
     moveApplication(activeId, finalStatus);
   };
 
-  // Click thẳng vào thẻ: mở modal chuyển sang bước kế tiếp (giống kéo-thả),
-  // bỏ qua NEED_MORE_INFO; nếu không còn bước kế tiếp thì mở chi tiết đầy đủ.
   const handleCardClick = (app: AdoptionApplication) => {
-    const nextStatus = NEXT_STATUS_MAP[app.status];
+    console.log('[CardClick]', app.id, 'justDragged=', justDraggedRef.current)
+    if (justDraggedRef.current) return;
+    if (app.status === 'NEED_MORE_INFO') {
+      setNeedInfoApp(app);
+      return;
+    }
 
+    const nextStatus = NEXT_STATUS_MAP[app.status];
     switch (nextStatus) {
       case 'PENDING':
         setPendingApp(app);
@@ -268,6 +281,23 @@ export const ApplicationKanbanBoard: React.FC = () => {
         return;
       default:
         setSelectedApp(app);
+    }
+  };
+
+  // Đóng/Từ chối đơn thực tế
+  const handleConfirmClose = async () => {
+    if (!closeAppTarget) return;
+    try {
+      setIsClosingApp(true);
+      await moveApplication(closeAppTarget.id, 'CLOSED', closeReason.trim() || 'Trạm đã đóng hồ sơ.');
+      await fetchApplications();
+      setCloseAppTarget(null);
+      setCloseReason('');
+    } catch (error) {
+      console.error('Lỗi khi đóng hồ sơ:', error);
+      alert('Không thể đóng đơn nhận nuôi. Vui lòng thử lại.');
+    } finally {
+      setIsClosingApp(false);
     }
   };
 
@@ -313,7 +343,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 onOpenDetail={(app) => setSelectedApp(app)}
                 onCardClick={handleCardClick}
                 onOpenProfile={(app) => setProfileApp(app)}
-                onRemove={(app) => console.log("Xóa ticket ID: ", app.id)}
+                onRemove={(app) => setCloseAppTarget(app)}
                 onOpenDocuments={(app) => setDocumentsApp(app)}
                 onOpenQuickView={(app) => setQuickViewApp(app)}
               />
@@ -344,6 +374,62 @@ export const ApplicationKanbanBoard: React.FC = () => {
             </kbd>
             + Cuộn chuột ngang
           </p>
+        </div>
+      )}
+
+      {/* Modal xác nhận Đóng / Hủy đơn (CLOSED) */}
+      {closeAppTarget && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setCloseAppTarget(null)}
+        >
+          <div
+            className="bg-white w-full max-w-[440px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-[18px] font-bold text-gray-900 mb-2">
+              Đóng hồ sơ nhận nuôi?
+            </h3>
+            <p className="text-[13px] text-gray-600 mb-4 leading-relaxed">
+              Bạn có chắc chắn muốn đóng hoặc từ chối đơn nhận nuôi của{' '}
+              <strong className="text-gray-900">
+                {closeAppTarget.fullName || closeAppTarget.user?.name}
+              </strong>{' '}
+              cho bé <strong className="text-gray-900">{closeAppTarget.pet?.name}</strong>?
+            </p>
+
+            <div className="mb-5">
+              <label className="text-[12px] font-medium text-gray-500 mb-1.5 block">
+                Lý do từ chối / đóng hồ sơ:
+              </label>
+              <textarea
+                rows={2}
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                placeholder="VD: Không đáp ứng đủ điều kiện không gian nuôi..."
+                className="w-full border border-gray-200 rounded-[10px] p-2.5 text-[13px] outline-none focus:border-red-400"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setCloseAppTarget(null)}
+                disabled={isClosingApp}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] font-semibold rounded-lg transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClose}
+                disabled={isClosingApp}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-[13px] font-bold rounded-lg transition-colors disabled:opacity-60"
+              >
+                {isClosingApp ? 'Đang đóng...' : 'Xác nhận đóng'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -394,10 +480,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setQuickViewApp(null);
             fetchApplications();
           }}
-          onRefresh={fetchApplications}   // 👈 thêm dòng này
+          onRefresh={fetchApplications}
         />
       )}
-
 
       {interviewApp && (
         <InterviewScheduleModal
@@ -406,10 +491,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setInterviewApp(null);
             fetchApplications();
           }}
+          onRefresh={fetchApplications}
           onSubmit={async (data) => {
-            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED', data?.reviewNote);
-            await fetchApplications();
+            const res = await applicationService.scheduleAppointment(interviewApp.id, data);
+            await fetchApplications(); // Đồng bộ lại state toàn bộ Board
             setInterviewApp(null);
+            return res;
           }}
         />
       )}
@@ -421,7 +508,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setApproveApp(null);
             fetchApplications();
           }}
-          onRefresh={fetchApplications}   // 👈 thêm dòng này
+          onRefresh={fetchApplications}
+          onScheduleInterview={async (applicationId, data) => {
+            const appointment = await applicationService.scheduleAppointment(applicationId, data);
+            await fetchApplications();
+            return appointment;
+          }}
           onSubmit={async (data) => {
             await moveApplication(approveApp.id, 'APPROVED', data?.reviewNote);
             await fetchApplications();
@@ -438,7 +530,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
             fetchApplications();
           }}
           onNext={(documents) => {
-            setPendingRequiredDocs(documents); // 👈 lưu danh sách tài liệu đã chọn
+            setPendingRequiredDocs(documents);
             setNeedInfoApp(requestDocsApp);
             setRequestDocsApp(null);
           }}
@@ -448,7 +540,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
       {needInfoApp && (
         <NeedMoreInfoModal
           application={needInfoApp}
-          initialDocuments={pendingRequiredDocs} // 👈 truyền xuống modal
+          initialDocuments={pendingRequiredDocs}
           onClose={() => {
             setNeedInfoApp(null);
             setPendingRequiredDocs([]);

@@ -56,6 +56,12 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
 
+  const documents = (application as any).documents as { status: string }[] | undefined;
+  const totalDocs = documents?.length ?? 0;
+  const acceptedDocs = documents?.filter((d) => d.status === 'ACCEPTED').length ?? 0;
+  const showDocsBadge = application.status === 'NEED_MORE_INFO' && totalDocs > 0;
+  const allDocsAccepted = showDocsBadge && acceptedDocs === totalDocs;
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -207,6 +213,22 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         )}
       </div>
 
+      {showDocsBadge && (
+        <div
+          className={`flex items-center gap-1.5 mb-3.5 px-2.5 py-1.5 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'
+            }`}
+        >
+          <File size={13} className={allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'} strokeWidth={2} />
+          <span
+            className={`font-sans text-[12px] font-semibold ${allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'
+              }`}
+          >
+            {acceptedDocs}/{totalDocs} tài liệu đã duyệt
+            {allDocsAccepted ? ' — sẵn sàng chuyển bước' : ''}
+          </span>
+        </div>
+      )}
+
       {/* 4. Divider */}
       <div className="w-full h-px bg-[#EEEEEE] mb-3.5" />
 
@@ -281,9 +303,8 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...attributes}
       tabIndex={-1}
       onClick={() => onCardClick(application)}
-      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${
-        isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
-      } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
+        } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <ApplicationCardContent
         application={application}

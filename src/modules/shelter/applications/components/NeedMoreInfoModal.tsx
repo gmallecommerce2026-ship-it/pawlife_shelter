@@ -7,9 +7,12 @@ import { applicationService } from '@/services/applicationService'; // Gọi API
 import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDocuments';
 import { DocumentReviewModal, DocumentReviewData } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
+
 // Item tài liệu hiển thị trong modal: `requested = true` là đã chính thức yêu
 // cầu (từ RequestDocumentsModal hoặc đã bấm "Yêu cầu"); `requested = false`
 // là mới thêm qua "+ Thêm tài liệu bổ sung", đang chờ xác nhận gửi.
+// `submitted = true` nghĩa là APPLICANT đã tự nộp file thật từ mobile app
+// (AdoptionStatusScreen) — staff KHÔNG có nút nào tự chuyển trạng thái này.
 type RequiredDocRow = RequiredDocument & {
   id?: string; // chỉ có khi đã tồn tại thật trong DB (đã "Yêu cầu" thành công)
   requested: boolean;
@@ -50,32 +53,36 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [isDocsOpen, setIsDocsOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
 
-  // LOGIC NGHIỆP VỤ: Quản lý danh sách Tag động (khởi tạo từ dữ liệu thật, không dùng mock mặc định)
   const [tags, setTags] = useState<ApplicationTag[]>(
     application.tags ? application.tags.map((t: any) => t.tag || t) : []
   );
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
 
-  // LOGIC NGHIỆP VỤ: Quản lý danh sách Ghi chú động (khởi tạo từ dữ liệu thật)
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 
-  // LOGIC NGHIỆP VỤ: Danh sách tài liệu yêu cầu — khởi tạo từ initialDocuments
-  // (chọn ở RequestDocumentsModal). Nếu không có gì truyền vào (ví dụ mở
-  // trực tiếp modal này) thì fallback về "Chấp thuận từ chủ nhà" để không rỗng.
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocRow[]>(
     () => (initialDocuments ?? []).map(mapBackendDoc)
   );
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+
+  const [docsErrorMessage, setDocsErrorMessage] = useState<string | null>(null);
   const [isAddDocPickerOpen, setIsAddDocPickerOpen] = useState(false);
   const [reviewingDocKey, setReviewingDocKey] = useState<string | null>(null);
   const isMale = application.pet?.gender !== 'FEMALE';
+
+  const extractErrorMessage = (error: any, fallback: string) => {
+    const message = error?.response?.data?.message || error?.message || fallback;
+    return Array.isArray(message) ? message.join(', ') : message;
+  };
+
   // Chấp nhận tài liệu sau khi xem trong DocumentReviewModal
   const handleAcceptDocument = async (key: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
     if (!doc?.id) return;
+    setDocsErrorMessage(null);
     try {
       const updated: RequestedDocument = await applicationService.reviewDocument(
         application.id,
@@ -83,8 +90,9 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         { status: 'ACCEPTED' },
       );
       setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi chấp nhận tài liệu:', error);
+      setDocsErrorMessage(extractErrorMessage(error, 'Không thể chấp nhận tài liệu.'));
     } finally {
       setReviewingDocKey(null);
     }
@@ -93,6 +101,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const handleRejectDocument = async (key: string, reason: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
     if (!doc?.id) return;
+    setDocsErrorMessage(null);
 
     try {
       const updated: RequestedDocument = await applicationService.reviewDocument(
@@ -101,13 +110,15 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         { status: 'REJECTED', reason: reason || undefined },
       );
       setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi từ chối tài liệu:', error);
+      setDocsErrorMessage(extractErrorMessage(error, 'Không thể từ chối tài liệu.'));
+      setReviewingDocKey(null);
+      return;
     } finally {
       setReviewingDocKey(null);
     }
 
-    // Ghi lại lý do từ chối vào Internal Notes (giữ nguyên logic cũ)
     if (reason.trim()) {
       try {
         const response = await applicationService.addNote(
@@ -136,8 +147,8 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   };
 
   const reviewingDoc = requiredDocs.find((d) => d.key === reviewingDocKey) ?? null;
+
   // Đồng bộ lại notes/tags/requiredDocs mỗi khi mở modal cho 1 application khác
-  // (phòng trường hợp component không bị unmount giữa 2 lần mở)
   useEffect(() => {
     setNotes(application.notes || []);
     setTags(application.tags ? application.tags.map((t: any) => t.tag || t) : []);
@@ -147,13 +158,14 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       return;
     }
 
-    // Mở modal trực tiếp (không qua RequestDocumentsModal) -> lấy dữ liệu thật từ BE
+    // Mở modal trực tiếp (không qua RequestDocumentsModal, ví dụ click lại
+    // vào card ở cột NEED_MORE_INFO) -> lấy dữ liệu thật từ BE
     let cancelled = false;
     setIsLoadingDocs(true);
     applicationService
-      .getApplicationDocuments(application.id)
+      .getDocuments(application.id) // FIX: đổi từ getApplicationDocuments (không tồn tại) sang getDocuments
       .then((docs: RequestedDocument[]) => {
-        if (!cancelled) setRequiredDocs(docs.map(mapBackendDoc));
+        if (!cancelled) setRequiredDocs((Array.isArray(docs) ? docs : []).map(mapBackendDoc));
       })
       .catch((error) => {
         console.error('Lỗi khi tải danh sách tài liệu:', error);
@@ -169,62 +181,59 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [application.id]);
 
-  // Danh sách tài liệu còn có thể thêm (loại trừ những cái đã có trong requiredDocs)
   const availableDocOptions = DOCUMENT_TYPE_OPTIONS.filter(
     (opt) => !requiredDocs.some((d) => d.key === opt.key)
   );
 
-  // Thêm 1 tài liệu bổ sung vào cuối danh sách, ở trạng thái "chưa yêu cầu"
   const handleAddDocument = (doc: RequiredDocument) => {
     setRequiredDocs((prev) => [...prev, { ...doc, requested: false, submitted: false }]);
     setIsAddDocPickerOpen(false);
   };
 
-  // Chính thức "Yêu cầu" 1 tài liệu bổ sung mới thêm
   const handleRequestDocument = async (key: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
     if (!doc || doc.requested) return;
+    setDocsErrorMessage(null);
     try {
       const created: RequestedDocument[] = await applicationService.requestDocuments(
         application.id,
         [{ key: doc.key, label: doc.label, description: doc.description }],
       );
       setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(created[0]) : d)));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi gửi yêu cầu tài liệu:', error);
+      setDocsErrorMessage(extractErrorMessage(error, 'Không thể gửi yêu cầu tài liệu.'));
+      try {
+        const docs: RequestedDocument[] = await applicationService.getDocuments(application.id); // FIX: đổi tên hàm
+        setRequiredDocs((Array.isArray(docs) ? docs : []).map(mapBackendDoc));
+      } catch {}
     }
   };
-  const handleSimulateSubmit = async (key: string) => {
-    const doc = requiredDocs.find((d) => d.key === key);
-    if (!doc?.id) return;
-    try {
-      const updated: RequestedDocument = await applicationService.simulateSubmitDocument(
-        application.id,
-        doc.id,
-      );
-      setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(updated) : d)));
-    } catch (error) {
-      console.error('Lỗi khi mô phỏng nộp tài liệu:', error);
-    }
-  };
-  // Gỡ 1 tài liệu khỏi danh sách yêu cầu
+
+  // ĐÃ XOÁ handleSimulateSubmit — endpoint /simulate-submit không tồn tại ở
+  // backend. Việc nộp tài liệu thật (PENDING_SUBMISSION -> PENDING_REVIEW)
+  // giờ chỉ xảy ra khi APPLICANT tự upload từ mobile app (AdoptionStatusScreen),
+  // gọi POST /applications/:id/documents/:docId/submit. Staff ở dashboard
+  // không có quyền tự ý chuyển trạng thái này thay applicant.
+
   const handleRemoveDocument = async (key: string) => {
     const doc = requiredDocs.find((d) => d.key === key);
     if (!doc) return;
+    setDocsErrorMessage(null);
 
     if (doc.id) {
       try {
         await applicationService.removeDocument(application.id, doc.id);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Lỗi khi gỡ tài liệu:', error);
-        return; // không xoá khỏi UI nếu API lỗi, tránh lệch state với BE
+        setDocsErrorMessage(extractErrorMessage(error, 'Không thể gỡ tài liệu.'));
+        return;
       }
     }
 
     setRequiredDocs((prev) => prev.filter((d) => d.key !== key));
   };
 
-  // Thêm Tag mới - Gọi API thực sự tới BE (find-or-create theo tên)
   const handleAddTag = async () => {
     if (!newTagName.trim()) return;
     try {
@@ -245,7 +254,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     }
   };
 
-  // Xóa Tag - Gọi API thực sự tới BE
   const handleRemoveTag = async (tagId: string) => {
     try {
       await applicationService.removeTag(application.id, tagId);
@@ -256,7 +264,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     }
   };
 
-  // Thêm Ghi chú nội bộ - Gọi API thực sự tới BE
   const handleAddNote = async () => {
     if (!noteInput.trim() || isSubmittingNote) return;
     setIsSubmittingNote(true);
@@ -286,7 +293,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     }
   };
 
-  // Gộp danh sách tài liệu ĐÃ yêu cầu thành reviewNote khi chuyển trạng thái
   const handleSubmit = () => {
     const requestedLabels = requiredDocs.filter((d) => d.requested).map((d) => d.label);
     const reviewNote =
@@ -307,7 +313,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           <X size={18} strokeWidth={2} />
         </button>
 
-        {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {/* 1. Header & Applicant Profile */}
           <div className="flex gap-5 mb-6 mt-2">
@@ -333,7 +338,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                 <u>Download <span className="font-semibold">{(application.fullName || application.user?.name || 'Julia').split(' ')[0]} - Application.pdf</span></u>
               </button>
 
-              {/* Mini Pet Card */}
               <div className="mt-4 border border-gray-200 rounded-[12px] p-2 flex items-center gap-3 w-full bg-white shadow-sm">
                 <img
                   src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=100"}
@@ -398,7 +402,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
 
           {/* Accordions */}
           <div className="flex flex-col gap-6">
-            {/* Đơn nhận nuôi */}
             <div>
               <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}>
                 <h3 className="font-bold text-[14px] text-gray-900">Đơn nhận nuôi</h3>
@@ -406,7 +409,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               </div>
             </div>
 
-            {/* Bổ sung tài liệu (Động — dữ liệu thật từ RequestDocumentsModal) */}
+            {/* Bổ sung tài liệu (Động — dữ liệu thật từ BE) */}
             <div>
               <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setIsDocsOpen(!isDocsOpen)}>
                 <h3 className="font-bold text-[14px] text-gray-900">Bổ sung tài liệu</h3>
@@ -415,7 +418,22 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
 
               {isDocsOpen && (
                 <div className="flex flex-col gap-4">
-                  {requiredDocs.length === 0 ? (
+                  {docsErrorMessage && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 text-[12.5px] rounded-xl px-3.5 py-2.5 flex items-start justify-between gap-2">
+                      <span>{docsErrorMessage}</span>
+                      <button
+                        type="button"
+                        onClick={() => setDocsErrorMessage(null)}
+                        className="text-red-400 hover:text-red-600 shrink-0"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  {isLoadingDocs ? (
+                    <p className="text-[12px] text-gray-400 italic">Đang tải danh sách tài liệu...</p>
+                  ) : requiredDocs.length === 0 ? (
                     <p className="text-[12px] text-gray-400 italic">Chưa có tài liệu nào được yêu cầu.</p>
                   ) : (
                     <div className="flex flex-col gap-3">
@@ -431,7 +449,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                               )}
                               {doc.requested && !doc.submitted && (
                                 <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                                  Chờ nộp tài liệu
+                                  Chờ applicant nộp
                                 </span>
                               )}
                               {doc.requested && doc.submitted && doc.reviewStatus === 'accepted' && (
@@ -455,25 +473,17 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                           <div className="flex flex-col gap-2 shrink-0 w-[100px]">
                             {doc.requested ? (
                               !doc.submitted ? (
-                                // Bước 2: đã yêu cầu nhưng người nộp đơn chưa "gửi" tài liệu
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSimulateSubmit(doc.key)}
-                                    className="w-full bg-[#EEF3FF] hover:bg-[#E3ECFF] transition-colors text-[#5982E6] font-bold text-[12px] py-2 rounded-lg"
-                                  >
-                                    Simulate submit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveDocument(doc.key)}
-                                    className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
-                                  >
-                                    Đóng
-                                  </button>
-                                </>
+                                // Bước 2: đã yêu cầu, đang chờ APPLICANT tự nộp từ mobile app —
+                                // staff không có hành động nào ở đây ngoài gỡ yêu cầu
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDocument(doc.key)}
+                                  className="w-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-gray-500 font-medium text-[12px] py-2 rounded-lg"
+                                >
+                                  Gỡ yêu cầu
+                                </button>
                               ) : !doc.reviewStatus ? (
-                                // Bước 3: đã nộp, đang chờ staff Duyệt (Accept/Reject)
+                                // Bước 3: applicant đã nộp, đang chờ staff Duyệt (Accept/Reject)
                                 <>
                                   <button
                                     type="button"
@@ -491,7 +501,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                                   </button>
                                 </>
                               ) : (
-                                // Bước 4: đã duyệt xong (accepted/rejected) -> chỉ Xem lại, read-only
+                                // Bước 4: đã duyệt xong -> chỉ Xem lại, read-only
                                 <>
                                   <button
                                     type="button"
@@ -534,7 +544,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                     </div>
                   )}
 
-                  {/* Thêm tài liệu bổ sung — chọn từ cùng danh mục với RequestDocumentsModal */}
                   <div className="relative">
                     <button
                       type="button"
@@ -589,7 +598,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                     </div>
                   ))}
 
-                  {/* Input Add Note */}
                   <div className="relative w-full">
                     <input
                       type="text"
@@ -613,7 +621,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           </div>
         </div>
 
-        {/* Bottom Fixed Action Button */}
         <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0">
           <button
             onClick={handleSubmit}
@@ -629,7 +636,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
             onClose={() => setReviewingDocKey(null)}
             onAccept={() => handleAcceptDocument(reviewingDoc.key)}
             onReject={(reason) => handleRejectDocument(reviewingDoc.key, reason)}
-            readOnly={!!reviewingDoc.reviewStatus} // đã duyệt rồi -> chỉ xem, không cho đổi quyết định
+            readOnly={!!reviewingDoc.reviewStatus}
           />
         )}
       </div>
