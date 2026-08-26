@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, User as UserIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { shelterTeamService } from '@/services/shelterTeamService'; // sửa lại path đúng với project của bạn
+import { shelterTeamService } from '@/services/shelterTeamService'; // giữ nguyên path bạn đã sửa đúng
 import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 
 type PreviewState =
@@ -17,7 +17,7 @@ type PreviewState =
       shelterAvatarUrl?: string | null;
     };
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -187,5 +187,19 @@ export default function AcceptInvitePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Loader2 className="animate-spin text-[#E89B5A]" size={32} />
+        </div>
+      }
+    >
+      <AcceptInviteContent />
+    </Suspense>
   );
 }
