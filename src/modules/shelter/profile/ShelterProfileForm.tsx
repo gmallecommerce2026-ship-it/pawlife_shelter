@@ -20,7 +20,9 @@ import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
 import { ShelterProfileFormValues, defaultOpeningHours } from '@/types/shelter';
 import { OpeningHoursEditor } from '@/components/OpeningHoursEditor';
-
+import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
+import { STAFF_ROLE_LABEL, STAFF_ROLE_COLOR } from '@/types/shelterTeam';
+import { InviteMemberModal } from '@/components/InviteMemberModal';
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   ssr: false,
   loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />
@@ -99,6 +101,13 @@ export const ShelterProfileForm = () => {
   const profileLat = profile?.latitude;
   const profileLng = profile?.longitude;
   const profileCoverUrl = profile?.coverUrl;
+  const { members, invitations, isLoading: isTeamLoading } = useShelterTeam();
+  const { fetchTeam, updateMemberRole, removeMember, cancelInvitation } = useShelterTeamActions();
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'members') fetchTeam();
+  }, [activeTab]);
 
   useEffect(() => {
     fetchProfile();
@@ -205,12 +214,11 @@ export const ShelterProfileForm = () => {
         {/* Tab 2: Bị khóa không thể click/activate */}
         <div className="relative group flex-1">
           <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-2 font-semibold text-[14px] py-2.5 rounded-full text-gray-400 bg-transparent cursor-not-allowed opacity-70 transition-all select-none"
+            onClick={() => setActiveTab('members')}
+            className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
           >
-            <span>Tài khoản & thành viên</span>
-            <Lock size={15} className="text-amber-500 shrink-0" />
+            Tài khoản & thành viên
           </button>
 
           {/* Popup Tooltip khi Hover */}
@@ -505,7 +513,10 @@ export const ShelterProfileForm = () => {
           <div>
             <div className="flex justify-between items-center mb-4 mt-2">
               <h3 className="text-[20px] font-bold text-gray-900">Team Member</h3>
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-[13px] font-medium">
+              <button
+                onClick={() => setIsInviteOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-[13px] font-medium"
+              >
                 <Plus size={16} /> Thêm Member
               </button>
             </div>
@@ -518,34 +529,67 @@ export const ShelterProfileForm = () => {
                 <span className="text-[13px] font-medium text-gray-500 text-right">Thao tác</span>
               </div>
 
-              <div className="flex flex-col divide-y divide-gray-100">
-                {MOCK_MEMBERS.map((member) => (
-                  <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"
-                        alt={member.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <span className="text-[14px] font-bold text-gray-900">{member.name}</span>
+              {isTeamLoading ? (
+                <div className="py-10 text-center text-gray-400 text-[13px]">Đang tải...</div>
+              ) : (
+                <div className="flex flex-col divide-y divide-gray-100">
+                  {members.map((member) => (
+                    <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={member.avatarUrl || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
+                          alt={member.name || member.email}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                        <span className="text-[14px] font-bold text-gray-900">{member.name || 'Chưa đặt tên'}</span>
+                      </div>
+                      <span className="text-[14px] text-gray-500">{member.email}</span>
+                      <div>
+                        <select
+                          value={member.shelterRole}
+                          onChange={(e) => updateMemberRole(member.id, e.target.value as any)}
+                          className={`px-3 py-1 rounded-full text-[12px] font-medium border outline-none cursor-pointer ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
+                            STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                              STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                            }`}
+                        >
+                          {(['ADMIN', 'MEMBER', 'VOLUNTEER', 'VETERINARIAN'] as const).map((r) => (
+                            <option key={r} value={r}>{STAFF_ROLE_LABEL[r]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-end gap-4">
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Xoá ${member.name || member.email} khỏi trạm?`)) removeMember(member.id);
+                          }}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-[14px] text-gray-500">{member.email}</span>
-                    <div>
-                      <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${getRoleBadgeStyle(member.roleColor)}`}>
-                        {member.role}
+                  ))}
+
+                  {invitations.map((inv) => (
+                    <div key={inv.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 bg-[#FFFBF5]">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[14px] font-bold text-gray-400 italic">Đang chờ chấp nhận</span>
+                      </div>
+                      <span className="text-[14px] text-gray-500">{inv.email}</span>
+                      <span className="px-3 py-1 rounded-full text-[12px] font-medium bg-gray-100 text-gray-500 w-fit">
+                        {STAFF_ROLE_LABEL[inv.role]}
                       </span>
+                      <div className="flex items-center justify-end gap-4">
+                        <button onClick={() => cancelInvitation(inv.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-end gap-4">
-                      {member.role !== 'Admin' && (
-                        <>
-                          <button className="text-gray-400 hover:text-[#E89B5A] transition-colors"><Pencil size={16} /></button>
-                          <button className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -586,7 +630,7 @@ export const ShelterProfileForm = () => {
           </div>
         </div>
       )}
-
+      {isInviteOpen && <InviteMemberModal onClose={() => setIsInviteOpen(false)} />}
     </div>
   );
 };

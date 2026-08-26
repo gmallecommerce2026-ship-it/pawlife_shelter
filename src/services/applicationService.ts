@@ -31,7 +31,25 @@ export const applicationService = {
     const res = await apiClient.post(`/applications/${applicationId}/notes`, { content, type });
     return unwrapItem(res);
   },
+  // Cập nhật Ghi chú nội bộ
+  updateNote: async (
+    applicationId: string,
+    noteId: string,
+    content: string,
+    type: ApplicationNoteType,
+  ) => {
+    const res = await apiClient.patch(`/applications/${applicationId}/notes/${noteId}`, {
+      content,
+      type,
+    });
+    return unwrapItem(res);
+  },
 
+  // Xoá Ghi chú nội bộ
+  deleteNote: async (applicationId: string, noteId: string) => {
+    const res = await apiClient.delete(`/applications/${applicationId}/notes/${noteId}`);
+    return unwrapItem(res);
+  },
   // Gán Tag cho đơn
   addTag: async (applicationId: string, payload: { tagId?: string; name?: string }) => {
     const res = await apiClient.post(`/applications/${applicationId}/tags`, payload);

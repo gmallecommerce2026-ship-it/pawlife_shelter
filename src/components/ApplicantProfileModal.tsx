@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Phone, Mail, ChevronDown, Check, MessageSquare, Flag, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Phone, Mail, ChevronDown, Check, MessageSquare, Flag, Loader2, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import type { ApplicantProfileResponse, ApplicationNoteType } from '@/types/application';
@@ -53,15 +54,115 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
 
+  // ----- Note item actions (edit / delete) -----
+  const [openMenuNoteId, setOpenMenuNoteId] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+  const [mounted, setMounted] = useState(false);
+  const noteMenuRef = useRef<HTMLDivElement>(null);
+  const noteButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editType, setEditType] = useState<ApplicationNoteType | ''>('');
+  const [isEditTypeOpen, setIsEditTypeOpen] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const editTypeDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target as Node)) {
         setIsTypeOpen(false);
       }
+      if (editTypeDropdownRef.current && !editTypeDropdownRef.current.contains(e.target as Node)) {
+        setIsEditTypeOpen(false);
+      }
+      const target = e.target as Node;
+      const activeButton = openMenuNoteId ? noteButtonRefs.current[openMenuNoteId] : null;
+      if (
+        openMenuNoteId &&
+        noteMenuRef.current && !noteMenuRef.current.contains(target) &&
+        activeButton && !activeButton.contains(target)
+      ) {
+        setOpenMenuNoteId(null);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [openMenuNoteId]);
+
+  useEffect(() => {
+    const handleScroll = () => { if (openMenuNoteId) setOpenMenuNoteId(null); };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [openMenuNoteId]);
+
+  const toggleNoteMenu = (e: React.MouseEvent, noteId: string) => {
+    e.stopPropagation();
+    if (openMenuNoteId !== noteId) {
+      const btn = noteButtonRefs.current[noteId];
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        setMenuCoords({
+          top: rect.bottom + 6,
+          left: rect.right - 160,
+        });
+      }
+      setOpenMenuNoteId(noteId);
+    } else {
+      setOpenMenuNoteId(null);
+    }
+  };
+
+  const startEditNote = (note: ApplicantProfileResponse['notes'][number]) => {
+    setEditingNoteId(note.id);
+    setEditContent(note.content);
+    setEditType(note.type);
+    setOpenMenuNoteId(null);
+  };
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null);
+    setEditContent('');
+    setEditType('');
+    setIsEditTypeOpen(false);
+  };
+
+  const handleSaveEditNote = async () => {
+    if (!editingNoteId || !editContent.trim() || !editType) return;
+    try {
+      setIsSavingEdit(true);
+      await applicationService.updateNote(application.id, editingNoteId, editContent.trim(), editType);
+      cancelEditNote();
+      await loadProfile();
+    } catch (err) {
+      console.error('Lỗi khi sửa ghi chú:', err);
+      alert('Không thể sửa ghi chú. Vui lòng thử lại.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    setOpenMenuNoteId(null);
+    if (!window.confirm('Bạn có chắc chắn muốn xoá ghi chú này không?')) return;
+    try {
+      setDeletingNoteId(noteId);
+      await applicationService.deleteNote(application.id, noteId);
+      await loadProfile();
+    } catch (err) {
+      console.error('Lỗi khi xoá ghi chú:', err);
+      alert('Không thể xoá ghi chú. Vui lòng thử lại.');
+    } finally {
+      setDeletingNoteId(null);
+    }
+  };
+  // ----- End note item actions -----
 
   const handleAddNote = async () => {
     if (!noteContent.trim() || !noteType) return;
@@ -307,6 +408,10 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                   ) : (
                     profile!.notes.map((note, idx) => {
                       const style = NOTE_TYPE_STYLE[note.type];
+                      const isLast = idx === profile!.notes.length - 1;
+                      const isEditingThis = editingNoteId === note.id;
+                      const isDeletingThis = deletingNoteId === note.id;
+
                       return (
                         <div key={note.id} className="flex gap-4">
                           <div
@@ -315,21 +420,94 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                           >
                             <MessageSquare size={18} style={{ color: style.color }} />
                           </div>
-                          <div
-                            className={`flex flex-col flex-1 ${idx !== profile!.notes.length - 1 ? 'border-b border-gray-100 pb-5' : ''
-                              }`}
-                          >
-                            <div className="flex justify-between items-start mb-1">
-                              <h4 className="font-bold text-[14px] text-gray-900">
-                                {note.author.name || 'Nhân viên trạm'}
-                              </h4>
-                              <Flag size={14} className="text-gray-400" />
-                            </div>
-                            <p className="text-[11px] text-gray-500 mb-2">
-                              <span className="font-bold" style={{ color: style.color }}>{style.label}</span>
-                              {' · '}{formatDate(note.createdAt)}
-                            </p>
-                            <p className="text-[13px] text-gray-600 leading-relaxed">{note.content}</p>
+                          <div className={`flex flex-col flex-1 ${!isLast ? 'border-b border-gray-100 pb-5' : ''}`}>
+                            {isEditingThis ? (
+                              <div className="flex flex-col gap-3">
+                                <div className="relative" ref={editTypeDropdownRef}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsEditTypeOpen((v) => !v)}
+                                    className={`w-full bg-white border rounded-lg px-3 py-2 flex justify-between items-center text-left transition-colors ${isEditTypeOpen ? 'border-[#E89B5A] ring-2 ring-[#E89B5A]/20' : 'border-gray-200'
+                                      }`}
+                                  >
+                                    <span className={`text-[13px] ${editType ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+                                      {editType ? NOTE_TYPE_OPTIONS.find((o) => o.value === editType)?.label : 'Select type...'}
+                                    </span>
+                                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${isEditTypeOpen ? 'rotate-180' : ''}`} />
+                                  </button>
+                                  {isEditTypeOpen && (
+                                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                      {NOTE_TYPE_OPTIONS.map((opt) => (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          onClick={() => { setEditType(opt.value); setIsEditTypeOpen(false); }}
+                                          className={`w-full text-left px-3 py-2.5 text-[13px] transition-colors ${editType === opt.value
+                                            ? 'bg-[#2563EB] text-white font-bold'
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <textarea
+                                  rows={3}
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] outline-none resize-none focus:border-[#E89B5A]"
+                                />
+                                <div className="flex items-center gap-2 justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditNote}
+                                    disabled={isSavingEdit}
+                                    className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-semibold rounded-md"
+                                  >
+                                    Hủy
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveEditNote}
+                                    disabled={isSavingEdit || !editContent.trim() || !editType}
+                                    className="px-4 py-1.5 bg-[#E89B5A] hover:bg-[#DA8A45] text-white text-[12px] font-bold rounded-md disabled:opacity-60"
+                                  >
+                                    {isSavingEdit ? 'Đang lưu...' : 'Lưu'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-start mb-1 gap-2">
+                                  <h4 className="font-bold text-[14px] text-gray-900">
+                                    {note.author.name || 'Nhân viên trạm'}
+                                  </h4>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                      ref={(el) => { noteButtonRefs.current[note.id] = el; }}
+                                      type="button"
+                                      onClick={(e) => toggleNoteMenu(e, note.id)}
+                                      disabled={isDeletingThis}
+                                      className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50"
+                                    >
+                                      {isDeletingThis ? (
+                                        <Loader2 size={14} className="animate-spin" />
+                                      ) : (
+                                        <MoreVertical size={16} strokeWidth={2} />
+                                      )}
+                                    </button>
+                                    <Flag size={14} className="text-gray-400" />
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-gray-500 mb-2">
+                                  <span className="font-bold" style={{ color: style.color }}>{style.label}</span>
+                                  {' · '}{formatDate(note.createdAt)}
+                                </p>
+                                <p className="text-[13px] text-gray-600 leading-relaxed">{note.content}</p>
+                              </>
+                            )}
                           </div>
                         </div>
                       );
@@ -412,6 +590,36 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
           </div>
         )}
       </div>
+
+      {/* Note item action popup (portal to escape modal's overflow) */}
+      {mounted && openMenuNoteId && profile && createPortal(
+        <div
+          ref={noteMenuRef}
+          style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }}
+          className="w-[160px] bg-white rounded-[14px] shadow-xl border border-gray-100 py-1.5 flex flex-col origin-top-right"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const note = profile.notes.find((n) => n.id === openMenuNoteId);
+              if (note) startEditNote(note);
+            }}
+            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-gray-50 w-full text-left"
+          >
+            <Pencil size={15} className="text-gray-700" />
+            <span className="text-[13px] font-medium text-gray-900">Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openMenuNoteId && handleDeleteNote(openMenuNoteId)}
+            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-red-50 w-full text-left"
+          >
+            <Trash2 size={15} className="text-red-600" />
+            <span className="text-[13px] font-medium text-red-600">Xoá</span>
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
