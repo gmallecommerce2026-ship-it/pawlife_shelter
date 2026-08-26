@@ -1,4 +1,3 @@
-// src/app/shelter/applications/ApplicationKanbanBoard.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -60,7 +59,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
   const isDraggingRef = useRef(false);
   const justDraggedRef = useRef(false);
-  // States quản lý Modal chuyển trạng thái
+
+  // States quản lý Modal
   const [approveApp, setApproveApp] = useState<AdoptionApplication | null>(null);
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
@@ -82,15 +82,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
       ...app,
       tags: app.tags
         ? app.tags.map((t: any) => {
-          const base = t && typeof t === 'object' && t.tag
-            ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
-            : t;
-          const syncedColor = getTagColor(base?.name) || base?.color;
-          return { ...base, color: syncedColor };
-        })
+            const base = t && typeof t === 'object' && t.tag
+              ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
+              : t;
+            const syncedColor = getTagColor(base?.name) || base?.color;
+            return { ...base, color: syncedColor };
+          })
         : [],
     }));
   }, [localItems, getTagColor]);
+
   useEffect(() => {
     items.forEach((app: any) => {
       (app.tags || []).forEach((t: any) => {
@@ -100,8 +101,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
         }
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, setTagColor]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -117,8 +117,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
   useEffect(() => {
     fetchApplications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchApplications]);
 
   const REQUIRES_CONFIRM: ApplicationStatus[] = ['CLOSED'];
 
@@ -158,10 +157,10 @@ export const ApplicationKanbanBoard: React.FC = () => {
       window.removeEventListener('resize', checkScrollable);
     };
   }, [columns]);
+
   useEffect(() => {
     if (approveApp) {
       const fresh = items.find((a) => a.id === approveApp.id);
-      // Chỉ set lại khi thực sự có bản mới khác reference cũ, tránh loop vô ích
       if (fresh && fresh !== approveApp) {
         setApproveApp(fresh);
       }
@@ -176,6 +175,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
       }
     }
   }, [items, interviewApp]);
+
   const handleDragStart = (event: DragStartEvent) => {
     isDraggingRef.current = true;
     const app = localItems.find((a) => a.id === event.active.id);
@@ -248,12 +248,10 @@ export const ApplicationKanbanBoard: React.FC = () => {
         finalStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
       }
     }
-    console.log('[DragEnd]', { overId: over?.id, finalStatus, originalStatus: originalItem?.status });
 
     setOverColumn(null);
 
     if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
-      console.log('[DragEnd] early return - bounce back');
       setLocalItems(items);
       return;
     }
@@ -277,7 +275,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   const handleCardClick = (app: AdoptionApplication) => {
-    console.log('[CardClick]', app.id, 'justDragged=', justDraggedRef.current)
     if (justDraggedRef.current) return;
     if (app.status === 'NEED_MORE_INFO') {
       setNeedInfoApp(app);
@@ -300,7 +297,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
   };
 
-  // Đóng/Từ chối đơn thực tế
   const handleConfirmClose = async () => {
     if (!closeAppTarget) return;
     try {
@@ -316,6 +312,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
       setIsClosingApp(false);
     }
   };
+
   const handleCompleteAdoption = async (applicationId: string) => {
     try {
       await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
@@ -326,73 +323,85 @@ export const ApplicationKanbanBoard: React.FC = () => {
       alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
     }
   };
+
   return (
-    <div className="flex flex-col justify-start gap-6 sm:gap-[40px] w-full overflow-hidden">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
-        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[24px] sm:text-[32px] lg:text-[40px] text-[#0D062D] font-semibold tracking-tight">
+    // Sử dụng chiều cao tính toán theo viewport để board luôn phủ trọn màn hình
+    <div className="flex flex-col w-full h-[calc(100vh-5rem)] md:h-[calc(100vh-5.5rem)] pb-2 overflow-hidden gap-3 sm:gap-4">
+      {/* Header & Filter bar (Cố định chiều cao, không bị co lại) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 flex-shrink-0 w-full px-1">
+        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[22px] sm:text-[28px] lg:text-[32px] text-[#0D062D] font-bold tracking-tight">
           Đăng ký nhận nuôi
         </h1>
         <ApplicationFilterBar />
       </div>
 
-      {isLoading && localItems.length === 0 ? (
-        <div className="flex gap-[11px] w-full h-[500px] sm:h-[741px] overflow-x-auto">
-          {KANBAN_COLUMNS.map((col) => (
-            <div
-              key={col.status}
-              className="flex-[1_0_260px] h-full rounded-[18px] bg-gray-100 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={collisionDetection}
-          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div
-            ref={scrollContainerRef}
-            className="flex gap-[11px] overflow-x-auto pb-4 items-start scroll-smooth w-full custom-board-scroll"
-          >
-            {columns.map((col) => (
-              <ApplicationColumn
+      {/* Main Board Layout: chiếm toàn bộ chiều cao còn lại (flex-1 min-h-0) */}
+      <div className="flex-1 min-h-0 w-full relative">
+        {isLoading && localItems.length === 0 ? (
+          <div className="flex gap-3 sm:gap-4 w-full h-full overflow-x-auto pb-2">
+            {KANBAN_COLUMNS.map((col) => (
+              <div
                 key={col.status}
-                status={col.status}
-                label={col.label}
-                applications={col.applications}
-                movingIds={movingIds}
-                isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
-                onOpenDetail={(app) => setSelectedApp(app)}
-                onCardClick={handleCardClick}
-                onOpenProfile={(app) => setProfileApp(app)}
-                onRemove={(app) => setCloseAppTarget(app)}
-                onOpenDocuments={(app) => setDocumentsApp(app)}
-                onOpenQuickView={(app) => setQuickViewApp(app)}
+                className="w-[280px] sm:w-[310px] lg:w-[330px] flex-shrink-0 h-full rounded-[18px] bg-gray-100 animate-pulse"
               />
             ))}
           </div>
-          <DragOverlay>
-            {activeApp ? (
-              <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[260px] p-[14px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
-                <ApplicationCardContent
-                  application={activeApp}
-                  onOpenProfile={() => { }}
-                  onOpenDetail={() => { }}
-                  onRemove={() => { }}
-                  onOpenDocuments={() => { }}
-                />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={collisionDetection}
+            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div
+              ref={scrollContainerRef}
+              className="flex gap-3 sm:gap-4 overflow-x-auto items-stretch h-full w-full pb-2 scroll-smooth custom-board-scroll"
+            >
+              {columns.map((col) => (
+                <div
+                  key={col.status}
+                  className="w-[280px] sm:w-[310px] lg:w-[330px] flex-shrink-0 h-full flex flex-col"
+                >
+                  <ApplicationColumn
+                    status={col.status}
+                    label={col.label}
+                    applications={col.applications}
+                    movingIds={movingIds}
+                    isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
+                    onOpenDetail={(app) => setSelectedApp(app)}
+                    onCardClick={handleCardClick}
+                    onOpenProfile={(app) => setProfileApp(app)}
+                    onRemove={(app) => setCloseAppTarget(app)}
+                    onOpenDocuments={(app) => setDocumentsApp(app)}
+                    onOpenQuickView={(app) => setQuickViewApp(app)}
+                  />
+                </div>
+              ))}
+            </div>
 
+            <DragOverlay>
+              {activeApp ? (
+                <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[280px] sm:w-[310px] p-[14px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
+                  <ApplicationCardContent
+                    application={activeApp}
+                    onOpenProfile={() => { }}
+                    onOpenDetail={() => { }}
+                    onRemove={() => { }}
+                    onOpenDocuments={() => { }}
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
+      </div>
+
+      {/* Gợi ý cuộn ngang */}
       {!isLoading && isScrollable && (
-        <div className="flex justify-end w-full px-2 mt-[-8px] mb-2 animate-in fade-in duration-300">
-          <p className="text-[12px] text-gray-500 flex items-center gap-1.5 italic">
+        <div className="flex justify-end w-full px-2 flex-shrink-0">
+          <p className="text-[11px] sm:text-[12px] text-gray-500 flex items-center gap-1.5 italic">
             Mẹo: Nhấn giữ
             <kbd className="font-sans font-bold border border-gray-200 rounded px-1.5 py-0.5 bg-gray-50 text-[10px] not-italic shadow-sm text-gray-700">
               Shift
@@ -402,7 +411,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
         </div>
       )}
 
-      {/* Modal xác nhận Đóng / Hủy đơn (CLOSED) */}
+      {/* Modals */}
       {closeAppTarget && (
         <div
           className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm"
@@ -519,7 +528,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
             const res = await applicationService.scheduleAppointment(interviewApp.id, data);
-            await fetchApplications(); // Đồng bộ lại state toàn bộ Board
+            await fetchApplications();
             setInterviewApp(null);
             return res;
           }}
@@ -588,7 +597,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
           scrollbar-color: #E89B5A transparent;
         }
         .custom-board-scroll::-webkit-scrollbar {
-          height: 8px;
+          height: 6px;
         }
         .custom-board-scroll::-webkit-scrollbar-track {
           background: #F9FAFB;
