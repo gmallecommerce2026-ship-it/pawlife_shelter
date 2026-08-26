@@ -188,7 +188,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
       {/* 3. Nhãn (hiển thị Tag động, màu đã đồng bộ toàn hệ thống) */}
       <div className="flex flex-wrap items-center gap-1.5 mb-[18px] min-h-[26px]">
         {displayTags.length === 0 ? (
-          <span className="text-[12px] text-gray-400 italic">Chưa có nhãn</span>
+          <span className="text-[12px] text-gray-400 italic"></span>
         ) : (
           displayTags.map((tag: any, idx: number) => {
             const tagColor = tag.color || (typeof tag.tag === 'object' ? tag.tag?.color : null);
