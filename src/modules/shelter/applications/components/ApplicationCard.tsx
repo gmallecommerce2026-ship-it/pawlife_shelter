@@ -122,14 +122,14 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
 
   return (
     <div className="flex flex-col w-full relative group/content">
-      <div className="absolute top-[-4px] right-[-4px] z- opacity-0 group-hover/content:opacity-100 transition-opacity">
+      <div className="absolute top-[-2px] right-[-2px] z- opacity-0 group-hover/content:opacity-100 transition-opacity">
         <button
           ref={buttonRef}
-          className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-all"
+          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-all"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={toggleMenu}
         >
-          <MoreVertical size={16} strokeWidth={2} />
+          <MoreVertical size={15} strokeWidth={2} />
         </button>
         {mounted && isMenuOpen && createPortal(
           <div ref={menuRef} style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }} className="w-[220px] bg-white rounded-[16px] shadow-xl border border-gray-100 py-2.5 flex flex-col origin-top-right">
@@ -142,64 +142,61 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           document.body
         )}
       </div>
-
-      {/* 1. Ảnh đại diện & Tên */}
-      <div className="flex items-center gap-3.5 w-full mb-[18px]">
+ 
+      {/* 1. Ảnh đại diện & Tên — nén lại: avatar nhỏ hơn, margin bottom giảm */}
+      <div className="flex items-center gap-2.5 w-full mb-2.5">
         <img
-          className="w-[44px] h-[44px] rounded-full object-cover bg-gray-100 border border-gray-200 shrink-0"
+          className="w-[34px] h-[34px] rounded-full object-cover bg-gray-100 border border-gray-200 shrink-0"
           src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
           alt={application.fullName || application.user?.name || "Maria Garcia"}
         />
         <div className="flex flex-col justify-center min-w-0">
           <div className="flex items-center gap-1.5">
             <span
-              className="font-sans text-[16px] text-[#111111] font-semibold truncate hover:text-[#E89B5A] cursor-pointer transition-colors"
+              className="font-sans text-[14px] leading-tight text-[#111111] font-semibold truncate hover:text-[#E89B5A] cursor-pointer transition-colors"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onOpenProfile(application); }}
             >
               {application.fullName || application.user?.name || "Maria Garcia"}
             </span>
             {showRedDot && (
-              <span className="w-[7px] h-[7px] bg-[#FF6B6B] rounded-full shrink-0"></span>
+              <span className="w-[6px] h-[6px] bg-[#FF6B6B] rounded-full shrink-0"></span>
             )}
           </div>
-          <span className="font-sans text-[13.5px] text-[#888888] mt-0.5 truncate">
+          <span className="font-sans text-[12px] leading-tight text-[#888888] mt-0.5 truncate">
             Nhận nuôi <span className="font-semibold text-[#111111]">{application.pet?.name || "Luna"}</span>
           </span>
         </div>
       </div>
-
-      {/* 2. Thông tin liên hệ */}
-      <div className="flex flex-col gap-2.5 mb-[18px]">
-        <div className="flex items-center gap-3 w-full">
-          <Phone size={14} className="text-[#888888] shrink-0" strokeWidth={2} />
-          <span className="font-sans text-[13px] text-[#555555] font-semibold tracking-wide truncate">
+ 
+      {/* 2. Thông tin liên hệ — gộp gọn, font/icon nhỏ hơn, margin giảm */}
+      <div className="flex flex-col gap-1.5 mb-2.5">
+        <div className="flex items-center gap-2 w-full">
+          <Phone size={12} className="text-[#888888] shrink-0" strokeWidth={2} />
+          <span className="font-sans text-[12px] text-[#555555] font-semibold tracking-wide truncate">
             {application.phone || "0912345678"}
           </span>
         </div>
-        <div className="flex items-center gap-3 w-full">
-          <Mail size={14} className="text-[#888888] shrink-0" strokeWidth={2} />
-          <span className="font-sans text-[13px] text-[#888888] font-normal truncate">
+        <div className="flex items-center gap-2 w-full">
+          <Mail size={12} className="text-[#888888] shrink-0" strokeWidth={2} />
+          <span className="font-sans text-[12px] text-[#888888] font-normal truncate">
             {application.user?.email || application.zalo || "mariagarcia@email.com"}
           </span>
         </div>
       </div>
-
-      {/* 3. Nhãn (hiển thị Tag động, màu đã đồng bộ toàn hệ thống) */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-[18px] min-h-[26px]">
-        {displayTags.length === 0 ? (
-          <span className="text-[12px] text-gray-400 italic"></span>
-        ) : (
-          displayTags.map((tag: any, idx: number) => {
+ 
+      {/* 3. Nhãn — chỉ chiếm khoảng trống khi có tag, không còn min-h cố định to */}
+      {displayTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 mb-2.5">
+          {displayTags.map((tag: any, idx: number) => {
             const tagColor = tag.color || (typeof tag.tag === 'object' ? tag.tag?.color : null);
             const fallbackColors = ['#5982E6', '#FF922B', '#40C057', '#7950F2'];
-            // Ưu tiên màu đã đồng bộ trong store dùng chung để đảm bảo nhất quán trên mọi cột/modal
             const activeColor = getTagColor(tag.name) || tagColor || fallbackColors[idx % fallbackColors.length];
-
+ 
             return (
               <div
                 key={tag.id || idx}
-                className="px-2.5 py-[3px] rounded-full border text-[11.5px] font-semibold tracking-tight transition-colors"
+                className="px-2 py-[2px] rounded-full border text-[10.5px] font-semibold tracking-tight transition-colors leading-tight"
                 style={{
                   backgroundColor: `${activeColor}15`,
                   borderColor: `${activeColor}40`,
@@ -209,18 +206,18 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
                 <span>{tag.name}</span>
               </div>
             );
-          })
-        )}
-      </div>
-
+          })}
+        </div>
+      )}
+ 
       {showDocsBadge && (
         <div
-          className={`flex items-center gap-1.5 mb-3.5 px-2.5 py-1.5 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'
+          className={`flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'
             }`}
         >
-          <File size={13} className={allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'} strokeWidth={2} />
+          <File size={12} className={allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'} strokeWidth={2} />
           <span
-            className={`font-sans text-[12px] font-semibold ${allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'
+            className={`font-sans text-[11px] font-semibold ${allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'
               }`}
           >
             {acceptedDocs}/{totalDocs} tài liệu đã duyệt
@@ -228,28 +225,28 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       )}
-
-      {/* 4. Đường kẻ phân cách */}
-      <div className="w-full h-px bg-[#EEEEEE] mb-3.5" />
-
+ 
+      {/* 4. Đường kẻ phân cách — margin giảm */}
+      <div className="w-full h-px bg-[#EEEEEE] mb-2" />
+ 
       {/* 5. Chân thẻ */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1.5">
-          <Calendar size={13} className="text-[#888888]" strokeWidth={1.8} />
-          <span className="font-sans text-[12px] text-[#888888] font-medium tracking-wide">
+          <Calendar size={12} className="text-[#888888]" strokeWidth={1.8} />
+          <span className="font-sans text-[11px] text-[#888888] font-medium tracking-wide">
             {formatSubmittedAt(application.createdAt)}
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5" title="Số ghi chú">
-            <MessageCircle size={13} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[12px] text-[#888888] font-semibold">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1" title="Số ghi chú">
+            <MessageCircle size={12} className="text-[#888888]" strokeWidth={1.8} />
+            <span className="font-sans text-[11px] text-[#888888] font-semibold">
               {application.notes?.length || 0}
             </span>
           </div>
-          <div className="flex items-center gap-1.5" title="Số nhãn">
-            <File size={13} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[12px] text-[#888888] font-semibold">
+          <div className="flex items-center gap-1" title="Số nhãn">
+            <File size={12} className="text-[#888888]" strokeWidth={1.8} />
+            <span className="font-sans text-[11px] text-[#888888] font-semibold">
               {displayTags.length}
             </span>
           </div>
@@ -258,6 +255,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
     </div>
   );
 };
+
 
 interface ApplicationCardProps {
   application: AdoptionApplication;
@@ -303,7 +301,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       {...attributes}
       tabIndex={-1}
       onClick={() => onCardClick(application)}
-      className={`group bg-white rounded-[16px] w-full p-[17px] border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
+      className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
         } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <ApplicationCardContent

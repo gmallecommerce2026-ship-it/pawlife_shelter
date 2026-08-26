@@ -60,15 +60,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const isDraggingRef = useRef(false);
   const justDraggedRef = useRef(false);
 
-  // States quản lý Modal
+  // States modal
   const [approveApp, setApproveApp] = useState<AdoptionApplication | null>(null);
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
-
-  // State xác nhận đóng/từ chối đơn
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
   const [closeReason, setCloseReason] = useState('');
   const [isClosingApp, setIsClosingApp] = useState(false);
@@ -76,7 +74,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrollable, setIsScrollable] = useState(false);
 
-  // Phẳng hóa mảng Tags
   const formattedItems = useMemo(() => {
     return localItems.map((app: any) => ({
       ...app,
@@ -325,24 +322,25 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    // Sử dụng chiều cao tính toán theo viewport để board luôn phủ trọn màn hình
-    <div className="flex flex-col w-full h-[calc(100vh-5rem)] md:h-[calc(100vh-5.5rem)] pb-2 overflow-hidden gap-3 sm:gap-4">
-      {/* Header & Filter bar (Cố định chiều cao, không bị co lại) */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 flex-shrink-0 w-full px-1">
-        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[22px] sm:text-[28px] lg:text-[32px] text-[#0D062D] font-bold tracking-tight">
+    // Toàn bộ màn hình chiếm đúng 100dvh trừ phần top bar của Shelter Layout
+    <div className="flex flex-col w-full h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4.5rem)] overflow-hidden gap-2 pb-1">
+      
+      {/* 1. Header & Filter Bar thu gọn tối đa khoảng trống dọc */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 w-full px-1">
+        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[18px] sm:text-[22px] lg:text-[24px] text-[#0D062D] font-bold tracking-tight">
           Đăng ký nhận nuôi
         </h1>
         <ApplicationFilterBar />
       </div>
 
-      {/* Main Board Layout: chiếm toàn bộ chiều cao còn lại (flex-1 min-h-0) */}
+      {/* 2. Vùng chứa Kanban Board: Chiếm 100% không gian dọc còn lại */}
       <div className="flex-1 min-h-0 w-full relative">
         {isLoading && localItems.length === 0 ? (
-          <div className="flex gap-3 sm:gap-4 w-full h-full overflow-x-auto pb-2">
+          <div className="flex gap-2.5 sm:gap-3 w-full h-full overflow-x-auto pb-1">
             {KANBAN_COLUMNS.map((col) => (
               <div
                 key={col.status}
-                className="w-[280px] sm:w-[310px] lg:w-[330px] flex-shrink-0 h-full rounded-[18px] bg-gray-100 animate-pulse"
+                className="w-[270px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full rounded-[14px] bg-gray-100/70 animate-pulse border border-gray-200"
               />
             ))}
           </div>
@@ -357,12 +355,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
           >
             <div
               ref={scrollContainerRef}
-              className="flex gap-3 sm:gap-4 overflow-x-auto items-stretch h-full w-full pb-2 scroll-smooth custom-board-scroll"
+              className="flex gap-2.5 sm:gap-3.5 overflow-x-auto items-stretch h-full w-full pb-1 scroll-smooth custom-board-scroll"
             >
               {columns.map((col) => (
                 <div
                   key={col.status}
-                  className="w-[280px] sm:w-[310px] lg:w-[330px] flex-shrink-0 h-full flex flex-col"
+                  className="w-[270px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full flex flex-col"
                 >
                   <ApplicationColumn
                     status={col.status}
@@ -383,7 +381,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
             <DragOverlay>
               {activeApp ? (
-                <div className="bg-white border-[0.8px] border-[#D9D9D9] rounded-[14px] shadow-2xl w-[280px] sm:w-[310px] p-[14px] rotate-[2deg] scale-[1.03] cursor-grabbing pointer-events-none">
+                <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[270px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none">
                   <ApplicationCardContent
                     application={activeApp}
                     onOpenProfile={() => { }}
@@ -398,15 +396,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
         )}
       </div>
 
-      {/* Gợi ý cuộn ngang */}
+      {/* 3. Hint Scroll */}
       {!isLoading && isScrollable && (
-        <div className="flex justify-end w-full px-2 flex-shrink-0">
-          <p className="text-[11px] sm:text-[12px] text-gray-500 flex items-center gap-1.5 italic">
-            Mẹo: Nhấn giữ
-            <kbd className="font-sans font-bold border border-gray-200 rounded px-1.5 py-0.5 bg-gray-50 text-[10px] not-italic shadow-sm text-gray-700">
+        <div className="flex justify-end w-full px-2 flex-shrink-0 -mt-1">
+          <p className="text-[10px] sm:text-[11px] text-gray-400 flex items-center gap-1 italic">
+            Mẹo: Giữ
+            <kbd className="font-sans font-bold border border-gray-200 rounded px-1 bg-gray-50 text-[9px] not-italic text-gray-600">
               Shift
             </kbd>
-            + Cuộn chuột ngang
+            + cuộn chuột ngang
           </p>
         </div>
       )}
@@ -418,39 +416,31 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onClick={() => setCloseAppTarget(null)}
         >
           <div
-            className="bg-white w-full max-w-[440px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white w-full max-w-[420px] rounded-[18px] shadow-2xl p-5 relative animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-[18px] font-bold text-gray-900 mb-2">
-              Đóng hồ sơ nhận nuôi?
-            </h3>
-            <p className="text-[13px] text-gray-600 mb-4 leading-relaxed">
-              Bạn có chắc chắn muốn đóng hoặc từ chối đơn nhận nuôi của{' '}
-              <strong className="text-gray-900">
-                {closeAppTarget.fullName || closeAppTarget.user?.name}
-              </strong>{' '}
+            <h3 className="text-[16px] font-bold text-gray-900 mb-1.5">Đóng hồ sơ nhận nuôi?</h3>
+            <p className="text-[13px] text-gray-600 mb-3 leading-relaxed">
+              Bạn có chắc chắn muốn đóng đơn của{' '}
+              <strong className="text-gray-900">{closeAppTarget.fullName || closeAppTarget.user?.name}</strong>{' '}
               cho bé <strong className="text-gray-900">{closeAppTarget.pet?.name}</strong>?
             </p>
-
-            <div className="mb-5">
-              <label className="text-[12px] font-medium text-gray-500 mb-1.5 block">
-                Lý do từ chối / đóng hồ sơ:
-              </label>
+            <div className="mb-4">
+              <label className="text-[11px] font-medium text-gray-500 mb-1 block">Lý do đóng:</label>
               <textarea
                 rows={2}
                 value={closeReason}
                 onChange={(e) => setCloseReason(e.target.value)}
-                placeholder="VD: Không đáp ứng đủ điều kiện không gian nuôi..."
-                className="w-full border border-gray-200 rounded-[10px] p-2.5 text-[13px] outline-none focus:border-red-400"
+                placeholder="Nhập lý do..."
+                className="w-full border border-gray-200 rounded-[8px] p-2 text-[12px] outline-none focus:border-red-400"
               />
             </div>
-
-            <div className="flex items-center justify-end gap-2.5">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setCloseAppTarget(null)}
                 disabled={isClosingApp}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] font-semibold rounded-lg transition-colors"
+                className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-semibold rounded-md"
               >
                 Hủy
               </button>
@@ -458,9 +448,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 type="button"
                 onClick={handleConfirmClose}
                 disabled={isClosingApp}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-[13px] font-bold rounded-lg transition-colors disabled:opacity-60"
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold rounded-md disabled:opacity-60"
               >
-                {isClosingApp ? 'Đang đóng...' : 'Xác nhận đóng'}
+                {isClosingApp ? 'Đang đóng...' : 'Xác nhận'}
               </button>
             </div>
           </div>
@@ -470,34 +460,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
       {selectedApp && (
         <ApplicationDetailModal
           application={selectedApp}
-          onClose={() => {
-            setSelectedApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setSelectedApp(null); fetchApplications(); }}
         />
       )}
-
-      {profileApp && (
-        <ApplicantProfileModal
-          application={profileApp}
-          onClose={() => setProfileApp(null)}
-        />
-      )}
-
-      {documentsApp && (
-        <AllDocumentsModal
-          application={documentsApp}
-          onClose={() => setDocumentsApp(null)}
-        />
-      )}
-
+      {profileApp && <ApplicantProfileModal application={profileApp} onClose={() => setProfileApp(null)} />}
+      {documentsApp && <AllDocumentsModal application={documentsApp} onClose={() => setDocumentsApp(null)} />}
       {pendingApp && (
         <MoveToPendingModal
           application={pendingApp}
-          onClose={() => {
-            setPendingApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setPendingApp(null); fetchApplications(); }}
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
             await moveApplication(pendingApp.id, 'PENDING', data?.reviewNote);
@@ -506,25 +477,17 @@ export const ApplicationKanbanBoard: React.FC = () => {
           }}
         />
       )}
-
       {quickViewApp && (
         <ApplicationQuickViewModal
           application={quickViewApp}
-          onClose={() => {
-            setQuickViewApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setQuickViewApp(null); fetchApplications(); }}
           onRefresh={fetchApplications}
         />
       )}
-
       {interviewApp && (
         <InterviewScheduleModal
           application={interviewApp}
-          onClose={() => {
-            setInterviewApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setInterviewApp(null); fetchApplications(); }}
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
             const res = await applicationService.scheduleAppointment(interviewApp.id, data);
@@ -534,20 +497,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
           }}
         />
       )}
-
       {approveApp && (
         <ApproveApplicationModal
           application={approveApp}
-          onClose={() => {
-            setApproveApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setApproveApp(null); fetchApplications(); }}
           onRefresh={fetchApplications}
           onCompleteAdoption={handleCompleteAdoption}
-          onScheduleInterview={async (applicationId, data) => {
-            const appointment = await applicationService.scheduleAppointment(applicationId, data);
+          onScheduleInterview={async (id, d) => {
+            const res = await applicationService.scheduleAppointment(id, d);
             await fetchApplications();
-            return appointment;
+            return res;
           }}
           onSubmit={async (data) => {
             await moveApplication(approveApp.id, 'APPROVED', data?.reviewNote);
@@ -556,14 +515,10 @@ export const ApplicationKanbanBoard: React.FC = () => {
           }}
         />
       )}
-
       {requestDocsApp && (
         <RequestDocumentsModal
           application={requestDocsApp}
-          onClose={() => {
-            setRequestDocsApp(null);
-            fetchApplications();
-          }}
+          onClose={() => { setRequestDocsApp(null); fetchApplications(); }}
           onNext={(documents) => {
             setPendingRequiredDocs(documents);
             setNeedInfoApp(requestDocsApp);
@@ -571,16 +526,11 @@ export const ApplicationKanbanBoard: React.FC = () => {
           }}
         />
       )}
-
       {needInfoApp && (
         <NeedMoreInfoModal
           application={needInfoApp}
           initialDocuments={pendingRequiredDocs}
-          onClose={() => {
-            setNeedInfoApp(null);
-            setPendingRequiredDocs([]);
-            fetchApplications();
-          }}
+          onClose={() => { setNeedInfoApp(null); setPendingRequiredDocs([]); fetchApplications(); }}
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
             await moveApplication(needInfoApp.id, 'NEED_MORE_INFO', data?.reviewNote);
@@ -597,18 +547,11 @@ export const ApplicationKanbanBoard: React.FC = () => {
           scrollbar-color: #E89B5A transparent;
         }
         .custom-board-scroll::-webkit-scrollbar {
-          height: 6px;
-        }
-        .custom-board-scroll::-webkit-scrollbar-track {
-          background: #F9FAFB;
-          border-radius: 10px;
+          height: 5px;
         }
         .custom-board-scroll::-webkit-scrollbar-thumb {
           background-color: #E89B5A;
           border-radius: 10px;
-        }
-        .custom-board-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #D68B4E;
         }
       `}</style>
     </div>
