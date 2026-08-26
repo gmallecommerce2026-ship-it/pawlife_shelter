@@ -18,7 +18,7 @@ import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/ap
 import { applicationService } from '@/services/applicationService';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { SelectTagsModal } from './SelectTagsModal';
-
+import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 // Bảng màu đồng bộ chuẩn với ApplicationCard
 const TAG_COLOR_PALETTE = [
   'bg-[#EEF3FF] text-[#5982E6]', // Xanh dương
@@ -303,13 +303,14 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
                 <FileText size={18} className="text-[#F3A571]" strokeWidth={1.8} />
               </div>
               <span className="text-[13.5px] font-semibold text-gray-900 truncate">
-                {applicantFirstName} - Application.pdf
+                {applicantFirstName} - Don_nhan_nuoi.pdf
               </span>
             </div>
             <button
               type="button"
-              title="Download"
-              className="text-gray-400 hover:text-gray-700 transition-colors p-1"
+              onClick={() => downloadApplicationPdf(application)}
+              title="Tải đơn nhận nuôi (PDF)"
+              className="text-gray-400 hover:text-[#E89B5A] transition-colors p-1 cursor-pointer"
             >
               <Download size={17} strokeWidth={2} />
             </button>

@@ -1,6 +1,6 @@
 // src/services/applicationService.ts
 import { apiClient } from '@/lib/api/ApiClient';
-
+import type { ApplicationNoteType, ApplicantProfileResponse } from '@/types/application';
 // LƯU Ý: apiClient.request() đã tự động parse res.json() và trả về
 // TRỰC TIẾP body JSON, không phải axios response { data: ... }.
 // Backend luôn trả { success: true, data }, nên res CHÍNH LÀ { success, data }
@@ -27,10 +27,8 @@ export const applicationService = {
   },
 
   // Thêm Ghi chú nội bộ
-  addNote: async (applicationId: string, content: string) => {
-    const res = await apiClient.post(`/applications/${applicationId}/notes`, {
-      content,
-    });
+  addNote: async (applicationId: string, content: string, type: ApplicationNoteType) => {
+    const res = await apiClient.post(`/applications/${applicationId}/notes`, { content, type });
     return unwrapItem(res);
   },
 
@@ -63,6 +61,11 @@ export const applicationService = {
   scheduleAppointment: async (applicationId: string, dto: any) => {
     const res = await apiClient.post(`/applications/${applicationId}/appointments`, dto);
     return unwrapItem(res); // hoặc return res.data;
+  },
+
+  getApplicantProfile: async (applicationId: string): Promise<ApplicantProfileResponse> => {
+    const res = await apiClient.get(`/applications/${applicationId}/applicant-profile`);
+    return unwrapItem(res);
   },
 
   // ==========================================

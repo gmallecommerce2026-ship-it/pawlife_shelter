@@ -1,25 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, Filter, Calendar, ChevronDown, Bell } from 'lucide-react';
 import { useApplicationFilter, useApplicationActions } from '@/stores/useApplicationStore';
+import { NOTE_TYPE_OPTIONS, ApplicationNoteType } from '@/types/application';
 
 export const ApplicationFilterBar: React.FC = () => {
   const { filter, setFilter } = useApplicationFilter();
   const { fetchApplications } = useApplicationActions();
   const [localSearch, setLocalSearch] = useState(filter.search);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFilter({ search: localSearch });
   };
 
+  const toggleNoteType = (value: ApplicationNoteType) => {
+    const current = filter.noteTypes;
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    setFilter({ noteTypes: next });
+  };
+
+  const activeNoteTypeCount = filter.noteTypes.length;
+
   return (
-    // < sm: 2 hàng (ô tìm kiếm full-width phía trên, các nút icon phía dưới)
-    // >= sm: 1 hàng như thiết kế gốc, đủ chỗ nên hiện đầy đủ label
     <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
 
-      {/* Ô tìm kiếm: chiếm trọn hàng trên mobile, cố định 260px trên desktop */}
+      {/* Ô tìm kiếm */}
       <form
         onSubmit={handleSubmit}
         className="relative flex items-center order-1 sm:order-2 w-full sm:w-[260px]"
@@ -33,24 +54,73 @@ export const ApplicationFilterBar: React.FC = () => {
         />
       </form>
 
-      {/* Nhóm nút icon: 1 khối trên mobile (hàng dưới), "tan" thành các item riêng trên desktop để đúng thứ tự gốc */}
       <div className="flex items-center gap-2 order-2 sm:order-none sm:contents">
         <button className="relative p-2 text-gray-400 hover:text-gray-700 transition-colors shrink-0 sm:order-1">
           <Bell size={20} strokeWidth={1.8} />
           <span className="absolute top-[7px] right-[7px] w-2 h-2 bg-[#F46767] border-[1.5px] border-white rounded-full"></span>
         </button>
 
-        {/* Nút Filter: chỉ icon trên mobile, icon + label trên desktop */}
-        <button className="flex items-center gap-1.5 sm:gap-2 h-[38px] px-3 sm:px-4 bg-white border border-[#858585] rounded-full hover:bg-gray-50 transition-colors shrink-0 sm:order-3">
-          <Filter size={14} className="text-gray-400" strokeWidth={2} />
-          <span className="hidden sm:inline text-[13.5px] text-gray-500 font-medium font-['Be Vietnam Pro',_sans-serif]">Bộ lọc</span>
-          <ChevronDown size={14} className="text-gray-400 sm:ml-2" strokeWidth={2} />
-        </button>
+        {/* Nút Filter — giờ có dropdown Note Type thật */}
+        <div className="relative shrink-0 sm:order-3" ref={filterRef}>
+          <button
+            type="button"
+            onClick={() => setIsFilterOpen((v) => !v)}
+            className={`flex items-center gap-1.5 sm:gap-2 h-[38px] px-3 sm:px-4 border rounded-full transition-colors ${
+              activeNoteTypeCount > 0
+                ? 'bg-[#FFF8F0] border-[#E89B5A]'
+                : 'bg-white border-[#858585] hover:bg-gray-50'
+            }`}
+          >
+            <Filter size={14} className={activeNoteTypeCount > 0 ? 'text-[#E89B5A]' : 'text-gray-400'} strokeWidth={2} />
+            <span className={`hidden sm:inline text-[13.5px] font-medium font-['Be_Vietnam_Pro',_sans-serif] ${
+              activeNoteTypeCount > 0 ? 'text-[#E89B5A]' : 'text-gray-500'
+            }`}>
+              Bộ lọc{activeNoteTypeCount > 0 ? ` (${activeNoteTypeCount})` : ''}
+            </span>
+            <ChevronDown size={14} className={`sm:ml-2 transition-transform ${isFilterOpen ? 'rotate-180' : ''} ${
+              activeNoteTypeCount > 0 ? 'text-[#E89B5A]' : 'text-gray-400'
+            }`} strokeWidth={2} />
+          </button>
 
-        {/* Nút Today: chỉ icon trên mobile, icon + label trên desktop */}
+          {isFilterOpen && (
+            <div className="absolute z-20 mt-2 w-[230px] bg-white border border-gray-200 rounded-[14px] shadow-lg p-3 right-0">
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                Note Type
+              </p>
+              {NOTE_TYPE_OPTIONS.map((opt) => {
+                const checked = filter.noteTypes.includes(opt.value);
+                return (
+                  <label
+                    key={opt.value}
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleNoteType(opt.value)}
+                      className="w-4 h-4 rounded accent-[#E89B5A]"
+                    />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: opt.color }} />
+                    <span className="text-[13px] text-gray-700">{opt.label}</span>
+                  </label>
+                );
+              })}
+              {activeNoteTypeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilter({ noteTypes: [] })}
+                  className="w-full text-center text-[12px] text-gray-500 hover:text-gray-700 mt-1 pt-2 border-t border-gray-100"
+                >
+                  Xoá bộ lọc
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         <button className="flex items-center gap-1.5 sm:gap-2 h-[38px] px-3 sm:px-4 bg-white border border-[#858585] rounded-full hover:bg-gray-50 transition-colors shrink-0 sm:order-4">
           <Calendar size={14} className="text-gray-400" strokeWidth={2} />
-          <span className="hidden sm:inline text-[13.5px] text-gray-500 font-medium font-['Be Vietnam Pro',_sans-serif]">Hôm nay</span>
+          <span className="hidden sm:inline text-[13.5px] text-gray-500 font-medium font-['Be_Vietnam_Pro',_sans-serif]">Hôm nay</span>
           <ChevronDown size={14} className="text-gray-400 sm:ml-2" strokeWidth={2} />
         </button>
       </div>

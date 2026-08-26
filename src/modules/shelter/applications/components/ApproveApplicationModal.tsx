@@ -19,11 +19,13 @@ import {
   MapPin,
 } from 'lucide-react';
 import { AdoptionApplication, ApplicationNote } from '@/types/application';
+import type { ApplicationNoteType } from '@/types/application';
+import { NOTE_TYPE_OPTIONS } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
-
+import { PartyPopper } from 'lucide-react';
 export interface InterviewMember {
   id: string;
   name: string;
@@ -55,6 +57,7 @@ interface ApproveApplicationModalProps {
   onSubmit: (data: { applicationId: string; reviewNote?: string; notes?: ApplicationNote[] }) => void;
   onScheduleInterview: (applicationId: string, data: any) => Promise<any>;
   onRefresh?: () => void;
+  onCompleteAdoption?: (applicationId: string) => Promise<void>;
 }
 
 const createEmptyMember = (): InterviewMember => ({
@@ -144,6 +147,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   onSubmit,
   onScheduleInterview,
   onRefresh,
+  onCompleteAdoption,
 }) => {
   const existingAppointment = (application as any)?.appointment;
 
@@ -152,7 +156,9 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   const [isInterviewOpen, setIsInterviewOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
-
+  const [noteType, setNoteType] = useState<ApplicationNoteType>('FOLLOW_UP');
+  const [isNoteTypeOpen, setIsNoteTypeOpen] = useState(false);
+  const [isCompletingAdoption, setIsCompletingAdoption] = useState(false);
   const defaultTitle =
     existingAppointment?.title ||
     `Hẹn phỏng vấn nhận nuôi ${application.pet?.name || ''}`.trim();
@@ -352,12 +358,27 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
       setIsSubmittingInterview(false);
     }
   };
+  const handleCompleteAdoption = async () => {
+    if (!onCompleteAdoption || isCompletingAdoption) return;
+    const confirmed = window.confirm(
+      `Xác nhận ${application.pet?.name || 'thú cưng'} đã được bàn giao cho ${applicantName}? Hành động này sẽ hoàn tất hồ sơ nhận nuôi.`
+    );
+    if (!confirmed) return;
 
+    try {
+      setIsCompletingAdoption(true);
+      await onCompleteAdoption(application.id);
+    } catch (error) {
+      console.error('Lỗi hoàn tất nhận nuôi:', error);
+    } finally {
+      setIsCompletingAdoption(false);
+    }
+  };
   const handleAddNote = async () => {
     if (!noteInput.trim() || isSubmittingNote) return;
     setIsSubmittingNote(true);
     try {
-      const response = await applicationService.addNote(application.id, noteInput.trim());
+      const response = await applicationService.addNote(application.id, noteInput.trim(), noteType);
       const addedNote = response?.data || response;
 
       const newNoteObj: ApplicationNote = {
@@ -366,11 +387,13 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
         authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Nhân viên trạm',
         authorAvatar: addedNote?.author?.avatarUrl || primaryStaffAvatar,
         content: addedNote?.content || noteInput.trim(),
+        type: addedNote?.type || noteType,
         createdAt: new Date().toISOString(),
       };
 
       setNotes((prev) => [newNoteObj, ...prev]);
       setNoteInput('');
+      setNoteType('FOLLOW_UP');
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Lỗi thêm ghi chú:', error);
@@ -878,6 +901,17 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                         <span className="font-bold text-[13px] text-gray-900">
                           {note.authorName || 'Nhân viên trạm'}
                         </span>
+                        {note.type && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              color: NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.color || '#6B7280',
+                              backgroundColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.color || '#6B7280'}15`,
+                            }}
+                          >
+                            {NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.label || note.type}
+                          </span>
+                        )}
                         <span className="text-[11px] text-gray-400">{formatTimeAgo(note.createdAt)}</span>
                       </div>
                       <p className="text-[13px] text-gray-600 leading-snug">
@@ -887,7 +921,42 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   </div>
                 ))}
 
+                {/* Chọn loại ghi chú trước khi gửi */}
                 <div className="relative mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNoteTypeOpen((v) => !v)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold mb-1.5 transition-colors"
+                    style={{
+                      color: NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color,
+                      borderColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color}40`,
+                      backgroundColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color}10`,
+                    }}
+                  >
+                    {NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label}
+                    <ChevronDown size={11} />
+                  </button>
+
+                  {isNoteTypeOpen && (
+                    <div className="absolute z-10 bottom-full mb-1 w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                      {NOTE_TYPE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => { setNoteType(opt.value); setIsNoteTypeOpen(false); }}
+                          className={`w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2 ${noteType === opt.value ? 'bg-gray-50 font-bold' : 'hover:bg-gray-50'
+                            }`}
+                          style={{ color: opt.color }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: opt.color }} />
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
                   <input
                     type="text"
                     value={noteInput}
@@ -909,7 +978,34 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
             )}
           </div>
         </div>
-
+        {/* 5. Hoàn tất nhận nuôi — chỉ hiện khi đơn đã ở trạng thái APPROVED */}
+        {application.status === 'APPROVED' && (
+          <div className="border-t border-gray-100 pt-4">
+            <div className="rounded-[16px] border border-[#D1F2D9] bg-[#F2FCF5] p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-2.5">
+                <PartyPopper size={18} className="text-[#1B8A44] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-[13px] text-[#1B8A44] block">
+                    Đơn đã được duyệt
+                  </span>
+                  <span className="text-[12px] text-gray-600">
+                    Khi {application.pet?.name || 'thú cưng'} đã được bàn giao thực tế cho{' '}
+                    {applicantName}, hãy xác nhận để hoàn tất hồ sơ. Hệ thống sẽ chuyển quyền
+                    sở hữu thú cưng và lưu vào lịch sử nhận nuôi.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCompleteAdoption}
+                disabled={isCompletingAdoption || !onCompleteAdoption}
+                className="w-full py-2.5 bg-[#1B8A44] hover:bg-[#166E37] text-white text-[13px] font-bold rounded-[12px] shadow-sm transition-colors disabled:opacity-60"
+              >
+                {isCompletingAdoption ? 'Đang xử lý...' : 'Xác nhận đã bàn giao — Hoàn tất nhận nuôi'}
+              </button>
+            </div>
+          </div>
+        )}
         {/* Nút to dưới cùng */}
         <div className="p-5 pt-3 border-t border-gray-100 bg-white">
           <button

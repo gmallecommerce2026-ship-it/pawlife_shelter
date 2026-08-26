@@ -1,19 +1,38 @@
+// src/types/application.ts
+
 export type ApplicationStatus =
   | 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO'
   | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';
+export type DocumentCategory = 'SHELTER' | 'VETERINARY' | 'APPLICANT' | 'STAFF';
+export type DocumentStatus = 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
 
+export interface ApplicationDocument {
+  id: string;
+  applicationId: string;
+  key: string;
+  label: string;
+  description: string;
+  category: DocumentCategory;
+  status: DocumentStatus;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSizeLabel?: string | null;
+  submittedAt?: string | null;
+  rejectionReason?: string | null;
+  requestedAt: string;
+}
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
-  SUBMITTED: 'Đã nộp',
+  SUBMITTED: 'Mới nộp',
   PENDING: 'Đang xem xét',
   NEED_MORE_INFO: 'Cần bổ sung hồ sơ',
-  INTERVIEW_SCHEDULED: 'Đã hẹn phỏng vấn',
+  INTERVIEW_SCHEDULED: 'Hẹn phỏng vấn',
   APPROVED: 'Đã duyệt',
   ADOPTION_COMPLETED: 'Đã bàn giao',
-  CLOSED: 'Từ chối',
+  CLOSED: 'Từ chối / Đóng',
 };
 
 export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
-  { status: 'SUBMITTED', label: 'Đơn mới' },
+  { status: 'SUBMITTED', label: 'Mới' },
   { status: 'PENDING', label: 'Đang xem xét' },
   { status: 'NEED_MORE_INFO', label: 'Cần bổ sung' },
   { status: 'INTERVIEW_SCHEDULED', label: 'Hẹn phỏng vấn' },
@@ -23,17 +42,105 @@ export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
 
 export type YesNo = 'Yes' | 'No';
 export type YesNoSometimes = 'Yes' | 'No' | 'Sometimes';
+export type ApplicationNoteType =
+  | 'HOME_VISIT'
+  | 'VET_RECORDS'
+  | 'FOLLOW_UP'
+  | 'CONCERN'
+  | 'REJECTION'
+  | 'REFERENCE_CHECK'
+  | 'BACKGROUND_CHECK';
 
-export interface AdoptionCommitments {
-  vaccine?: YesNoSometimes;
-  medical?: YesNoSometimes;
-  expenses?: YesNoSometimes;
-  updateStatus?: YesNoSometimes;
-  homeVisit?: YesNoSometimes;
-  provideID?: YesNoSometimes;
+export const NOTE_TYPE_OPTIONS: { value: ApplicationNoteType; label: string; color: string }[] = [
+  { value: 'HOME_VISIT', label: 'Home Visit', color: '#1B8A44' },
+  { value: 'VET_RECORDS', label: 'Vet Records', color: '#3B6BE3' },
+  { value: 'FOLLOW_UP', label: 'Follow-up', color: '#0EA5A5' },
+  { value: 'CONCERN', label: 'Concern', color: '#D97706' },
+  { value: 'REJECTION', label: 'Rejection', color: '#DC2626' },
+  { value: 'REFERENCE_CHECK', label: 'Reference Check', color: '#7C3AED' },
+  { value: 'BACKGROUND_CHECK', label: 'Background Check', color: '#8A38D4' },
+];
+
+export interface ApplicationNote {
+  id: string;
+  authorId: string;
+  authorName?: string;
+  authorAvatar?: string;
+  content: string;
+  type: ApplicationNoteType; // 🆕 bắt buộc — khớp với schema mới
+  createdAt: string;
 }
 
-// Pet.species/breed/description/color lưu dạng song ngữ {vi,en} ở DB (xem toBilingual() trong shelter-dashboard.service.ts)
+export interface ApplicantProfileResponse {
+  applicant: {
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+    avatarUrl: string | null;
+  };
+  stats: {
+    activeApplications: number;
+    successfulAdoptions: number;
+    totalApplications: number;
+  };
+  activeApplications: ApplicantAppSummary[];
+  adoptionHistory: ApplicantAppSummary[];
+  currentPets: {
+    id: string;
+    name: string;
+    status: string;
+    avatarUrl: string | null;
+    qrVerificationStatus: string;
+  }[];
+  notes: {
+    id: string;
+    content: string;
+    type: ApplicationNoteType; 
+    createdAt: string;
+    author: { id: string; name: string | null; avatarUrl: string | null };
+  }[];
+}
+
+export interface ApplicantAppSummary {
+  id: string;
+  status: string;
+  createdAt: string;
+  pet: { id: string; name: string; avatarUrl: string | null };
+  shelterName: string | null;
+}
+export interface AdoptionCommitments {
+  vaccine?: YesNoSometimes;      // Tiêm phòng hằng năm
+  medical?: YesNoSometimes;      // Chi trả phí y tế/điều trị khi cần thiết
+  expenses?: YesNoSometimes;     // Chi trả các khoản trước khi nhận nuôi
+  updateStatus?: YesNoSometimes; // Cập nhật tình trạng sau nhận nuôi
+  homeVisit?: YesNoSometimes;    // Cho thành viên đến thăm nhà
+  provideID?: YesNoSometimes;    // Cung cấp thông tin cá nhân
+  [key: string]: YesNoSometimes | undefined;
+}
+
+export const ADOPTION_COMMITMENTS_LIST = [
+  { key: 'vaccine', labelVi: 'Tiêm phòng hàng năm', labelEn: 'Yearly vaccinations' },
+  { key: 'updateStatus', labelVi: 'Cập nhật tình trạng nuôi', labelEn: 'Provide status updates' },
+  { key: 'medical', labelVi: 'Khám chữa bệnh khi cần', labelEn: 'Hospital treatment when needed' },
+  { key: 'homeVisit', labelVi: 'Cho phép thăm nhà', labelEn: 'Allow home visits' },
+  { key: 'expenses', labelVi: 'Chi trả chi phí bàn giao', labelEn: 'Cover pre-adoption expenses' },
+  { key: 'provideID', labelVi: 'Cung cấp CCCD & thông tin chính xác', labelEn: 'Willing to provide needed personal info' },
+  { key: 'spayNeuter', labelVi: 'Cam kết triệt sản đúng độ tuổi', labelEn: 'Spay/Neuter when of age' },
+  { key: 'noAbandonment', labelVi: 'Nuôi trọn đời, không bỏ rơi/bán lại', labelEn: 'Lifetime commitment, no abandonment' },
+  { key: 'safeEnvironment', labelVi: 'Môi trường an toàn, không thả rông', labelEn: 'Safe living environment, no free-roaming' },
+] as const;
+export const COMMITMENTS_CONFIG = [
+  // Hàng 1
+  { key: 'vaccine', label: 'Tiêm phòng hằng năm' },
+  { key: 'updateStatus', label: 'Cập nhật tình trạng sau nhận nuôi' },
+  // Hàng 2
+  { key: 'medical', label: 'Chi trả phí y tế/điều trị khi cần thiết' },
+  { key: 'homeVisit', label: 'Cho thành viên đến thăm nhà' },
+  // Hàng 3
+  { key: 'expenses', label: 'Chi trả các khoản trước khi nhận nuôi' },
+  { key: 'provideID', label: 'Cung cấp thông tin cá nhân' },
+] as const;
 export type LocalizedText = { vi?: string; en?: string } | string | null | undefined;
 
 export interface AdoptionApplicantUser {
@@ -50,9 +157,11 @@ export interface AdoptionApplicantPetSummary {
   breed?: LocalizedText;
   species?: LocalizedText;
   gender?: string | null;
-  dob?: string | null; // ISO date
-  images?: { url: string }[]; // include { take: 1 } từ shelter-dashboard.service#getMyApplications
+  dob?: string | null;
+  images?: { url: string }[];
+  avatarUrl?: string | null;
 }
+
 export interface ApplicationTag {
   id: string;
   name: string;
@@ -67,6 +176,7 @@ export interface ApplicationNote {
   content: string;
   createdAt: string | Date;
 }
+
 export interface ApplicationDocumentSummary {
   id: string;
   key: string;
@@ -77,8 +187,6 @@ export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;
   reviewNote?: string | null;
-
-  // Do người nộp đơn khai lúc submit (CreateApplicationDto, mobile) — có thể khác hồ sơ user
   fullName: string;
   phone: string;
   zalo?: string;
@@ -90,12 +198,13 @@ export interface AdoptionApplication {
   petExperience?: string;
   prevPetHistory?: string;
   employmentStatus?: string;
+  
   adoptionReason?: string;
   commitments?: AdoptionCommitments;
   tags?: ApplicationTag[];
   notes?: ApplicationNote[];
   pet?: AdoptionApplicantPetSummary;
-  user?: AdoptionApplicantUser; // include user{id,name,avatarUrl,email,phone} từ getMyApplications
+  user?: AdoptionApplicantUser;
   documents?: ApplicationDocumentSummary[];
   createdAt: string;
   updatedAt?: string;
@@ -103,11 +212,11 @@ export interface AdoptionApplication {
 
 export interface ApplicationFilter {
   search: string;
+  noteTypes: ApplicationNoteType[];
 }
 
-export const defaultApplicationFilter: ApplicationFilter = { search: '' };
+export const defaultApplicationFilter: ApplicationFilter = { search: '', noteTypes: [] };
 
-// ---- Helpers dùng chung ----
 export function localizedText(value: LocalizedText, locale: 'vi' | 'en' = 'vi'): string {
   if (!value) return '';
   if (typeof value === 'string') return value;

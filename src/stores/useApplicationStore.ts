@@ -8,6 +8,7 @@ import {
   ApplicationFilter,
   defaultApplicationFilter,
   KANBAN_COLUMNS,
+  ApplicationNoteType,
 } from '@/types/application';
 
 const KANBAN_STATUSES = KANBAN_COLUMNS.map((c) => c.status);
@@ -74,15 +75,30 @@ const useApplicationStoreBase = create<ApplicationState & ApplicationActions>()(
   },
 }));
 
-export const selectFilteredApplications = (items: AdoptionApplication[], search: string) => {
+export const selectFilteredApplications = (
+  items: AdoptionApplication[],
+  search: string,
+  noteTypes: ApplicationNoteType[] = [],
+) => {
   const q = search.trim().toLowerCase();
-  if (!q) return items;
-  return items.filter((a) =>
-    a.fullName?.toLowerCase().includes(q) ||
-    a.phone?.toLowerCase().includes(q) ||
-    (a.pet?.name || '').toLowerCase().includes(q) ||
-    (a.user?.email || '').toLowerCase().includes(q)
-  );
+
+  let result = items;
+  if (q) {
+    result = result.filter((a) =>
+      a.fullName?.toLowerCase().includes(q) ||
+      a.phone?.toLowerCase().includes(q) ||
+      (a.pet?.name || '').toLowerCase().includes(q) ||
+      (a.user?.email || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (noteTypes.length > 0) {
+    result = result.filter((a: any) =>
+      (a.notes || []).some((n: any) => noteTypes.includes(n.type)),
+    );
+  }
+
+  return result;
 };
 
 export const useApplicationList = () =>

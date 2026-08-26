@@ -1,34 +1,87 @@
-import { AdoptionApplication } from '@/types/application';
+// src/utils/exportApplicationPdf.ts
+
+import { AdoptionApplication, localizedText, getPetAgeLabel, COMMITMENTS_CONFIG } from '@/types/application';
+import {
+  translateAdoptFor,
+  translateHousing,
+  translateChildren,
+  translateCage,
+  translatePetExperience,
+  translateEmploymentStatus,
+  translatePetHistory,
+  translateAdoptionReason,
+} from '@/utils/translateApplication';
 
 const formatAppDate = (iso?: string) => {
-  if (!iso) return 'N/A';
+  if (!iso) return 'Chưa cập nhật';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return 'N/A';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (Number.isNaN(d.getTime())) return 'Chưa cập nhật';
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const isCommitmentAgreed = (val: unknown): boolean => {
+  if (val === true || val === 1) return true;
+  if (typeof val === 'string') {
+    const clean = val.trim().toLowerCase();
+    return ['có', 'co', 'yes', 'true', 'đồng ý', 'dong y', '1'].includes(clean);
+  }
+  return false;
 };
 
 export function downloadApplicationPdf(application: AdoptionApplication) {
-  const applicantName = application.fullName || application.user?.name || 'Maria Garcia';
+  const applicantName = application.fullName || application.user?.name || 'Người nhận nuôi';
   const submitDate = formatAppDate(application.createdAt);
   const updateDate = formatAppDate(application.updatedAt || application.createdAt);
+  const phone = application.phone || 'Chưa cập nhật';
+  const email = application.user?.email || application.zalo || 'Chưa cập nhật';
 
-  const phone = application.phone || '0912345678';
-  const email = application.user?.email || application.zalo || 'mariagarcia@email.com';
-  const adoptFor = application.adoptFor === 'Someone else' ? 'Someone else' : 'Myself';
-  const location = application.location || 'Cầu Giấy, Hà Nội';
-  const housing = application.housing || 'Apartment (allows pet ownership)';
-  const children = application.children || 'Yes, 3 children';
-  const cage = application.cage || 'No';
-  const petExperience = application.petExperience || 'Yes, 3 cats & 2 dogs';
-  const prevPetHistory = application.prevPetHistory || 'My previous dogs passed away due to old age after 12 years together.';
-  const employmentStatus = application.employmentStatus || 'Currently employed';
-  const adoptionReason = application.adoptionReason || 'Because I want to give them a forever home';
+  // Dịch toàn bộ các trường sang tiếng Việt
+  const adoptFor = translateAdoptFor(application.adoptFor);
+  const location = application.location || 'Chưa cập nhật';
+  const housing = translateHousing(application.housing);
+  const children = translateChildren(application.children);
+  const cage = translateCage(application.cage);
+  const petExperience = translatePetExperience(application.petExperience);
+  const prevPetHistory = translatePetHistory(application.prevPetHistory);
+  const employmentStatus = translateEmploymentStatus(application.employmentStatus);
+  const adoptionReason = translateAdoptionReason(application.adoptionReason);
 
-  const fileName = `${applicantName.split(' ')[0]} - Application.pdf`;
+  const petName = application.pet?.name || 'Thú cưng';
+  const petBreed = localizedText(application.pet?.breed) || 'Giống lai';
+  const petAge = getPetAgeLabel(application.pet?.dob);
+
+  const fileName = `${applicantName.split(' ')[0]} - Don_nhan_nuoi.pdf`;
+
+  const checkSvg = `
+    <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  `;
+
+  const crossSvg = `
+    <svg class="cross-svg" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  `;
+
+  const commitmentsHtml = COMMITMENTS_CONFIG.map((item) => {
+    const rawVal = application.commitments?.[item.key] ?? (application.commitments as any)?.[item.label];
+    const isAgreed = isCommitmentAgreed(rawVal);
+
+    return `
+      <div class="commit-item">
+        ${isAgreed ? checkSvg : crossSvg}
+        <span class="${isAgreed ? 'commit-text-agreed' : 'commit-text-declined'}">
+          ${item.label}
+        </span>
+      </div>
+    `;
+  }).join('');
 
   const htmlContent = `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <title>${fileName}</title>
@@ -53,94 +106,86 @@ export function downloadApplicationPdf(application: AdoptionApplication) {
       color: #111827;
       display: flex;
       justify-content: center;
-      padding: 10px;
+      padding: 0;
     }
-    .modal-container {
+    .container {
       width: 100%;
       max-width: 680px;
       background: #ffffff;
       border: 1px solid #e5e7eb;
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     }
     .header {
-      padding: 20px 24px 14px 24px;
+      padding: 18px 24px 14px 24px;
       border-bottom: 1px solid #f3f4f6;
-      background: #ffffff;
     }
-    .header-title-row {
+    .header-top {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
       margin-bottom: 6px;
     }
     .title {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 19px;
+      font-weight: 800;
       color: #111827;
-      line-height: 1;
+    }
+    .pet-badge {
+      display: inline-flex;
+      padding: 4px 12px;
+      background: #FFF8F3;
+      border: 1px solid #FCE8D5;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #E89B5A;
     }
     .meta-row {
       display: flex;
-      align-items: center;
       gap: 16px;
-      font-size: 12px;
+      font-size: 11.5px;
       color: #6b7280;
       font-weight: 500;
     }
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
     .body {
-      padding: 20px 24px;
-      background: #ffffff;
+      padding: 18px 24px;
     }
-    .section-card {
+    .card {
       background: #ffffff;
       border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
       margin-bottom: 12px;
       page-break-inside: avoid;
     }
-    .section-header {
-      padding: 10px 16px;
+    .card-header {
+      padding: 9px 16px;
       border-bottom: 1px solid #f3f4f6;
-      background: #ffffff;
-    }
-    .section-title {
-      font-size: 13px;
+      background: #fafafa;
+      font-size: 12.5px;
       font-weight: 700;
       color: #111827;
     }
-    .section-body {
+    .card-body {
       padding: 12px 16px;
     }
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      column-gap: 16px;
-      row-gap: 12px;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
+      column-gap: 20px;
+      row-gap: 10px;
     }
     .field-label {
       font-size: 11px;
       color: #9ca3af;
       margin-bottom: 2px;
-      line-height: 1;
-      font-weight: 400;
+      font-weight: 500;
     }
     .field-value {
       font-size: 13px;
       color: #111827;
-      font-weight: 500;
-      line-height: 1.35;
+      font-weight: 600;
     }
     .divider {
       width: 100%;
@@ -151,166 +196,101 @@ export function downloadApplicationPdf(application: AdoptionApplication) {
     .commit-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      column-gap: 16px;
-      row-gap: 10px;
+      column-gap: 24px;
+      row-gap: 12px;
     }
     .commit-item {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .commit-text {
-      font-size: 12px;
+    .check-svg {
+      width: 15px;
+      height: 15px;
+      color: #10B981;
+      flex-shrink: 0;
+    }
+    .cross-svg {
+      width: 15px;
+      height: 15px;
+      color: #F43F5E;
+      flex-shrink: 0;
+    }
+    .commit-text-agreed {
+      font-size: 12.5px;
       color: #111827;
       font-weight: 500;
+    }
+    .commit-text-declined {
+      font-size: 12.5px;
+      color: #6B7280;
+      font-weight: 400;
     }
   </style>
 </head>
 <body>
-  <div class="modal-container">
-    <!-- Header -->
+  <div class="container">
     <div class="header">
-      <div class="header-title-row">
-        <h2 class="title">Application Details</h2>
+      <div class="header-top">
+        <h2 class="title">Chi tiết đơn đăng ký nhận nuôi</h2>
+        <div class="pet-badge">Bé: ${petName} (${petAge} • ${petBreed})</div>
       </div>
       <div class="meta-row">
-        <div class="meta-item">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Submitted on ${submitDate}
-        </div>
-        <div class="meta-item">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Updated ${updateDate}
-        </div>
+        <span>📅 Ngày nộp: <strong>${submitDate}</strong></span>
+        <span>🔄 Cập nhật: <strong>${updateDate}</strong></span>
       </div>
     </div>
 
-    <!-- Body -->
     <div class="body">
       <!-- Section A -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3 class="section-title">A - Contact Information</h3>
-        </div>
-        <div class="section-body">
+      <div class="card">
+        <div class="card-header">A - Thông tin liên hệ</div>
+        <div class="card-body">
           <div class="grid-2">
-            <div class="field">
-              <span class="field-label">Full Name</span>
-              <span class="field-value">${applicantName}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Phone Number</span>
-              <span class="field-value">${phone}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Email Address</span>
-              <span class="field-value">${email}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Adopting For</span>
-              <span class="field-value">${adoptFor}</span>
-            </div>
+            <div><div class="field-label">Họ và tên</div><div class="field-value">${applicantName}</div></div>
+            <div><div class="field-label">Số điện thoại</div><div class="field-value">${phone}</div></div>
+            <div><div class="field-label">Email / Zalo</div><div class="field-value">${email}</div></div>
+            <div><div class="field-label">Đối tượng nhận nuôi</div><div class="field-value">${adoptFor}</div></div>
           </div>
         </div>
       </div>
 
       <!-- Section B -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3 class="section-title">B - Living Conditions</h3>
-        </div>
-        <div class="section-body">
+      <div class="card">
+        <div class="card-header">B - Điều kiện sinh sống</div>
+        <div class="card-body">
           <div class="grid-2">
-            <div class="field">
-              <span class="field-label">Location</span>
-              <span class="field-value">${location}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Housing Type</span>
-              <span class="field-value">${housing}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Children</span>
-              <span class="field-value">${children}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Cage Plan For</span>
-              <span class="field-value">${cage}</span>
-            </div>
+            <div><div class="field-label">Khu vực sinh sống</div><div class="field-value">${location}</div></div>
+            <div><div class="field-label">Loại nhà ở</div><div class="field-value">${housing}</div></div>
+            <div><div class="field-label">Trẻ em trong nhà</div><div class="field-value">${children}</div></div>
+            <div><div class="field-label">Kế hoạch chuồng / xích</div><div class="field-value">${cage}</div></div>
           </div>
         </div>
       </div>
 
       <!-- Section C -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3 class="section-title">C - Pet Experience</h3>
-        </div>
-        <div class="section-body">
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div class="field">
-              <span class="field-label">Previous Pet</span>
-              <span class="field-value">${petExperience}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">Housing Type</span>
-              <span class="field-value">${prevPetHistory}</span>
-            </div>
+      <div class="card">
+        <div class="card-header">C - Kinh nghiệm & Cá nhân</div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div><div class="field-label">Đã từng nuôi thú cưng</div><div class="field-value">${petExperience}</div></div>
+            <div><div class="field-label">Tình trạng việc làm</div><div class="field-value">${employmentStatus}</div></div>
+            <div style="grid-column: span 2;"><div class="field-label">Lịch sử chăm sóc trước đây</div><div class="field-value">${prevPetHistory}</div></div>
           </div>
         </div>
       </div>
 
-      <!-- Section D -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3 class="section-title">D - Employment & Personal</h3>
-        </div>
-        <div class="section-body">
-          <div class="field">
-            <span class="field-label">Employment</span>
-            <span class="field-value">${employmentStatus}</span>
+      <!-- Section E: Cam kết nhận nuôi -->
+      <div class="card">
+        <div class="card-header">E - Cam kết nhận nuôi</div>
+        <div class="card-body">
+          <div style="margin-bottom: 8px;">
+            <div class="field-label">Lý do nhận nuôi</div>
+            <div class="field-value" style="font-size: 13.5px; margin-top: 2px;">${adoptionReason}</div>
           </div>
-        </div>
-      </div>
-
-      <!-- Section E -->
-      <div class="section-card">
-        <div class="section-header">
-          <h3 class="section-title">E - Adoption Commitment</h3>
-        </div>
-        <div class="section-body">
-          <div class="field" style="margin-bottom: 12px;">
-            <span class="field-label">Reason for Adoption</span>
-            <span class="field-value">${adoptionReason}</span>
-          </div>
-
           <div class="divider"></div>
-
           <div class="commit-grid">
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Yearly vaccinations</span>
-            </div>
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Provide status updates</span>
-            </div>
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Hospital treatment when needed</span>
-            </div>
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Allow home visits</span>
-            </div>
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Cover pre-adoption expenses</span>
-            </div>
-            <div class="commit-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span class="commit-text">Willing to provide needed personal info</span>
-            </div>
+            ${commitmentsHtml}
           </div>
         </div>
       </div>
@@ -318,9 +298,8 @@ export function downloadApplicationPdf(application: AdoptionApplication) {
   </div>
 </body>
 </html>
-`;
+  `;
 
-  // Tạo iframe ẩn để in/xuất chuẩn A4 vector sắc nét từng pixel
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -335,7 +314,6 @@ export function downloadApplicationPdf(application: AdoptionApplication) {
     doc.open();
     doc.write(htmlContent);
     doc.close();
-
     iframe.contentWindow?.focus();
     setTimeout(() => {
       iframe.contentWindow?.print();

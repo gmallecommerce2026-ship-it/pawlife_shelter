@@ -137,12 +137,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   const columns = useMemo(() => {
-    const filtered = selectFilteredApplications(formattedItems, filter.search);
+    const filtered = selectFilteredApplications(formattedItems, filter.search, filter.noteTypes);
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
       applications: filtered.filter((a) => a.status === col.status),
     }));
-  }, [formattedItems, filter.search]);
+  }, [formattedItems, filter.search, filter.noteTypes]);
 
   useEffect(() => {
     const checkScrollable = () => {
@@ -316,7 +316,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
       setIsClosingApp(false);
     }
   };
-
+  const handleCompleteAdoption = async (applicationId: string) => {
+    try {
+      await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
+      await fetchApplications();
+      setApproveApp(null);
+    } catch (error) {
+      console.error('Lỗi khi hoàn tất nhận nuôi:', error);
+      alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
+    }
+  };
   return (
     <div className="flex flex-col justify-start gap-6 sm:gap-[40px] w-full overflow-hidden">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
@@ -525,6 +534,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
             fetchApplications();
           }}
           onRefresh={fetchApplications}
+          onCompleteAdoption={handleCompleteAdoption}
           onScheduleInterview={async (applicationId, data) => {
             const appointment = await applicationService.scheduleAppointment(applicationId, data);
             await fetchApplications();
