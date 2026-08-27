@@ -1,10 +1,16 @@
 import { apiClient } from '@/lib/api/ApiClient';
-import type { ShelterStaffRole } from '@/types/shelterTeam';
+import type { ShelterStaffRole, ShelterTeamMember } from '@/types/shelterTeam';
 
 const unwrap = <T = any>(res: any): T => (res?.data !== undefined ? res.data : res);
 
 export const shelterTeamService = {
   getTeam: async () => unwrap(await apiClient.get('/shelter-dashboard/team')),
+
+  getMe: async (): Promise<ShelterTeamMember> =>
+    unwrap(await apiClient.get('/shelter-dashboard/team/me')),
+
+  updateMe: async (name: string): Promise<ShelterTeamMember> =>
+    unwrap(await apiClient.patch('/shelter-dashboard/team/me', { name })),
 
   inviteMember: async (email: string, role: ShelterStaffRole, name?: string) =>
     unwrap(await apiClient.post('/shelter-dashboard/team/invite', { email, role, name })),

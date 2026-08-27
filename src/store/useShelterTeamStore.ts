@@ -7,12 +7,16 @@ import type { ShelterTeamMember, ShelterInvitationItem, ShelterStaffRole } from 
 interface ShelterTeamState {
   members: ShelterTeamMember[];
   invitations: ShelterInvitationItem[];
+  me: ShelterTeamMember | null;
   isLoading: boolean;
+  isMeLoading: boolean;
   isSubmitting: boolean;
 }
 
 interface ShelterTeamActions {
   fetchTeam: () => Promise<void>;
+  fetchMe: () => Promise<void>;
+  updateMe: (name: string) => Promise<boolean>;
   inviteMember: (email: string, role: ShelterStaffRole, name?: string) => Promise<boolean>;
   updateMemberRole: (userId: string, role: ShelterStaffRole) => Promise<boolean>;
   removeMember: (userId: string) => Promise<boolean>;
@@ -22,7 +26,9 @@ interface ShelterTeamActions {
 const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()((set, get) => ({
   members: [],
   invitations: [],
+  me: null,
   isLoading: false,
+  isMeLoading: false,
   isSubmitting: false,
 
   fetchTeam: async () => {
@@ -34,6 +40,36 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
       toast.error(e.message || 'Không thể tải danh sách thành viên.');
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  fetchMe: async () => {
+    set({ isMeLoading: true });
+    try {
+      const me = await shelterTeamService.getMe();
+      set({ me });
+    } catch (e: any) {
+      toast.error(e.message || 'Không thể tải thông tin tài khoản.');
+    } finally {
+      set({ isMeLoading: false });
+    }
+  },
+
+  updateMe: async (name) => {
+    set({ isSubmitting: true });
+    try {
+      const updated = await shelterTeamService.updateMe(name);
+      set((s) => ({
+        me: updated,
+        members: s.members.map((m) => (m.id === updated.id ? { ...m, name: updated.name } : m)),
+      }));
+      toast.success('Đã cập nhật thông tin tài khoản.');
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || 'Không thể cập nhật thông tin tài khoản.');
+      return false;
+    } finally {
+      set({ isSubmitting: false });
     }
   },
 
@@ -93,12 +129,16 @@ export const useShelterTeam = () =>
   useShelterTeamStoreBase(useShallow((s) => ({
     members: s.members,
     invitations: s.invitations,
+    me: s.me,
     isLoading: s.isLoading,
+    isMeLoading: s.isMeLoading,
   })));
 
 export const useShelterTeamActions = () =>
   useShelterTeamStoreBase(useShallow((s) => ({
     fetchTeam: s.fetchTeam,
+    fetchMe: s.fetchMe,
+    updateMe: s.updateMe,
     inviteMember: s.inviteMember,
     updateMemberRole: s.updateMemberRole,
     removeMember: s.removeMember,

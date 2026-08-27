@@ -23,6 +23,7 @@ import { OpeningHoursEditor } from '@/components/OpeningHoursEditor';
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { STAFF_ROLE_LABEL, STAFF_ROLE_COLOR } from '@/types/shelterTeam';
 import { InviteMemberModal } from '@/components/InviteMemberModal';
+import { getUserFromToken } from '@/utils/getUserFromToken';
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   ssr: false,
   loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />
@@ -41,13 +42,6 @@ const SHELTER_TYPE_OPTIONS = [
   { value: 'Foster Home', label: 'Nhà nuôi tạm (Foster Home)' },
   { value: 'Veterinary Clinic', label: 'Phòng khám thú y kiêm cứu hộ' },
   { value: 'Individual Rescuer', label: 'Cá nhân cứu hộ tự do' },
-];
-
-const MOCK_MEMBERS = [
-  { id: 1, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Admin', roleColor: 'purple' },
-  { id: 2, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Thành viên', roleColor: 'blue' },
-  { id: 3, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Tình nguyện viên', roleColor: 'green' },
-  { id: 4, name: 'Nguyễn Thị Qyn Phan', email: 'sannhanhieucho@gmail.com', role: 'Bác sĩ thú y', roleColor: 'pink' },
 ];
 
 const PERMISSIONS_DATA = [
@@ -101,13 +95,53 @@ export const ShelterProfileForm = () => {
   const profileLat = profile?.latitude;
   const profileLng = profile?.longitude;
   const profileCoverUrl = profile?.coverUrl;
-  const { members, invitations, isLoading: isTeamLoading } = useShelterTeam();
-  const { fetchTeam, updateMemberRole, removeMember, cancelInvitation } = useShelterTeamActions();
+  const { members, invitations, me, isLoading: isTeamLoading } = useShelterTeam();
+  const { fetchTeam, fetchMe, updateMe, updateMemberRole, removeMember, cancelInvitation } = useShelterTeamActions();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
+  const [meName, setMeName] = useState('');
+  const [isSavingMe, setIsSavingMe] = useState(false);
+  const [tokenUser, setTokenUser] = useState<any>(null);
   useEffect(() => {
-    if (activeTab === 'members') fetchTeam();
+    setTokenUser(getUserFromToken());
+  }, []);
+
+  // Tìm chính mình trong danh sách team member (nguồn dữ liệu đang đổ đúng)
+  const currentMember = React.useMemo(() => {
+    if (!members?.length) return null;
+    return (
+      members.find(
+        (m) =>
+          (me?.id && m.id === me.id) ||
+          (tokenUser?.email && m.email === tokenUser.email)
+      ) || null
+    );
+  }, [members, me, tokenUser]);
+
+  // Gộp dữ liệu: ưu tiên `me`, fallback currentMember, fallback token
+  const displayAvatar = me?.avatarUrl || currentMember?.avatarUrl;
+  const displayName = me?.name || currentMember?.name || '';
+  const displayEmail = me?.email || currentMember?.email || tokenUser?.email || '';
+  const displayRole = me?.shelterRole || currentMember?.shelterRole;
+  useEffect(() => {
+    if (activeTab === 'members') {
+      (async () => {
+        await fetchTeam();
+        await fetchMe();
+      })();
+    }
   }, [activeTab]);
+
+  useEffect(() => {
+    setMeName(displayName);
+  }, [displayName]);
+
+  const handleSaveMe = async () => {
+    if (!meName.trim()) return;
+    setIsSavingMe(true);
+    await updateMe(meName.trim());
+    setIsSavingMe(false);
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -212,22 +246,20 @@ export const ShelterProfileForm = () => {
         </button>
 
         {/* Tab 2: Bị khóa không thể click/activate */}
-        <div className="relative group flex-1">
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-          >
-            Tài khoản & thành viên
-          </button>
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+        >
+          Tài khoản & thành viên
+        </button>
 
-          {/* Popup Tooltip khi Hover */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-all duration-200">
-            <div className="w-2.5 h-2.5 bg-gray-900 rotate-45 -mb-1 rounded-sm"></div>
-            <div className="bg-gray-900 text-white text-[12px] font-medium px-3.5 py-2 rounded-xl shadow-xl whitespace-nowrap flex items-center gap-1.5">
-              <Lock size={13} className="text-amber-400" />
-              <span>Tính năng đang trong giai đoạn phát triển</span>
-            </div>
+        {/* Popup Tooltip khi Hover */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-all duration-200">
+          <div className="w-2.5 h-2.5 bg-gray-900 rotate-45 -mb-1 rounded-sm"></div>
+          <div className="bg-gray-900 text-white text-[12px] font-medium px-3.5 py-2 rounded-xl shadow-xl whitespace-nowrap flex items-center gap-1.5">
+            <Lock size={13} className="text-amber-400" />
+            <span>Tính năng đang trong giai đoạn phát triển</span>
           </div>
         </div>
       </div>
@@ -472,20 +504,26 @@ export const ShelterProfileForm = () => {
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-4">
                 <img
-                  src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100"
+                  src={displayAvatar || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
                   alt="Avatar"
                   className="w-[84px] h-[84px] rounded-full object-cover border border-gray-100"
                 />
                 <div className="flex flex-col">
-                  <h3 className="text-[20px] font-bold text-gray-900 mb-1">Nguyễn Thị Qyn Phan</h3>
-                  <p className="text-[14px] text-gray-400 mb-2">hello@pawlife.vn</p>
-                  <span className={`w-fit px-3 py-0.5 rounded-full text-[12px] font-medium ${getRoleBadgeStyle('purple')}`}>
-                    Admin
-                  </span>
+                  <h3 className="text-[20px] font-bold text-gray-900 mb-1">{displayName || 'Chưa đặt tên'}</h3>
+                  <p className="text-[14px] text-gray-400 mb-2">{displayEmail}</p>
+                  {displayRole && (
+                    <span className={`w-fit px-3 py-0.5 rounded-full text-[12px] font-medium ${getRoleBadgeStyle(STAFF_ROLE_COLOR[displayRole])}`}>
+                      {STAFF_ROLE_LABEL[displayRole]}
+                    </span>
+                  )}
                 </div>
               </div>
-              <button className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors">
-                Lưu Thay Đổi
+              <button
+                onClick={handleSaveMe}
+                disabled={isSavingMe || !meName.trim() || meName.trim() === (displayName || '')}
+                className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingMe ? 'Đang lưu...' : 'Lưu Thay Đổi'}
               </button>
             </div>
 
@@ -494,7 +532,8 @@ export const ShelterProfileForm = () => {
                 <label className="text-[12px] text-gray-400 mb-1.5 block">Tên đầy đủ</label>
                 <input
                   type="text"
-                  defaultValue="Nguyễn Thị Qyn Phan"
+                  value={meName}
+                  onChange={(e) => setMeName(e.target.value)}
                   className="w-full bg-white border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#E89B5A]"
                 />
               </div>
@@ -502,7 +541,7 @@ export const ShelterProfileForm = () => {
                 <label className="text-[12px] text-gray-400 mb-1.5 block">Email</label>
                 <input
                   type="text"
-                  defaultValue="sannhanhieucho@gmail.com"
+                  value={displayEmail}
                   readOnly
                   className="w-full bg-[#FAFAFA] border border-gray-200 rounded-[10px] px-4 py-2.5 text-[14px] text-gray-500 outline-none"
                 />
@@ -533,44 +572,68 @@ export const ShelterProfileForm = () => {
                 <div className="py-10 text-center text-gray-400 text-[13px]">Đang tải...</div>
               ) : (
                 <div className="flex flex-col divide-y divide-gray-100">
-                  {members.map((member) => (
-                    <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={member.avatarUrl || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
-                          alt={member.name || member.email}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                        <span className="text-[14px] font-bold text-gray-900">{member.name || 'Chưa đặt tên'}</span>
+                  {members.map((member) => {
+                    const isSelf = member.id === me?.id;
+                    const isCurrentUserAdmin = me?.shelterRole === 'ADMIN';
+                    // Chỉ admin mới được sửa role của người khác; không ai được tự sửa role của mình
+                    const canEditRole = isCurrentUserAdmin && !isSelf;
+
+                    return (
+                      <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={member.avatarUrl || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
+                            alt={member.name || member.email}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                          <span className="text-[14px] font-bold text-gray-900">
+                            {member.name || 'Chưa đặt tên'}
+                            {isSelf && <span className="text-gray-400 font-normal"> (Bạn)</span>}
+                          </span>
+                        </div>
+                        <span className="text-[14px] text-gray-500">{member.email}</span>
+                        <div>
+                          {canEditRole ? (
+                            <select
+                              value={member.shelterRole}
+                              onChange={(e) => updateMemberRole(member.id, e.target.value as any)}
+                              className={`px-3 py-1 rounded-full text-[12px] font-medium border outline-none cursor-pointer ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                }`}
+                            >
+                              {(['ADMIN', 'MEMBER', 'VOLUNTEER', 'VETERINARIAN'] as const).map((r) => (
+                                <option key={r} value={r}>{STAFF_ROLE_LABEL[r]}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span
+                              className={`px-3 py-1 rounded-full text-[12px] font-medium border w-fit inline-block ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                }`}
+                            >
+                              {STAFF_ROLE_LABEL[member.shelterRole]}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-end gap-4">
+                          {isCurrentUserAdmin && !isSelf && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Xoá ${member.name || member.email} khỏi trạm?`)) removeMember(member.id);
+                              }}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-[14px] text-gray-500">{member.email}</span>
-                      <div>
-                        <select
-                          value={member.shelterRole}
-                          onChange={(e) => updateMemberRole(member.id, e.target.value as any)}
-                          className={`px-3 py-1 rounded-full text-[12px] font-medium border outline-none cursor-pointer ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
-                            STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
-                              STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
-                                'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
-                            }`}
-                        >
-                          {(['ADMIN', 'MEMBER', 'VOLUNTEER', 'VETERINARIAN'] as const).map((r) => (
-                            <option key={r} value={r}>{STAFF_ROLE_LABEL[r]}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center justify-end gap-4">
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Xoá ${member.name || member.email} khỏi trạm?`)) removeMember(member.id);
-                          }}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {invitations.map((inv) => (
                     <div key={inv.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 bg-[#FFFBF5]">
