@@ -37,14 +37,14 @@ const SHELTER_MENU: MenuItem[] = [
     label: 'Trang chủ',
     icon: <Image src="/images/trang-chu.png" alt="Trang chủ" width={22} height={22} />,
     path: '/shelter/dashboard',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'pets',
     label: 'Quản lý Pet',
     icon: <Image src="/images/quan-ly-pet.png" alt="Quản lý Pet" width={22} height={22} />,
     path: '/shelter/pets',
-    // không disabled -> vẫn hoạt động bình thường
+    disabled: false,
   },
   {
     id: 'applications',
