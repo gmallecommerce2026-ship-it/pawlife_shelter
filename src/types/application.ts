@@ -160,6 +160,7 @@ export interface AdoptionApplicantPetSummary {
   dob?: string | null;
   images?: { url: string }[];
   avatarUrl?: string | null;
+  status?: string | null; 
 }
 
 export interface ApplicationTag {

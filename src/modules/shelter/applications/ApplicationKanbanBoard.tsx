@@ -41,7 +41,8 @@ import { useTagColorStore } from '@/stores/useTagColorStore';
 
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
-
+const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
+  status === 'ADOPTION_COMPLETED' ? 'APPROVED' : status;
 const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   SUBMITTED: 'PENDING',
   PENDING: 'INTERVIEW_SCHEDULED',
@@ -79,12 +80,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       ...app,
       tags: app.tags
         ? app.tags.map((t: any) => {
-            const base = t && typeof t === 'object' && t.tag
-              ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
-              : t;
-            const syncedColor = getTagColor(base?.name) || base?.color;
-            return { ...base, color: syncedColor };
-          })
+          const base = t && typeof t === 'object' && t.tag
+            ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
+            : t;
+          const syncedColor = getTagColor(base?.name) || base?.color;
+          return { ...base, color: syncedColor };
+        })
         : [],
     }));
   }, [localItems, getTagColor]);
@@ -136,7 +137,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const filtered = selectFilteredApplications(formattedItems, filter.search, filter.noteTypes);
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
-      applications: filtered.filter((a) => a.status === col.status),
+      applications: filtered.filter((a) => mergeAdoptionIntoApproved(a.status) === col.status),
     }));
   }, [formattedItems, filter.search, filter.noteTypes]);
 
@@ -195,7 +196,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
     const overIsColumn = isColumnId(overId);
     const overItem = localItems.find((a) => a.id === overId);
-    const targetStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
+    const targetStatus = overIsColumn
+      ? (overId as ApplicationStatus)
+      : (overItem ? mergeAdoptionIntoApproved(overItem.status) : undefined);
     if (!targetStatus) return;
 
     setOverColumn(targetStatus);
@@ -203,13 +206,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
       const oldIndex = prev.findIndex((a) => a.id === activeId);
       if (oldIndex === -1) return prev;
 
-      if (activeItem.status === targetStatus && !overIsColumn && overItem) {
+      if (mergeAdoptionIntoApproved(activeItem.status) === targetStatus && !overIsColumn && overItem) {
         const newIndex = prev.findIndex((a) => a.id === overId);
         if (newIndex === -1 || newIndex === oldIndex) return prev;
         return arrayMove(prev, oldIndex, newIndex);
       }
 
-      if (activeItem.status !== targetStatus) {
+      if (mergeAdoptionIntoApproved(activeItem.status) !== targetStatus) {
         const next = [...prev];
         next[oldIndex] = { ...next[oldIndex], status: targetStatus };
         if (!overIsColumn && overItem) {
@@ -242,13 +245,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
       } else {
         const overIsColumn = isColumnId(overId);
         const overItem = items.find((a) => a.id === overId);
-        finalStatus = overIsColumn ? (overId as ApplicationStatus) : overItem?.status;
+        finalStatus = overIsColumn
+          ? (overId as ApplicationStatus)
+          : (overItem ? mergeAdoptionIntoApproved(overItem.status) : undefined);
+
       }
     }
 
     setOverColumn(null);
 
-    if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
+    if (!over || !originalItem || !finalStatus || finalStatus === mergeAdoptionIntoApproved(originalItem.status)) {
       setLocalItems(items);
       return;
     }
@@ -324,7 +330,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   return (
     // Toàn bộ màn hình chiếm đúng 100dvh trừ phần top bar của Shelter Layout
     <div className="flex flex-col w-full h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4.5rem)] overflow-hidden gap-2 pb-1">
-      
+
       {/* 1. Header & Filter Bar thu gọn tối đa khoảng trống dọc */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 w-full px-1">
         <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[18px] sm:text-[22px] lg:text-[24px] text-[#0D062D] font-bold tracking-tight">

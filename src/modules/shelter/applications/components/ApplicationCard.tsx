@@ -57,7 +57,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
   // Thêm 2 biến điều kiện, đặt gần chỗ khai báo displayTags
-  const isAdopted = application.status === 'ADOPTION_COMPLETED';
+  const isAdopted =
+    application.status === 'ADOPTION_COMPLETED' ||
+    (application.pet as any)?.status === 'ADOPTED'; // 🆕 fallback: pet bị đổi trạng thái qua dropdown ở Pet Detail
   const isInterviewCompleted = application.appointment?.status === 'COMPLETED';
   const documents = (application as any).documents as { status: string }[] | undefined;
   const totalDocs = documents?.length ?? 0;
