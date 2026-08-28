@@ -347,7 +347,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
         : `Lịch phỏng vấn (${format}): ${title}`,
     };
 
-  };
 
   try {
     setIsSubmittingInterview(true);
@@ -1022,3 +1021,4 @@ return (
     </div>
   </div>
 );
+};
