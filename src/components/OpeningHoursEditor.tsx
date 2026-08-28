@@ -61,7 +61,7 @@ export const OpeningHoursEditor: React.FC<OpeningHoursEditorProps> = ({
       (item) => item.day === todayKey || getDayLabel(item.day).full === getDayLabel(todayKey).full
     );
     if (!todayData || !todayData.isOpen) {
-      return { status: 'closed', label: 'Hôm nay nghỉ làm việc', color: 'bg-rose-50 text-rose-600 border-rose-200' };
+      return { status: 'closed', label: 'Hôm nay', color: 'bg-rose-50 text-rose-600 border-rose-200' };
     }
 
     const now = new Date();
@@ -160,7 +160,7 @@ export const OpeningHoursEditor: React.FC<OpeningHoursEditorProps> = ({
     return (
       <div className="w-full flex flex-col gap-4">
         {/* Live Status Badge */}
-        <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm p-3 px-4 rounded-2xl border border-gray-100 shadow-xs">
+        {/* <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm p-3 px-4 rounded-2xl border border-gray-100 shadow-xs">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-3 w-3">
               <span
@@ -179,7 +179,7 @@ export const OpeningHoursEditor: React.FC<OpeningHoursEditorProps> = ({
           <span className="text-[11px] font-medium text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100">
             Giờ địa phương
           </span>
-        </div>
+        </div> */}
 
         {/* Grid 7 Ngày */}
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">

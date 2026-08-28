@@ -373,12 +373,12 @@ export const ShelterProfileForm = () => {
                     </div>
 
                     {/* Khối Giờ hoạt động ở View Mode */}
-                    <div className="col-span-1 md:col-span-2 flex items-start gap-4 bg-[#FFF8F3]/60 border border-[#FCE8D5] p-5 rounded-[16px] mt-2">
+                    <div className="col-span-1 md:col-span-2 flex items-start gap-4 mt-5">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5 border border-[#FCE8D5]">
                         <Clock size={18} />
                       </div>
                       <div className="flex flex-col w-full">
-                        <span className="text-[12px] text-[#E89B5A] font-bold mb-2">Giờ hoạt động</span>
+                        <span className="text-[12px] text-gray-400 font-bold mb-2">Giờ hoạt động</span>
                         <OpeningHoursEditor
                           value={values.openingHours}
                           isEditing={false}
@@ -388,7 +388,7 @@ export const ShelterProfileForm = () => {
                     </div>
                   </div>
 
-                  <div className="w-full border-t border-dashed border-gray-200 my-8" />
+                  <div className="w-full border-t border-dashed border-gray-200 mb-8" />
 
                   <div className="flex justify-around items-center px-4">
                     <div className="flex flex-col items-center gap-1">

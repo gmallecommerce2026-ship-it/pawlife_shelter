@@ -12,6 +12,7 @@ export type RequestedDocument = RequiredDocument & {
   id: string;
   status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
   rejectionReason?: string | null;
+  category?: 'SHELTER' | 'VETERINARY' | 'APPLICANT' | 'STAFF';
 };
 
 interface RequestDocumentsModalProps {
@@ -106,10 +107,15 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
   const handleNext = async () => {
     if (selectedKeys.length === 0 || isSubmitting || isLoadingExisting) return;
 
-    // Tài liệu mới cần tạo: đang được tick nhưng chưa tồn tại trong DB
+    // Tài liệu mới cần tạo: đang được tick nhưng chưa tồn tại trong DB (bổ sung trường category)
     const itemsToCreate = DOCUMENT_TYPE_OPTIONS.filter(
       (o) => selectedKeys.includes(o.key) && !existingDocsByKey[o.key]
-    ).map((o) => ({ key: o.key, label: o.label, description: descriptions[o.key] }));
+    ).map((o) => ({
+      key: o.key,
+      label: o.label,
+      description: descriptions[o.key],
+      category: (o as any).category || 'APPLICANT',
+    }));
 
     // Tài liệu cần huỷ: đã tồn tại, đang PENDING_SUBMISSION, nhưng vừa bị bỏ tick
     const itemsToRemove = existingDocs.filter(
