@@ -18,14 +18,139 @@ import {
   RotateCw,
   MapPin,
 } from 'lucide-react';
-import { AdoptionApplication, ApplicationNote } from '@/types/application';
-import type { ApplicationNoteType } from '@/types/application';
-import { NOTE_TYPE_OPTIONS } from '@/types/application';
+import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG } from '@/types/application';
+import { CommitmentItem, isCommitmentAgreed } from './MoveToPendingModal';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { PartyPopper } from 'lucide-react';
+const translateHousing = (val?: string | null): string => {
+  if (!val) return 'Chung cư (cho phép nuôi thú cưng)';
+  const map: Record<string, string> = {
+    'apartment': 'Chung cư',
+    'apartment (pets allowed)': 'Chung cư (cho phép nuôi thú cưng)',
+    'house': 'Nhà riêng / Nhà đất',
+    'townhouse': 'Nhà phố',
+    'villa': 'Biệt thự',
+    'rented room': 'Phòng trọ',
+    'rental house': 'Nhà thuê (cho phép nuôi thú cưng)',
+    'dormitory': 'Ký túc xá',
+  };
+  return map[val.trim().toLowerCase()] || val;
+};
+
+const translateChildren = (val?: string | null): string => {
+  if (!val) return 'Không có trẻ nhỏ';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'no': 'Không có trẻ nhỏ',
+    'no children': 'Không có trẻ nhỏ',
+    'none': 'Không có trẻ nhỏ',
+    'yes': 'Có trẻ nhỏ trong nhà',
+    'under 5': 'Có trẻ dưới 5 tuổi',
+    'under 5 years old': 'Có trẻ dưới 5 tuổi',
+    '5-12 years old': 'Có trẻ từ 5 - 12 tuổi',
+    'above 12': 'Có trẻ trên 12 tuổi',
+  };
+  return map[clean] || val;
+};
+
+const translateCage = (val?: string | null): string => {
+  if (!val) return 'Không xích nhốt';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'no': 'Không xích nhốt',
+    'no cage': 'Không xích nhốt',
+    'free roaming': 'Tự do trong nhà (không xích nhốt)',
+    'indoor free': 'Thả tự do trong nhà',
+    'caged': 'Nuôi nhốt chuồng',
+    'caged at night': 'Nhốt chuồng vào ban đêm',
+    'leashed': 'Có xích khi cần thiết',
+  };
+  return map[clean] || val;
+};
+
+const translatePetExperience = (val?: string | null): string => {
+  if (!val) return 'Đã có kinh nghiệm';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'experienced': 'Đã có kinh nghiệm nuôi',
+    'had pets before': 'Đã từng nuôi trước đây',
+    'first time': 'Lần đầu nuôi thú cưng',
+    'first time owner': 'Lần đầu nuôi thú cưng',
+    'no experience': 'Chưa có kinh nghiệm',
+    'currently have pets': 'Hiện đang có thú cưng ở nhà',
+  };
+  return map[clean] || val;
+};
+
+const translateEmploymentStatus = (val?: string | null): string => {
+  if (!val) return 'Đang đi làm / Thu nhập ổn định';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'employed': 'Đang đi làm',
+    'employed / stable income': 'Đang đi làm / Thu nhập ổn định',
+    'full-time': 'Toàn thời gian (Full-time)',
+    'part-time': 'Bán thời gian (Part-time)',
+    'self-employed': 'Kinh doanh tự do',
+    'freelancer': 'Làm việc tự do (Freelancer)',
+    'student': 'Học sinh / Sinh viên',
+    'unemployed': 'Đang tìm việc',
+    'retired': 'Đã nghỉ hưu',
+  };
+  return map[clean] || val;
+};
+
+const translatePetHistory = (val?: string | null): string => {
+  if (!val) return 'Đã từng chăm sóc chu đáo trước đây.';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'carefully cared for': 'Đã từng chăm sóc chu đáo trước đây.',
+    'good care': 'Chăm sóc tốt, đầy đủ tiêm phòng.',
+    'fully vaccinated': 'Được tiêm phòng và chăm sóc định kỳ đầy đủ.',
+  };
+  return map[clean] || val;
+};
+
+const translateAdoptionReason = (val?: string | null): string => {
+  if (!val) return 'Mong muốn mang lại cho bé một mái ấm trọn đời';
+  const clean = val.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'because i want to give them a forever home': 'Mong muốn mang lại cho bé một mái ấm trọn đời',
+    'love animals': 'Yêu thương động vật và muốn đồng hành cùng bé',
+    'looking for a companion': 'Tìm kiếm một người bạn thú cưng đồng hành',
+  };
+  return map[clean] || val;
+};
+
+const checkCommitmentValue = (commitments: any, key: string, label: string): boolean => {
+  if (!commitments) return false;
+  if (typeof commitments === 'object' && !Array.isArray(commitments)) {
+    const raw = commitments[key] ?? commitments[label];
+    return isCommitmentAgreed(raw);
+  }
+  if (Array.isArray(commitments)) {
+    return commitments.includes(key) || commitments.includes(label);
+  }
+  return false;
+};
+
+const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="mb-3 bg-white border border-gray-200 rounded-[10px] overflow-hidden">
+    <div className="px-3.5 py-2 border-b border-gray-100 bg-[#FAFAFA]">
+      <h4 className="font-bold text-[11.5px] text-gray-800 uppercase tracking-wider">{title}</h4>
+    </div>
+    <div className="px-3.5 py-2.5">{children}</div>
+  </div>
+);
+
+const Field = ({ label, value }: { label: string; value?: string | null }) => (
+  <div className="flex flex-col">
+    <span className="text-[11px] text-gray-400 mb-0.5">{label}</span>
+    <span className="text-[12.5px] text-gray-800 font-medium leading-snug">{value || '-'}</span>
+  </div>
+);
 export interface InterviewMember {
   id: string;
   name: string;
@@ -156,8 +281,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   const [isInterviewOpen, setIsInterviewOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
-  const [noteType, setNoteType] = useState<ApplicationNoteType>('FOLLOW_UP');
-  const [isNoteTypeOpen, setIsNoteTypeOpen] = useState(false);
   const [isCompletingAdoption, setIsCompletingAdoption] = useState(false);
   const defaultTitle =
     existingAppointment?.title ||
@@ -348,677 +471,656 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     };
 
 
-  try {
-    setIsSubmittingInterview(true);
-    await onScheduleInterview(application.id, payload);
-    if (onRefresh) onRefresh();
-    alert(isCompleted ? 'Đã hoàn thành và lưu thông tin phỏng vấn!' : 'Đã cập nhật lịch hẹn thành công!');
-  } catch (error: any) {
-    console.error('Lỗi lưu lịch hẹn:', error);
-    alert(error?.message || 'Có lỗi xảy ra khi lưu lịch hẹn.');
-  } finally {
-    setIsSubmittingInterview(false);
-  }
-};
-const handleCompleteAdoption = async () => {
-  if (!onCompleteAdoption || isCompletingAdoption) return;
-  const confirmed = window.confirm(
-    `Xác nhận ${application.pet?.name || 'thú cưng'} đã được bàn giao cho ${applicantName}? Hành động này sẽ hoàn tất hồ sơ nhận nuôi.`
-  );
-  if (!confirmed) return;
+    try {
+      setIsSubmittingInterview(true);
+      await onScheduleInterview(application.id, payload);
+      if (onRefresh) onRefresh();
+      alert(isCompleted ? 'Đã hoàn thành và lưu thông tin phỏng vấn!' : 'Đã cập nhật lịch hẹn thành công!');
+    } catch (error: any) {
+      console.error('Lỗi lưu lịch hẹn:', error);
+      alert(error?.message || 'Có lỗi xảy ra khi lưu lịch hẹn.');
+    } finally {
+      setIsSubmittingInterview(false);
+    }
+  };
+  const handleCompleteAdoption = async () => {
+    if (!onCompleteAdoption || isCompletingAdoption) return;
+    const confirmed = window.confirm(
+      `Xác nhận ${application.pet?.name || 'thú cưng'} đã được bàn giao cho ${applicantName}? Hành động này sẽ hoàn tất hồ sơ nhận nuôi.`
+    );
+    if (!confirmed) return;
 
-  try {
-    setIsCompletingAdoption(true);
-    await onCompleteAdoption(application.id);
-  } catch (error) {
-    console.error('Lỗi hoàn tất nhận nuôi:', error);
-  } finally {
-    setIsCompletingAdoption(false);
-  }
-};
-const handleAddNote = async () => {
-  if (!noteInput.trim() || isSubmittingNote) return;
-  setIsSubmittingNote(true);
-  try {
-    const response = await applicationService.addNote(application.id, noteInput.trim(), noteType);
-    const addedNote = response?.data || response;
+    try {
+      setIsCompletingAdoption(true);
+      await onCompleteAdoption(application.id);
+    } catch (error) {
+      console.error('Lỗi hoàn tất nhận nuôi:', error);
+    } finally {
+      setIsCompletingAdoption(false);
+    }
+  };
+  const handleAddNote = async () => {
+    if (!noteInput.trim() || isSubmittingNote) return;
+    setIsSubmittingNote(true);
+    try {
+      const response = await applicationService.addNote(application.id, noteInput.trim(), 'FOLLOW_UP');
+      const addedNote = response?.data || response;
 
-    const newNoteObj: ApplicationNote = {
-      id: addedNote?.id || Date.now().toString(),
-      authorId: addedNote?.authorId || 'current-user',
-      authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Nhân viên trạm',
-      authorAvatar: addedNote?.author?.avatarUrl || primaryStaffAvatar,
-      content: addedNote?.content || noteInput.trim(),
-      type: addedNote?.type || noteType,
-      createdAt: new Date().toISOString(),
-    };
+      const newNoteObj: ApplicationNote = {
+        id: addedNote?.id || Date.now().toString(),
+        authorId: addedNote?.authorId || 'current-user',
+        authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Nhân viên trạm',
+        authorAvatar: addedNote?.author?.avatarUrl || primaryStaffAvatar,
+        content: addedNote?.content || noteInput.trim(),
+        type: addedNote?.type || 'FOLLOW_UP',
+        createdAt: new Date().toISOString(),
+      };
 
-    setNotes((prev) => [newNoteObj, ...prev]);
-    setNoteInput('');
-    setNoteType('FOLLOW_UP');
-    if (onRefresh) onRefresh();
-  } catch (error) {
-    console.error('Lỗi thêm ghi chú:', error);
-  } finally {
-    setIsSubmittingNote(false);
-  }
-};
+      setNotes((prev) => [newNoteObj, ...prev]);
+      setNoteInput('');
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('Lỗi thêm ghi chú:', error);
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
 
-const handleAdvance = () => {
-  onSubmit({
-    applicationId: application.id,
-    reviewNote: 'Đã hoàn thành phỏng vấn và chuyển tiếp hồ sơ.',
-    notes,
-  });
-};
+  const handleAdvance = () => {
+    onSubmit({
+      applicationId: application.id,
+      reviewNote: 'Đã hoàn thành phỏng vấn và chuyển tiếp hồ sơ.',
+      notes,
+    });
+  };
 
-const applicantName = application.fullName || application.user?.name || 'Người đăng ký';
-const firstName = applicantName.split(' ')[0] || 'Đơn';
+  const applicantName = application.fullName || application.user?.name || 'Người đăng ký';
+  const firstName = applicantName.split(' ')[0] || 'Đơn';
 
-return (
-  <div
-    className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-[2px]"
-    onClick={onClose}
-  >
+  return (
     <div
-      className="bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150 font-sans"
-      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-[2px]"
+      onClick={onClose}
     >
-      {/* Nút đóng */}
-      <button
-        onClick={onClose}
-        className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-20"
+      <div
+        className="bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150 font-sans"
+        onClick={(e) => e.stopPropagation()}
       >
-        <X size={18} strokeWidth={2} />
-      </button>
+        {/* Nút đóng */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-20"
+        >
+          <X size={18} strokeWidth={2} />
+        </button>
 
-      {/* Thân Modal cuộn */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-7 pb-6 space-y-6">
+        {/* Thân Modal cuộn */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-7 pb-6 space-y-6">
 
-        {/* Header Thông tin Người nhận nuôi & Pet Card */}
-        <div className="flex gap-4 items-start">
-          <img
-            src={application.user?.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200'}
-            className="w-[102px] h-[102px] rounded-full object-cover border border-gray-100 shrink-0"
-            alt={applicantName}
-          />
+          {/* Header Thông tin Người nhận nuôi & Pet Card */}
+          <div className="flex gap-4 items-start">
+            <img
+              src={application.user?.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200'}
+              className="w-[102px] h-[102px] rounded-full object-cover border border-gray-100 shrink-0"
+              alt={applicantName}
+            />
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-[19px] font-bold text-gray-900 leading-tight mb-2">
-              {applicantName}
-            </h2>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-[19px] font-bold text-gray-900 leading-tight mb-2">
+                {applicantName}
+              </h2>
 
-            <div className="flex items-center gap-2 text-gray-500 text-[13px] mb-1.5">
-              <Phone size={13} className="text-gray-400 shrink-0" />
-              <span className="truncate">{application.phone || (application as any).zalo || '09876543210'}</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-gray-500 text-[13px] mb-2">
-              <Mail size={13} className="text-gray-400 shrink-0" />
-              <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => downloadApplicationPdf(application)}
-              className="flex items-center gap-1.5 text-gray-700 hover:text-[#E59858] text-[13px] transition-colors mb-3 cursor-pointer"
-            >
-              <Download size={13} className="text-gray-500 shrink-0" />
-              <span>
-                Tải về <span className="font-bold underline">{firstName} - Đơn nhận nuôi.pdf</span>
-              </span>
-            </button>
-
-            {/* Target Pet Pill Card */}
-            <div className="border border-gray-200 rounded-[14px] p-2 flex items-center gap-3 bg-white shadow-sm w-full">
-              <img
-                src={
-                  application.pet?.avatarUrl ||
-                  application.pet?.images?.[0]?.url ||
-                  'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
-                }
-                className="w-10 h-10 rounded-lg object-cover shrink-0"
-                alt={application.pet?.name || 'Cún'}
-              />
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-bold text-[14px] text-gray-900 truncate">
-                    {application.pet?.name || 'Cún'}
-                  </span>
-                  {isMale ? (
-                    <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF]" />
-                  ) : (
-                    <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
-                  )}
-                </div>
-                <span className="text-[11px] text-gray-500 truncate">
-                  {getPetInfoLabel(application.pet)}
-                </span>
+              <div className="flex items-center gap-2 text-gray-500 text-[13px] mb-1.5">
+                <Phone size={13} className="text-gray-400 shrink-0" />
+                <span className="truncate">{application.phone || (application as any).zalo || '09876543210'}</span>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Tags Section */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[16px] font-bold text-gray-900">Gắn thẻ</span>
-            <div className="relative">
+              <div className="flex items-center gap-2 text-gray-500 text-[13px] mb-2">
+                <Mail size={13} className="text-gray-400 shrink-0" />
+                <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
+              </div>
+
               <button
-                ref={addTagBtnRef}
                 type="button"
-                onClick={() => setIsTagModalOpen((v) => !v)}
-                className="text-[#E89B5A] hover:text-[#D68B4E] text-[13px] font-semibold transition-colors cursor-pointer"
+                onClick={() => downloadApplicationPdf(application)}
+                className="flex items-center gap-1.5 text-gray-700 hover:text-[#E59858] text-[13px] transition-colors mb-3 cursor-pointer"
               >
-                + Thêm
+                <Download size={13} className="text-gray-500 shrink-0" />
+                <span>
+                  Tải về <span className="font-bold underline">{firstName} - Đơn nhận nuôi.pdf</span>
+                </span>
               </button>
 
-              {isTagModalOpen && (
-                <SelectTagsModal
-                  triggerRef={addTagBtnRef}
-                  existingTags={tags}
-                  onClose={() => setIsTagModalOpen(false)}
-                  onAddTag={handleAddTagWithColor}
-                  onRemoveTag={handleRemoveTagByName}
+              {/* Target Pet Pill Card */}
+              <div className="border border-gray-200 rounded-[14px] p-2 flex items-center gap-3 bg-white shadow-sm w-full">
+                <img
+                  src={
+                    application.pet?.avatarUrl ||
+                    application.pet?.images?.[0]?.url ||
+                    'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
+                  }
+                  className="w-10 h-10 rounded-lg object-cover shrink-0"
+                  alt={application.pet?.name || 'Cún'}
                 />
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {tags.map((tag) => {
-              const tagColor = tag.color || '#5982E6';
-              return (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold border transition-all"
-                  style={{
-                    backgroundColor: `${tagColor}15`,
-                    borderColor: `${tagColor}40`,
-                    color: tagColor,
-                  }}
-                >
-                  {tag.name}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag.id)}
-                    className="hover:opacity-75"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 1. Accordion: Chi tiết đơn nhận nuôi */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            className="w-full flex justify-between items-center py-2"
-            onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
-          >
-            <span className="text-[16px] font-bold text-gray-900">Chi tiết đơn nhận nuôi</span>
-            {isAppDetailsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-          </button>
-
-          {isAppDetailsOpen && (
-            <div className="py-3 px-1 space-y-3 text-[13px] text-gray-700 animate-in fade-in duration-150">
-              <div className="grid grid-cols-2 gap-3 bg-[#FAFAFA] p-3.5 rounded-xl border border-gray-100">
-                <div>
-                  <span className="text-gray-400 block text-[11px] uppercase">Nhận nuôi cho</span>
-                  <span className="font-semibold">{pickLocale((application as any).adoptFor) || 'Bản thân'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[11px] uppercase">Địa chỉ</span>
-                  <span className="font-semibold">{pickLocale((application as any).location) || 'Chưa cung cấp'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[11px] uppercase">Nhà ở</span>
-                  <span className="font-semibold">{pickLocale((application as any).housing) || 'Chung cư'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[11px] uppercase">Kinh nghiệm</span>
-                  <span className="font-semibold">{pickLocale((application as any).petExperience) || 'Đã từng nuôi'}</span>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-[14px] text-gray-900 truncate">
+                      {application.pet?.name || 'Cún'}
+                    </span>
+                    {isMale ? (
+                      <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF]" />
+                    ) : (
+                      <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
+                    )}
+                  </div>
+                  <span className="text-[11px] text-gray-500 truncate">
+                    {getPetInfoLabel(application.pet)}
+                  </span>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* 2. Accordion: Bổ sung tài liệu */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            className="w-full flex justify-between items-center py-2"
-            onClick={() => setIsDocsOpen(!isDocsOpen)}
-          >
-            <span className="text-[16px] font-bold text-gray-900">Bổ sung tài liệu</span>
-            {isDocsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-          </button>
+          {/* Tags Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[16px] font-bold text-gray-900">Gắn thẻ</span>
+              <div className="relative">
+                <button
+                  ref={addTagBtnRef}
+                  type="button"
+                  onClick={() => setIsTagModalOpen((v) => !v)}
+                  className="text-[#E89B5A] hover:text-[#D68B4E] text-[13px] font-semibold transition-colors cursor-pointer"
+                >
+                  + Thêm
+                </button>
 
-          {isDocsOpen && (
-            <div className="py-3 px-1 space-y-2.5 text-[13px] animate-in fade-in duration-150">
-              {isLoadingDocs ? (
-                <p className="text-gray-400 text-center py-2 text-[12px]">Đang tải tài liệu...</p>
-              ) : documents.length === 0 ? (
-                <p className="text-gray-400 text-center py-2 text-[12px] italic">Không có yêu cầu tài liệu bổ sung.</p>
-              ) : (
-                documents.map((doc) => (
-                  <div key={doc.id} className="p-3 bg-[#FAFAFA] rounded-xl border border-gray-200/80 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-gray-900 block text-[13px]">{pickLocale(doc.label)}</span>
-                      <span className="text-[11px] text-gray-400">{doc.status}</span>
-                    </div>
-                    {doc.fileUrl && (
-                      <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 text-[12px] flex items-center gap-1">
-                        <Eye size={12} /> Xem
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
+                {isTagModalOpen && (
+                  <SelectTagsModal
+                    triggerRef={addTagBtnRef}
+                    existingTags={tags}
+                    onClose={() => setIsTagModalOpen(false)}
+                    onAddTag={handleAddTagWithColor}
+                    onRemoveTag={handleRemoveTagByName}
+                  />
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* 3. Accordion: Đặt lịch hẹn phỏng vấn */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            className="w-full flex justify-between items-center py-2 mb-2"
-            onClick={() => setIsInterviewOpen(!isInterviewOpen)}
-          >
-            <span className="text-[16px] font-bold text-gray-900">Đặt lịch hẹn phỏng vấn</span>
-            {isInterviewOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-          </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {tags.map((tag) => {
+                const tagColor = tag.color || '#5982E6';
+                return (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold border transition-all"
+                    style={{
+                      backgroundColor: `${tagColor}15`,
+                      borderColor: `${tagColor}40`,
+                      color: tagColor,
+                    }}
+                  >
+                    {tag.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag.id)}
+                      className="hover:opacity-75"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
 
-          {isInterviewOpen && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              <span className="text-[12px] font-bold text-gray-900 block mb-2">
-                Thông tin buổi phỏng vấn
-              </span>
+          {/* 1. Accordion: Chi tiết đơn nhận nuôi */}
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              className="w-full flex justify-between items-center py-2"
+              onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
+            >
+              <span className="text-[16px] font-bold text-gray-900">Chi tiết đơn nhận nuôi</span>
+              {isAppDetailsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+            </button>
 
-              {/* Khung thông tin buổi hẹn */}
-              <div className="border border-gray-200 rounded-[18px] p-4 bg-white shadow-sm space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+            {isAppDetailsOpen && (
+              <div className="flex flex-col gap-2.5 mt-3 animate-in fade-in duration-200">
+                {/* Section A: Điều kiện sinh sống */}
+                <SectionCard title="A - Điều kiện sinh sống">
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
+                    <Field label="Khu vực / Địa chỉ" value={application.location || 'Chưa cập nhật'} />
+                    <Field label="Loại nhà ở" value={translateHousing(application.housing)} />
+                    <Field label="Trẻ em trong nhà" value={translateChildren(application.children)} />
+                    <Field label="Kế hoạch chuồng / xích" value={translateCage(application.cage)} />
+                  </div>
+                </SectionCard>
+
+                {/* Section B: Kinh nghiệm & Việc làm */}
+                <SectionCard title="B - Kinh nghiệm & Việc làm">
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
+                    <Field label="Từng nuôi thú cưng" value={translatePetExperience(application.petExperience)} />
+                    <Field label="Tình trạng việc làm" value={translateEmploymentStatus(application.employmentStatus)} />
+                    <div className="col-span-2">
+                      <Field label="Lịch sử chăm sóc" value={translatePetHistory(application.prevPetHistory)} />
+                    </div>
+                  </div>
+                </SectionCard>
+
+                {/* Section C: Cam kết nhận nuôi */}
+                <SectionCard title="C - Cam kết nhận nuôi">
+                  <div className="mb-2.5">
+                    <Field label="Lý do nhận nuôi" value={translateAdoptionReason(application.adoptionReason)} />
+                  </div>
+                  <div className="w-full h-px bg-gray-200 mb-3" />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 items-start">
+                    {COMMITMENTS_CONFIG.map((item) => {
+                      const isCommitted = checkCommitmentValue(application.commitments, item.key, item.label);
+                      return (
+                        <CommitmentItem
+                          key={item.key}
+                          label={item.label}
+                          isCommitted={isCommitted}
+                        />
+                      );
+                    })}
+                  </div>
+                </SectionCard>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Accordion: Bổ sung tài liệu */}
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              className="w-full flex justify-between items-center py-2"
+              onClick={() => setIsDocsOpen(!isDocsOpen)}
+            >
+              <span className="text-[16px] font-bold text-gray-900">Bổ sung tài liệu</span>
+              {isDocsOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+            </button>
+
+            {isDocsOpen && (
+              <div className="py-3 px-1 space-y-2.5 text-[13px] animate-in fade-in duration-150">
+                {isLoadingDocs ? (
+                  <p className="text-gray-400 text-center py-2 text-[12px]">Đang tải tài liệu...</p>
+                ) : documents.length === 0 ? (
+                  <p className="text-gray-400 text-center py-2 text-[12px] italic">Không có yêu cầu tài liệu bổ sung.</p>
+                ) : (
+                  documents.map((doc) => (
+                    <div key={doc.id} className="p-3 bg-[#FAFAFA] rounded-xl border border-gray-200/80 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-gray-900 block text-[13px]">{pickLocale(doc.label)}</span>
+                        <span className="text-[11px] text-gray-400">{doc.status}</span>
+                      </div>
+                      {doc.fileUrl && (
+                        <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 text-[12px] flex items-center gap-1">
+                          <Eye size={12} /> Xem
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Accordion: Đặt lịch hẹn phỏng vấn */}
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              className="w-full flex justify-between items-center py-2 mb-2"
+              onClick={() => setIsInterviewOpen(!isInterviewOpen)}
+            >
+              <span className="text-[16px] font-bold text-gray-900">Đặt lịch hẹn phỏng vấn</span>
+              {isInterviewOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+            </button>
+
+            {isInterviewOpen && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <span className="text-[12px] font-bold text-gray-900 block mb-2">
+                  Thông tin buổi phỏng vấn
+                </span>
+
+                {/* Khung thông tin buổi hẹn */}
+                <div className="border border-gray-200 rounded-[18px] p-4 bg-white shadow-sm space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={
+                          application.user?.avatarUrl ||
+                          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100'
+                        }
+                        className="w-8 h-8 rounded-full object-cover"
+                        alt={applicantName}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[13px] text-gray-900">{applicantName}</span>
+                        <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Phone size={10} /> {application.phone || (application as any).zalo || '09876543210'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-gray-300 px-2">
+                      <span className="text-[12px]">─────────▶</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 justify-end">
+                      <img
+                        src={
+                          application.pet?.avatarUrl ||
+                          application.pet?.images?.[0]?.url ||
+                          'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
+                        }
+                        className="w-8 h-8 rounded-full object-cover"
+                        alt="Thú cưng"
+                      />
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-[13px] text-gray-900">{application.pet?.name || 'Cún'}</span>
+                          {isMale ? (
+                            <Mars size={11} strokeWidth={2.5} className="text-[#3DB2FF]" />
+                          ) : (
+                            <Venus size={11} strokeWidth={2.5} className="text-[#FF6B93]" />
+                          )}
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {getPetInfoLabel(application.pet)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full border-t border-dashed border-gray-200 my-2" />
+
+                  {/* 2 Cột Form input */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-gray-500 mb-1 block">Tiêu đề</label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="VD: Hẹn phỏng vấn nhận nuôi Cún"
+                        className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-gray-500 mb-1 block">Hình thức</label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleFormatChange('Online')}
+                          className={`flex-1 py-2 rounded-[10px] text-[12px] font-medium transition-colors ${format === 'Online'
+                            ? 'bg-[#5982E6] text-white shadow-sm'
+                            : 'bg-[#F2F2F2] text-gray-600'
+                            }`}
+                        >
+                          Online
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFormatChange('Offline')}
+                          className={`flex-1 py-2 rounded-[10px] text-[12px] font-medium transition-colors ${format === 'Offline'
+                            ? 'bg-[#5982E6] text-white shadow-sm'
+                            : 'bg-[#F2F2F2] text-gray-600'
+                            }`}
+                        >
+                          Offline
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] text-gray-500 block">
+                          {format === 'Online' ? 'Đường link phỏng vấn (URL)' : 'Địa điểm gặp mặt'}
+                        </label>
+                        {format === 'Online' && (
+                          <button
+                            type="button"
+                            disabled={isLoadingMeetLink}
+                            onClick={fetchRealMeetLink}
+                            className="text-[10px] text-[#5982E6] hover:underline flex items-center gap-0.5"
+                            title="Tạo lại link Google Meet thật"
+                          >
+                            {isLoadingMeetLink ? <Loader2 size={10} className="animate-spin" /> : <RotateCw size={10} />}
+                            Tạo link
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative flex items-center">
+                        {format === 'Online' ? (
+                          <>
+                            <input
+                              type="text"
+                              value={meetLink}
+                              onChange={(e) => setMeetLink(e.target.value)}
+                              placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                              className="w-full border border-gray-200 rounded-[10px] pl-3 pr-8 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858] truncate"
+                            />
+                            {meetLink && (
+                              <a
+                                href={meetLink.startsWith('http') ? meetLink : `https://${meetLink}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="absolute right-2.5 p-1 text-gray-400 hover:text-[#5982E6] transition-colors"
+                                title="Mở phòng họp trực tiếp"
+                              >
+                                <ExternalLink size={13} />
+                              </a>
+                            )}
+                          </>
+                        ) : (
+                          <input
+                            type="text"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            placeholder="Nhập địa chỉ trạm..."
+                            className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-gray-500 mb-1 block">Ngày &amp; giờ hẹn</label>
+                      <div className="relative">
+                        <input
+                          type="datetime-local"
+                          min={toDatetimeLocalValue(new Date().toISOString())}
+                          value={toDatetimeLocalValue(dateSlot)}
+                          onChange={(e) => setDateSlot(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                          className="w-full border border-gray-200 rounded-[10px] pl-2.5 pr-8 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                        />
+                        <Calendar
+                          size={14}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section Phân công thành viên */}
+                <div className="mt-4">
+                  <span className="text-[13px] font-bold text-gray-900 block">Phân công thành viên</span>
+                  <p className="text-[11px] text-gray-400 mb-2.5">
+                    Chọn một thành viên phù hợp để phụ trách hoặc tham gia buổi phỏng vấn
+                  </p>
+
+                  <div className="border border-gray-200 rounded-[18px] p-4 bg-white space-y-2.5 shadow-sm">
+                    {members.map((member) => (
+                      <div key={member.id} className="space-y-2.5 pb-2.5 border-b border-gray-100 last:border-0 last:pb-0">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] text-gray-400 mb-1 block">Tên thành viên</label>
+                            <input
+                              type="text"
+                              placeholder="Tên"
+                              value={member.name}
+                              onChange={(e) => handleMemberChange(member.id, 'name', e.target.value)}
+                              className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-gray-400 mb-1 block">Nội dung cần lưu ý</label>
+                            <input
+                              type="text"
+                              placeholder="Tùy chọn"
+                              value={member.note}
+                              onChange={(e) => handleMemberChange(member.id, 'note', e.target.value)}
+                              className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400 mb-1 block">
+                            Email (để cấp quyền đồng tổ chức Google Meet)
+                          </label>
+                          <input
+                            type="email"
+                            placeholder="ten@gmail.com"
+                            value={member.email}
+                            onChange={(e) => handleMemberChange(member.id, 'email', e.target.value)}
+                            className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={handleAddMember}
+                      className="text-[#E59858] hover:text-[#D68B4E] text-[12px] font-medium pt-1 block"
+                    >
+                      + Thêm thành viên
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2 Nút Đổi lịch & Đã hoàn thành phỏng vấn */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDateSlot('')}
+                    className="w-[100px] py-2.5 rounded-[12px] border border-gray-200 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    Đổi lịch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleScheduleSubmit(true)}
+                    disabled={isSubmittingInterview}
+                    className="flex-1 py-2.5 bg-[#E59858] hover:bg-[#D68B4E] text-white text-[13px] font-bold rounded-[12px] shadow-sm transition-colors disabled:opacity-60"
+                  >
+                    {isSubmittingInterview ? 'Đang lưu...' : 'Đã hoàn thành phỏng vấn'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Accordion: Ghi chú nội bộ */}
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              className="w-full flex justify-between items-center py-2 mb-2"
+              onClick={() => setIsNotesOpen(!isNotesOpen)}
+            >
+              <span className="text-[16px] font-bold text-gray-900">Ghi chú nội bộ</span>
+              {isNotesOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+            </button>
+
+            {isNotesOpen && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                {notes.map((note) => (
+                  <div key={note.id} className="flex gap-2.5 items-start">
                     <img
-                      src={primaryStaffAvatar}
-                      className="w-8 h-8 rounded-full object-cover"
+                      src={note.authorAvatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100'}
+                      className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
                       alt="Nhân sự"
                     />
                     <div className="flex flex-col">
-                      <span className="font-bold text-[13px] text-gray-900">{primaryStaffName}</span>
-                      <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                        <Phone size={10} /> {primaryStaffPhone}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-gray-300 px-2">
-                    <span className="text-[12px]">─────────▶</span>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 justify-end">
-                    <img
-                      src={
-                        application.pet?.avatarUrl ||
-                        application.pet?.images?.[0]?.url ||
-                        'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150'
-                      }
-                      className="w-8 h-8 rounded-full object-cover"
-                      alt="Thú cưng"
-                    />
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1">
-                        <span className="font-bold text-[13px] text-gray-900">{application.pet?.name || 'Cún'}</span>
-                        {isMale ? (
-                          <Mars size={11} strokeWidth={2.5} className="text-[#3DB2FF]" />
-                        ) : (
-                          <Venus size={11} strokeWidth={2.5} className="text-[#FF6B93]" />
-                        )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[13px] text-gray-900">
+                          {note.authorName || 'Nhân viên trạm'}
+                        </span>
+                        <span className="text-[11px] text-gray-400">{formatTimeAgo(note.createdAt)}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">
-                        {getPetInfoLabel(application.pet)}
-                      </span>
+                      <p className="text-[13px] text-gray-600 leading-snug">
+                        {note.content}
+                      </p>
                     </div>
                   </div>
-                </div>
+                ))}
 
-                <div className="w-full border-t border-dashed border-gray-200 my-2" />
-
-                {/* 2 Cột Form input */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-gray-500 mb-1 block">Tiêu đề</label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="VD: Hẹn phỏng vấn nhận nuôi Cún"
-                      className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-gray-500 mb-1 block">Hình thức</label>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleFormatChange('Online')}
-                        className={`flex-1 py-2 rounded-[10px] text-[12px] font-medium transition-colors ${format === 'Online'
-                          ? 'bg-[#5982E6] text-white shadow-sm'
-                          : 'bg-[#F2F2F2] text-gray-600'
-                          }`}
-                      >
-                        Online
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleFormatChange('Offline')}
-                        className={`flex-1 py-2 rounded-[10px] text-[12px] font-medium transition-colors ${format === 'Offline'
-                          ? 'bg-[#5982E6] text-white shadow-sm'
-                          : 'bg-[#F2F2F2] text-gray-600'
-                          }`}
-                      >
-                        Offline
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] text-gray-500 block">
-                        {format === 'Online' ? 'Đường link phỏng vấn (URL)' : 'Địa điểm gặp mặt'}
-                      </label>
-                      {format === 'Online' && (
-                        <button
-                          type="button"
-                          disabled={isLoadingMeetLink}
-                          onClick={fetchRealMeetLink}
-                          className="text-[10px] text-[#5982E6] hover:underline flex items-center gap-0.5"
-                          title="Tạo lại link Google Meet thật"
-                        >
-                          {isLoadingMeetLink ? <Loader2 size={10} className="animate-spin" /> : <RotateCw size={10} />}
-                          Tạo link
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative flex items-center">
-                      {format === 'Online' ? (
-                        <>
-                          <input
-                            type="text"
-                            value={meetLink}
-                            onChange={(e) => setMeetLink(e.target.value)}
-                            placeholder="https://meet.google.com/xxx-yyyy-zzz"
-                            className="w-full border border-gray-200 rounded-[10px] pl-3 pr-8 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858] truncate"
-                          />
-                          {meetLink && (
-                            <a
-                              href={meetLink.startsWith('http') ? meetLink : `https://${meetLink}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="absolute right-2.5 p-1 text-gray-400 hover:text-[#5982E6] transition-colors"
-                              title="Mở phòng họp trực tiếp"
-                            >
-                              <ExternalLink size={13} />
-                            </a>
-                          )}
-                        </>
-                      ) : (
-                        <input
-                          type="text"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          placeholder="Nhập địa chỉ trạm..."
-                          className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-gray-500 mb-1 block">Ngày &amp; giờ hẹn</label>
-                    <div className="relative">
-                      <input
-                        type="datetime-local"
-                        min={toDatetimeLocalValue(new Date().toISOString())}
-                        value={toDatetimeLocalValue(dateSlot)}
-                        onChange={(e) => setDateSlot(e.target.value ? new Date(e.target.value).toISOString() : '')}
-                        className="w-full border border-gray-200 rounded-[10px] pl-2.5 pr-8 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                      />
-                      <Calendar
-                        size={14}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Phân công thành viên */}
-              <div className="mt-4">
-                <span className="text-[13px] font-bold text-gray-900 block">Phân công thành viên</span>
-                <p className="text-[11px] text-gray-400 mb-2.5">
-                  Chọn một thành viên phù hợp để phụ trách hoặc tham gia buổi phỏng vấn
-                </p>
-
-                <div className="border border-gray-200 rounded-[18px] p-4 bg-white space-y-2.5 shadow-sm">
-                  {members.map((member) => (
-                    <div key={member.id} className="space-y-2.5 pb-2.5 border-b border-gray-100 last:border-0 last:pb-0">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[11px] text-gray-400 mb-1 block">Tên thành viên</label>
-                          <input
-                            type="text"
-                            placeholder="Tên"
-                            value={member.name}
-                            onChange={(e) => handleMemberChange(member.id, 'name', e.target.value)}
-                            className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-gray-400 mb-1 block">Nội dung cần lưu ý</label>
-                          <input
-                            type="text"
-                            placeholder="Tùy chọn"
-                            value={member.note}
-                            onChange={(e) => handleMemberChange(member.id, 'note', e.target.value)}
-                            className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[11px] text-gray-400 mb-1 block">
-                          Email (để cấp quyền đồng tổ chức Google Meet)
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="ten@gmail.com"
-                          value={member.email}
-                          onChange={(e) => handleMemberChange(member.id, 'email', e.target.value)}
-                          className="w-full border border-gray-200 rounded-[10px] px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-[#E59858]"
-                        />
-                      </div>
-                    </div>
-                  ))}
-
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                    placeholder="Thêm ghi chú nội bộ... (gõ @ để nhắc tên)"
+                    className="w-full bg-[#F6F6F6] rounded-[20px] pl-4 pr-11 py-3 text-[12px] text-gray-800 placeholder-gray-400 outline-none border border-transparent focus:border-[#E59858] transition-colors"
+                  />
                   <button
                     type="button"
-                    onClick={handleAddMember}
-                    className="text-[#E59858] hover:text-[#D68B4E] text-[12px] font-medium pt-1 block"
+                    onClick={handleAddNote}
+                    disabled={isSubmittingNote || !noteInput.trim()}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E59858] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
                   >
-                    + Thêm thành viên
+                    <Send size={15} />
                   </button>
                 </div>
               </div>
-
-              {/* 2 Nút Đổi lịch & Đã hoàn thành phỏng vấn */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDateSlot('')}
-                  className="w-[100px] py-2.5 rounded-[12px] border border-gray-200 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  Đổi lịch
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScheduleSubmit(true)}
-                  disabled={isSubmittingInterview}
-                  className="flex-1 py-2.5 bg-[#E59858] hover:bg-[#D68B4E] text-white text-[13px] font-bold rounded-[12px] shadow-sm transition-colors disabled:opacity-60"
-                >
-                  {isSubmittingInterview ? 'Đang lưu...' : 'Đã hoàn thành phỏng vấn'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 4. Accordion: Ghi chú nội bộ */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            className="w-full flex justify-between items-center py-2 mb-2"
-            onClick={() => setIsNotesOpen(!isNotesOpen)}
-          >
-            <span className="text-[16px] font-bold text-gray-900">Ghi chú nội bộ</span>
-            {isNotesOpen ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-          </button>
-
-          {isNotesOpen && (
-            <div className="space-y-3 animate-in fade-in duration-150">
-              {notes.map((note) => (
-                <div key={note.id} className="flex gap-2.5 items-start">
-                  <img
-                    src={note.authorAvatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100'}
-                    className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
-                    alt="Nhân sự"
-                  />
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-[13px] text-gray-900">
-                        {note.authorName || 'Nhân viên trạm'}
-                      </span>
-                      {note.type && (
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{
-                            color: NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.color || '#6B7280',
-                            backgroundColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.color || '#6B7280'}15`,
-                          }}
-                        >
-                          {NOTE_TYPE_OPTIONS.find((o) => o.value === note.type)?.label || note.type}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-gray-400">{formatTimeAgo(note.createdAt)}</span>
-                    </div>
-                    <p className="text-[13px] text-gray-600 leading-snug">
-                      {note.content}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              {/* Chọn loại ghi chú trước khi gửi */}
-              <div className="relative mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNoteTypeOpen((v) => !v)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold mb-1.5 transition-colors"
-                  style={{
-                    color: NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color,
-                    borderColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color}40`,
-                    backgroundColor: `${NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.color}10`,
-                  }}
-                >
-                  {NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label}
-                  <ChevronDown size={11} />
-                </button>
-
-                {isNoteTypeOpen && (
-                  <div className="absolute z-10 bottom-full mb-1 w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                    {NOTE_TYPE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => { setNoteType(opt.value); setIsNoteTypeOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2 ${noteType === opt.value ? 'bg-gray-50 font-bold' : 'hover:bg-gray-50'
-                          }`}
-                        style={{ color: opt.color }}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: opt.color }} />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  value={noteInput}
-                  onChange={(e) => setNoteInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                  placeholder="Thêm ghi chú nội bộ... (gõ @ để nhắc tên)"
-                  className="w-full bg-[#F6F6F6] rounded-[20px] pl-4 pr-11 py-3 text-[12px] text-gray-800 placeholder-gray-400 outline-none border border-transparent focus:border-[#E59858] transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddNote}
-                  disabled={isSubmittingNote || !noteInput.trim()}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#E59858] hover:text-[#D68B4E] disabled:opacity-40 transition-colors"
-                >
-                  <Send size={15} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* 5. Hoàn tất nhận nuôi — chỉ hiện khi đơn đã ở trạng thái APPROVED */}
-      {application.status === 'APPROVED' && (
-        <div className="border-t border-gray-100 pt-4">
-          <div className="rounded-[16px] border border-[#D1F2D9] bg-[#F2FCF5] p-4 flex flex-col gap-3">
-            <div className="flex items-start gap-2.5">
-              <PartyPopper size={18} className="text-[#1B8A44] shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-[13px] text-[#1B8A44] block">
-                  Đơn đã được duyệt
-                </span>
-                <span className="text-[12px] text-gray-600">
-                  Khi {application.pet?.name || 'thú cưng'} đã được bàn giao thực tế cho{' '}
-                  {applicantName}, hãy xác nhận để hoàn tất hồ sơ. Hệ thống sẽ chuyển quyền
-                  sở hữu thú cưng và lưu vào lịch sử nhận nuôi.
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleCompleteAdoption}
-              disabled={isCompletingAdoption || !onCompleteAdoption}
-              className="w-full py-2.5 bg-[#1B8A44] hover:bg-[#166E37] text-white text-[13px] font-bold rounded-[12px] shadow-sm transition-colors disabled:opacity-60"
-            >
-              {isCompletingAdoption ? 'Đang xử lý...' : 'Xác nhận đã bàn giao — Hoàn tất nhận nuôi'}
-            </button>
+            )}
           </div>
         </div>
-      )}
-      {/* Nút to dưới cùng */}
-      <div className="p-5 pt-3 border-t border-gray-100 bg-white">
-        <button
-          type="button"
-          onClick={handleAdvance}
-          className="w-full bg-[#F0BA8A] hover:bg-[#E59858] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[16px] shadow-sm tracking-wide cursor-pointer"
-        >
-          Bước tiếp theo
-        </button>
+        {/* 5. Hoàn tất nhận nuôi — chỉ hiện khi đơn đã ở trạng thái APPROVED */}
+        {application.status === 'APPROVED' && (
+          <div className="border-t border-gray-100 pt-4">
+            <div className="rounded-[16px] border border-[#D1F2D9] bg-[#F2FCF5] p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-2.5">
+                <PartyPopper size={18} className="text-[#1B8A44] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-[13px] text-[#1B8A44] block">
+                    Đơn đã được duyệt
+                  </span>
+                  <span className="text-[12px] text-gray-600">
+                    Khi {application.pet?.name || 'thú cưng'} đã được bàn giao thực tế cho{' '}
+                    {applicantName}, hãy xác nhận để hoàn tất hồ sơ. Hệ thống sẽ chuyển quyền
+                    sở hữu thú cưng và lưu vào lịch sử nhận nuôi.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCompleteAdoption}
+                disabled={isCompletingAdoption || !onCompleteAdoption}
+                className="w-full py-2.5 bg-[#1B8A44] hover:bg-[#166E37] text-white text-[13px] font-bold rounded-[12px] shadow-sm transition-colors disabled:opacity-60"
+              >
+                {isCompletingAdoption ? 'Đang xử lý...' : 'Xác nhận đã bàn giao — Hoàn tất nhận nuôi'}
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Nút to dưới cùng */}
+        <div className="p-5 pt-3 border-t border-gray-100 bg-white">
+          <button
+            type="button"
+            onClick={handleAdvance}
+            className="w-full bg-[#F0BA8A] hover:bg-[#E59858] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[16px] shadow-sm tracking-wide cursor-pointer"
+          >
+            Bước tiếp theo
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
