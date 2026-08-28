@@ -134,12 +134,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   const columns = useMemo(() => {
-    const filtered = selectFilteredApplications(formattedItems, filter.search, filter.noteTypes);
+    const filtered = selectFilteredApplications(formattedItems, filter.search, filter.noteTypes, filter.datePreset);
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
       applications: filtered.filter((a) => mergeAdoptionIntoApproved(a.status) === col.status),
     }));
-  }, [formattedItems, filter.search, filter.noteTypes]);
+  }, [formattedItems, filter.search, filter.noteTypes, filter.datePreset]);
 
   useEffect(() => {
     const checkScrollable = () => {

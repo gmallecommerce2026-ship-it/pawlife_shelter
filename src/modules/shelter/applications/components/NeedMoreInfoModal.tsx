@@ -593,11 +593,10 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                     return (
                       <span
                         key={tag.id}
-                        className={`px-3 py-1 text-[12px] font-medium rounded-full flex items-center gap-1.5 transition-all ${
-                          isFirst
+                        className={`px-3 py-1 text-[12px] font-medium rounded-full flex items-center gap-1.5 transition-all ${isFirst
                             ? 'bg-[#EBF2FF] text-[#4F75E2]'
                             : 'bg-[#F4F5F7] text-gray-600'
-                        }`}
+                          }`}
                       >
                         {tag.name}
                         <X
@@ -613,6 +612,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           </div>
 
           {/* 3. Accordion: Đơn nhận nuôi */}
+          {/* 3. Accordion: Đơn nhận nuôi */}
           <div className="border-t border-gray-100 py-3.5">
             <div
               className="flex justify-between items-center cursor-pointer select-none"
@@ -625,6 +625,52 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                 <ChevronDown size={18} className="text-gray-400" />
               )}
             </div>
+
+            {isAppDetailsOpen && (
+              <div className="flex flex-col gap-2.5 mt-3 animate-in fade-in duration-200">
+                {/* Section A: Điều kiện sinh sống */}
+                <SectionCard title="A - Điều kiện sinh sống">
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
+                    <Field label="Khu vực / Địa chỉ" value={application.location || 'Chưa cập nhật'} />
+                    <Field label="Loại nhà ở" value={translateHousing(application.housing)} />
+                    <Field label="Trẻ em trong nhà" value={translateChildren(application.children)} />
+                    <Field label="Kế hoạch chuồng / xích" value={translateCage(application.cage)} />
+                  </div>
+                </SectionCard>
+
+                {/* Section B: Kinh nghiệm & Việc làm */}
+                <SectionCard title="B - Kinh nghiệm & Việc làm">
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
+                    <Field label="Từng nuôi thú cưng" value={translatePetExperience(application.petExperience)} />
+                    <Field label="Tình trạng việc làm" value={translateEmploymentStatus(application.employmentStatus)} />
+                    <div className="col-span-2">
+                      <Field label="Lịch sử chăm sóc" value={translatePetHistory(application.prevPetHistory)} />
+                    </div>
+                  </div>
+                </SectionCard>
+
+                {/* Section C: 6 cam kết song song */}
+                <SectionCard title="C - Cam kết nhận nuôi">
+                  <div className="mb-2.5">
+                    <Field label="Lý do nhận nuôi" value={translateAdoptionReason(application.adoptionReason)} />
+                  </div>
+                  <div className="w-full h-px bg-gray-200 mb-3" />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 items-start">
+                    {COMMITMENTS_CONFIG.map((item) => {
+                      const isCommitted = checkCommitmentValue(application.commitments, item.key, item.label);
+                      return (
+                        <CommitmentItem
+                          key={item.key}
+                          label={item.label}
+                          isCommitted={isCommitted}
+                        />
+                      );
+                    })}
+                  </div>
+                </SectionCard>
+              </div>
+            )}
           </div>
 
           {/* 4. Section: Bổ sung tài liệu */}
@@ -666,9 +712,8 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                     <span className="text-[13px] text-gray-400">Chọn tài liệu cần bổ sung</span>
                     <ChevronDown
                       size={18}
-                      className={`text-gray-400 transition-transform duration-200 ${
-                        isAddDocPickerOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`text-gray-400 transition-transform duration-200 ${isAddDocPickerOpen ? 'rotate-180' : ''
+                        }`}
                     />
                   </button>
 

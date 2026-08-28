@@ -52,14 +52,19 @@ export type ApplicationNoteType =
   | 'BACKGROUND_CHECK';
 
 export const NOTE_TYPE_OPTIONS: { value: ApplicationNoteType; label: string; color: string }[] = [
-  { value: 'HOME_VISIT', label: 'Home Visit', color: '#1B8A44' },
-  { value: 'VET_RECORDS', label: 'Vet Records', color: '#3B6BE3' },
-  { value: 'FOLLOW_UP', label: 'Follow-up', color: '#0EA5A5' },
-  { value: 'CONCERN', label: 'Concern', color: '#D97706' },
-  { value: 'REJECTION', label: 'Rejection', color: '#DC2626' },
-  { value: 'REFERENCE_CHECK', label: 'Reference Check', color: '#7C3AED' },
-  { value: 'BACKGROUND_CHECK', label: 'Background Check', color: '#8A38D4' },
+  { value: 'HOME_VISIT', label: 'Thăm nhà', color: '#1B8A44' },
+  { value: 'VET_RECORDS', label: 'Hồ sơ thú y', color: '#3B6BE3' },
+  { value: 'FOLLOW_UP', label: 'Theo dõi sau', color: '#0EA5A5' },
+  { value: 'CONCERN', label: 'Lưu ý / Quan ngại', color: '#D97706' },
+  { value: 'REJECTION', label: 'Từ chối', color: '#DC2626' },
+  { value: 'REFERENCE_CHECK', label: 'Kiểm tra người tham chiếu', color: '#7C3AED' },
+  { value: 'BACKGROUND_CHECK', label: 'Xác minh lý lịch', color: '#8A38D4' },
 ];
+
+// Thêm khoảng ngày thật vào filter
+export type DateRangePreset = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'ALL';
+
+
 
 export interface ApplicationNote {
   id: string;
@@ -237,9 +242,16 @@ export interface AdoptionApplication {
 export interface ApplicationFilter {
   search: string;
   noteTypes: ApplicationNoteType[];
+  datePreset: DateRangePreset;
 }
+export const DATE_PRESET_LABEL: Record<DateRangePreset, string> = {
+  TODAY: 'Hôm nay',
+  LAST_7_DAYS: '7 ngày qua',
+  LAST_30_DAYS: '30 ngày qua',
+  ALL: 'Toàn bộ thời gian',
+};
 
-export const defaultApplicationFilter: ApplicationFilter = { search: '', noteTypes: [] };
+export const defaultApplicationFilter: ApplicationFilter = { search: '', noteTypes: [], datePreset: "ALL" };
 
 export function localizedText(value: LocalizedText, locale: 'vi' | 'en' = 'vi'): string {
   if (!value) return '';

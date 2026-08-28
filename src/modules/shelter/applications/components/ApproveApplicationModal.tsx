@@ -25,6 +25,23 @@ import { apiClient } from '@/lib/api/ApiClient';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { PartyPopper } from 'lucide-react';
+import { DocumentReviewModal } from './DocumentReviewModal';
+import { RequestedDocument } from './RequestDocumentsModal';
+import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
+
+const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
+  id: doc.id,
+  key: doc.key,
+  label: doc.label,
+  description: doc.description,
+  category: doc.category ?? DOCUMENT_TYPE_OPTIONS.find((opt) => opt.key === doc.key)?.category ?? 'OTHER',
+  status: doc.status,
+  fileUrl: doc.fileUrl ?? doc.file?.url ?? null,
+  fileName: doc.fileName ?? doc.file?.name ?? null,
+  rejectionReason: doc.rejectionReason ?? null,
+  submittedAt: doc.submittedAt ?? null,
+});
+
 const translateHousing = (val?: string | null): string => {
   if (!val) return 'Chung cư (cho phép nuôi thú cưng)';
   const map: Record<string, string> = {
@@ -163,6 +180,7 @@ interface ApplicationDocumentItem {
   key: string;
   label: string;
   description?: string;
+  category: string;
   status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
   fileUrl?: string | null;
   fileName?: string | null;
@@ -281,6 +299,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   const [isInterviewOpen, setIsInterviewOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
+
   const [isCompletingAdoption, setIsCompletingAdoption] = useState(false);
   const defaultTitle =
     existingAppointment?.title ||
@@ -327,7 +346,8 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
   const isMale = application.pet?.gender !== 'FEMALE';
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
-
+  const [reviewingDocKey, setReviewingDocKey] = useState<string | null>(null);
+  const reviewingDoc = documents.find((d) => d.key === reviewingDocKey) ?? null;
   const handleAddTagWithColor = async (tagData: { name: string; color: string }) => {
     const tagName = tagData.name.trim();
     if (!tagName) return;
@@ -378,6 +398,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   const appointmentKey = JSON.stringify((application as any)?.appointment ?? null);
 
   useEffect(() => {
+    console.log('application.documents:', (application as any).documents);
     const appt = (application as any)?.appointment;
     if (appt) {
       setTitle(appt.title || defaultTitle);
@@ -395,18 +416,17 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     const rawTags = (application as any).tags || [];
     setTags(rawTags.map((t: any) => (t.tag ? t.tag : typeof t === 'string' ? { id: t, name: t } : t)));
 
-    if ((application as any).documents) {
-      setDocuments((application as any).documents);
-    } else {
-      fetchDocuments();
-    }
+    // 👇 luôn gọi API lấy documents mới nhất, không tin vào field lồng sẵn trong application
+    fetchDocuments();
   }, [application.id, appointmentKey]);
 
   const fetchDocuments = async () => {
     try {
       setIsLoadingDocs(true);
       const res = await applicationService.getDocuments(application.id);
-      setDocuments(res.data || res || []);
+      console.log('RAW getDocuments response:', res); // 👈 debug tạm thời
+      const rawDocs = Array.isArray(res) ? res : (res?.data || []);
+      setDocuments((Array.isArray(rawDocs) ? rawDocs : []).map(mapBackendDoc));
     } catch (err) {
       console.error('Lỗi tải tài liệu:', err);
     } finally {
@@ -756,10 +776,14 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                         <span className="font-bold text-gray-900 block text-[13px]">{pickLocale(doc.label)}</span>
                         <span className="text-[11px] text-gray-400">{doc.status}</span>
                       </div>
-                      {doc.fileUrl && (
-                        <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 text-[12px] flex items-center gap-1">
+                      {doc.status !== 'PENDING_SUBMISSION' && (
+                        <button
+                          type="button"
+                          onClick={() => setReviewingDocKey(doc.key)}
+                          className="text-blue-600 text-[12px] flex items-center gap-1 hover:text-blue-700"
+                        >
                           <Eye size={12} /> Xem
-                        </a>
+                        </button>
                       )}
                     </div>
                   ))
@@ -1120,7 +1144,18 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
             Bước tiếp theo
           </button>
         </div>
+
       </div>
+      {reviewingDoc && (
+        <DocumentReviewModal
+          document={{
+            ...reviewingDoc,
+            submittedAt: reviewingDoc.submittedAt || application.updatedAt || application.createdAt,
+          }}
+          onClose={() => setReviewingDocKey(null)}
+          readOnly
+        />
+      )}
     </div>
   );
 };

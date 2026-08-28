@@ -9,6 +9,7 @@ import {
   defaultApplicationFilter,
   KANBAN_COLUMNS,
   ApplicationNoteType,
+  DateRangePreset,
 } from '@/types/application';
 
 const KANBAN_STATUSES = [...KANBAN_COLUMNS.map((c) => c.status), 'ADOPTION_COMPLETED'];
@@ -74,11 +75,26 @@ const useApplicationStoreBase = create<ApplicationState & ApplicationActions>()(
     }
   },
 }));
-
+function getDateThreshold(preset: DateRangePreset): Date | null {
+  if (preset === 'ALL') return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // đầu ngày hôm nay
+  if (preset === 'TODAY') return start;
+  if (preset === 'LAST_7_DAYS') {
+    start.setDate(start.getDate() - 6); // gồm cả hôm nay = 7 ngày
+    return start;
+  }
+  if (preset === 'LAST_30_DAYS') {
+    start.setDate(start.getDate() - 29);
+    return start;
+  }
+  return null;
+}
 export const selectFilteredApplications = (
   items: AdoptionApplication[],
   search: string,
   noteTypes: ApplicationNoteType[] = [],
+  datePreset: DateRangePreset = 'ALL',
 ) => {
   const q = search.trim().toLowerCase();
 
@@ -97,6 +113,15 @@ export const selectFilteredApplications = (
       (a.notes || []).some((n: any) => noteTypes.includes(n.type)),
     );
   }
+
+  const threshold = getDateThreshold(datePreset);
+  if (threshold) {
+    result = result.filter((a) => {
+      const created = new Date(a.createdAt);
+      return !Number.isNaN(created.getTime()) && created >= threshold;
+    });
+  }
+  
 
   return result;
 };
