@@ -11,6 +11,7 @@ import {
   translatePetHistory,
   translateAdoptionReason,
 } from '@/utils/translateApplication';
+import { translateManyToVi } from '@/utils/translateText';
 
 const formatAppDate = (iso?: string) => {
   if (!iso) return 'Chưa cập nhật';
@@ -28,27 +29,54 @@ const isCommitmentAgreed = (val: unknown): boolean => {
   return false;
 };
 
-export function downloadApplicationPdf(application: AdoptionApplication) {
+export async function downloadApplicationPdf(application: AdoptionApplication) {
   const applicantName = application.fullName || application.user?.name || 'Người nhận nuôi';
   const submitDate = formatAppDate(application.createdAt);
   const updateDate = formatAppDate(application.updatedAt || application.createdAt);
   const phone = application.phone || 'Chưa cập nhật';
   const email = application.user?.email || application.zalo || 'Chưa cập nhật';
 
-  // Dịch toàn bộ các trường sang tiếng Việt
-  const adoptFor = translateAdoptFor(application.adoptFor);
+  // Các trường không cần dịch: tên người, tên thú cưng, địa chỉ, ngày tháng...
   const location = application.location || 'Chưa cập nhật';
-  const housing = translateHousing(application.housing);
-  const children = translateChildren(application.children);
-  const cage = translateCage(application.cage);
-  const petExperience = translatePetExperience(application.petExperience);
-  const prevPetHistory = translatePetHistory(application.prevPetHistory);
-  const employmentStatus = translateEmploymentStatus(application.employmentStatus);
-  const adoptionReason = translateAdoptionReason(application.adoptionReason);
-
   const petName = application.pet?.name || 'Thú cưng';
-  const petBreed = localizedText(application.pet?.breed) || 'Giống lai';
   const petAge = getPetAgeLabel(application.pet?.dob);
+
+  // Bước 1: dịch tĩnh theo rule (map enum có sẵn trong translateApplication.ts)
+  const adoptForRaw = translateAdoptFor(application.adoptFor);
+  const housingRaw = translateHousing(application.housing);
+  const childrenRaw = translateChildren(application.children);
+  const cageRaw = translateCage(application.cage);
+  const petExperienceRaw = translatePetExperience(application.petExperience);
+  const prevPetHistoryRaw = translatePetHistory(application.prevPetHistory);
+  const employmentStatusRaw = translateEmploymentStatus(application.employmentStatus);
+  const adoptionReasonRaw = translateAdoptionReason(application.adoptionReason);
+  const petBreedRaw = localizedText(application.pet?.breed) || 'Giống lai';
+
+  // Bước 2: fallback qua API dịch để "vét" nốt phần còn sót tiếng Anh
+  // (enum mới chưa được map, text tự do nhập từ DB, breed tiếng Anh, lý do nhận nuôi
+  // người dùng gõ tiếng Anh, v.v). Nếu text đã có dấu tiếng Việt hoặc API lỗi thì
+  // giữ nguyên giá trị ở bước 1, không làm gián đoạn việc xuất PDF.
+  const {
+    adoptFor,
+    housing,
+    children,
+    cage,
+    petExperience,
+    prevPetHistory,
+    employmentStatus,
+    adoptionReason,
+    petBreed,
+  } = await translateManyToVi({
+    adoptFor: adoptForRaw,
+    housing: housingRaw,
+    children: childrenRaw,
+    cage: cageRaw,
+    petExperience: petExperienceRaw,
+    prevPetHistory: prevPetHistoryRaw,
+    employmentStatus: employmentStatusRaw,
+    adoptionReason: adoptionReasonRaw,
+    petBreed: petBreedRaw,
+  });
 
   const fileName = `${applicantName.split(' ')[0]} - Don_nhan_nuoi.pdf`;
 

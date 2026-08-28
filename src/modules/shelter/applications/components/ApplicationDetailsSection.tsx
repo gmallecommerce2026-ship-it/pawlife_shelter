@@ -32,11 +32,11 @@ export const CommitmentItem: React.FC<CommitmentItemProps> = ({
   return (
     <div className="flex items-center gap-2.5 text-sm">
       {isCommitted ? (
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-emerald-600">
           <Check className="h-3.5 w-3.5 stroke-[2.5]" />
         </span>
       ) : (
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-rose-600">
           <X className="h-3.5 w-3.5 stroke-[2.5]" />
         </span>
       )}

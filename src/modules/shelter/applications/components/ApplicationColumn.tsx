@@ -62,7 +62,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
       // vượt quá chiều cao này thì khu vực bên dưới sẽ cuộn nội bộ thay vì đẩy cả
       // board cao vô hạn. Đồng bộ mốc với skeleton loading (500px / 741px).
       className={`flex flex-col flex-1 min-h-0 basis-[260px] rounded-[18px] border transition-all duration-300 px-1.5 py-2.5 ${isDropTarget
-        ? 'bg-[#F7F7F7] bg-gradient-to-b from-[#D0E3FF] from-[45px] to-[#F7F7F7] to-[120px] border-[#A3BFF8] border-dashed'
+        ? 'bg-[#e89b5a70] bg-gradient-to-b from-[#00000000] from-[45px] to-[#F7F7F7] to-[120px] border-[#e89b5a70] border-dashed'
         : `${style.bg} ${style.border}`
         }`}
     >

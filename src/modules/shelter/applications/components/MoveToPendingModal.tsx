@@ -28,85 +28,70 @@ import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
 
+const matchKeyword = (
+  val: string,
+  rules: { keywords: string[]; result: string }[],
+  fallback: string
+): string => {
+  const clean = val.trim().toLowerCase();
+  for (const rule of rules) {
+    if (rule.keywords.some((kw) => clean.includes(kw))) {
+      return rule.result;
+    }
+  }
+  return fallback; // không khớp -> trả về nguyên văn gốc để biết mà bổ sung thêm rule
+};
+
 // ============================================================================
 // 1. CÁC HÀM TIỆN ÍCH DỊCH THUẬT SANG TIẾNG VIỆT
 // ============================================================================
 const translateHousing = (val?: string | null): string => {
-  if (!val) return 'Chung cư (cho phép nuôi thú cưng)';
-  const map: Record<string, string> = {
-    'apartment': 'Chung cư',
-    'apartment (pets allowed)': 'Chung cư (cho phép nuôi thú cưng)',
-    'house': 'Nhà riêng / Nhà đất',
-    'townhouse': 'Nhà phố',
-    'villa': 'Biệt thự',
-    'rented room': 'Phòng trọ',
-    'rental house': 'Nhà thuê (cho phép nuôi thú cưng)',
-    'dormitory': 'Ký túc xá',
-  };
-  return map[val.trim().toLowerCase()] || val;
-};
-
-const translateChildren = (val?: string | null): string => {
-  if (!val) return 'Không có trẻ nhỏ';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'no': 'Không có trẻ nhỏ',
-    'no children': 'Không có trẻ nhỏ',
-    'none': 'Không có trẻ nhỏ',
-    'yes': 'Có trẻ nhỏ trong nhà',
-    'under 5': 'Có trẻ dưới 5 tuổi',
-    'under 5 years old': 'Có trẻ dưới 5 tuổi',
-    '5-12 years old': 'Có trẻ từ 5 - 12 tuổi',
-    'above 12': 'Có trẻ trên 12 tuổi',
-  };
-  return map[clean] || val;
-};
-
-const translateCage = (val?: string | null): string => {
-  if (!val) return 'Không xích nhốt';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'no': 'Không xích nhốt',
-    'no cage': 'Không xích nhốt',
-    'free roaming': 'Tự do trong nhà (không xích nhốt)',
-    'indoor free': 'Thả tự do trong nhà',
-    'caged': 'Nuôi nhốt chuồng',
-    'caged at night': 'Nhốt chuồng vào ban đêm',
-    'leashed': 'Có xích khi cần thiết',
-  };
-  return map[clean] || val;
+  if (!val) return 'Chưa cập nhật';
+  return matchKeyword(val, [
+    { keywords: ['garden', 'yard'], result: 'Nhà riêng có sân vườn' },
+    { keywords: ['townhouse'], result: 'Nhà phố' },
+    { keywords: ['villa'], result: 'Biệt thự' },
+    { keywords: ['dorm'], result: 'Ký túc xá' },
+    { keywords: ['rent'], result: 'Nhà thuê' },
+    { keywords: ['apartment', 'chung cư'], result: 'Chung cư' },
+    { keywords: ['house', 'nhà riêng'], result: 'Nhà riêng / Nhà đất' },
+  ], val);
 };
 
 const translatePetExperience = (val?: string | null): string => {
-  if (!val) return 'Đã có kinh nghiệm';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'experienced': 'Đã có kinh nghiệm nuôi',
-    'had pets before': 'Đã từng nuôi trước đây',
-    'first time': 'Lần đầu nuôi thú cưng',
-    'first time owner': 'Lần đầu nuôi thú cưng',
-    'no experience': 'Chưa có kinh nghiệm',
-    'currently have pets': 'Hiện đang có thú cưng ở nhà',
-  };
-  return map[clean] || val;
+  if (!val) return 'Chưa cập nhật';
+  return matchKeyword(val, [
+    { keywords: ['first time'], result: 'Lần đầu nuôi thú cưng' },
+    { keywords: ['currently have', 'hiện đang có'], result: 'Hiện đang có thú cưng ở nhà' },
+    { keywords: ['no experience', 'never', 'chưa có'], result: 'Chưa có kinh nghiệm' },
+    { keywords: ['used to have', 'had pets before', 'yes', 'từng nuôi'], result: 'Đã từng nuôi trước đây' },
+  ], val);
 };
 
 const translateEmploymentStatus = (val?: string | null): string => {
-  if (!val) return 'Đang đi làm / Thu nhập ổn định';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'employed': 'Đang đi làm',
-    'employed / stable income': 'Đang đi làm / Thu nhập ổn định',
-    'full-time': 'Toàn thời gian (Full-time)',
-    'part-time': 'Bán thời gian (Part-time)',
-    'self-employed': 'Kinh doanh tự do',
-    'freelancer': 'Làm việc tự do (Freelancer)',
-    'student': 'Học sinh / Sinh viên',
-    'unemployed': 'Đang tìm việc',
-    'retired': 'Đã nghỉ hưu',
-  };
-  return map[clean] || val;
+  if (!val) return 'Chưa cập nhật';
+  return matchKeyword(val, [
+    { keywords: ['full-time', 'full time'], result: 'Toàn thời gian (Full-time)' },
+    { keywords: ['part-time', 'part time'], result: 'Bán thời gian (Part-time)' },
+    { keywords: ['self-employed', 'freelance'], result: 'Làm việc tự do / Kinh doanh tự do' },
+    { keywords: ['student'], result: 'Học sinh / Sinh viên' },
+    { keywords: ['unemployed', 'looking for'], result: 'Đang tìm việc' },
+    { keywords: ['retired'], result: 'Đã nghỉ hưu' },
+    { keywords: ['employed', 'đang đi làm'], result: 'Đang đi làm' },
+  ], val);
 };
+
+const translateYesNo = (val?: string | null): string => {
+  if (!val) return 'Chưa cập nhật';
+  const clean = val.trim().toLowerCase();
+  if (['có', 'yes', 'true'].includes(clean)) return 'Có';
+  if (['không', 'no', 'false'].includes(clean)) return 'Không';
+  return val; // đã Việt hóa sẵn hoặc giá trị lạ -> trả nguyên
+};
+
+// children, cage đang là dạng Yes/No (Có/Không) chứ không phải nhóm tuổi như map cũ giả định
+const translateChildren = (val?: string | null): string => translateYesNo(val);
+const translateCage = (val?: string | null): string => translateYesNo(val);
 
 const translatePetHistory = (val?: string | null): string => {
   if (!val) return 'Đã từng chăm sóc chu đáo trước đây.';
@@ -329,7 +314,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
     setIsSubmittingNote(true);
 
     try {
-      const response = await applicationService.addNote(application.id, content);
+      const response = await applicationService.addNote(application.id, content, "FOLLOW_UP");
       const addedNote = response?.data || response;
       if (addedNote?.id) {
         setNotes((prev) =>
@@ -452,7 +437,19 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => downloadApplicationPdf(application)}
+              onClick={() => {
+                console.log('=== RAW DATA KHI BẤM DOWNLOAD PDF ===', {
+                  housing: application.housing,
+                  children: application.children,
+                  cage: application.cage,
+                  petExperience: application.petExperience,
+                  employmentStatus: application.employmentStatus,
+                  prevPetHistory: application.prevPetHistory,
+                  adoptionReason: application.adoptionReason,
+                  adoptFor: application.adoptFor,
+                });
+                downloadApplicationPdf(application);
+              }}
               title="Tải đơn nhận nuôi (PDF)"
               className="text-gray-400 hover:text-[#E89B5A] transition-colors p-1 cursor-pointer"
             >
@@ -555,7 +552,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                     <Field label="Lý do nhận nuôi" value={translateAdoptionReason(application.adoptionReason)} />
                   </div>
                   <div className="w-full h-px bg-gray-200 mb-3" />
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 items-start">
                     {COMMITMENTS_CONFIG.map((item) => {
                       const isCommitted = checkCommitmentValue(application.commitments, item.key, item.label);
