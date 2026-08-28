@@ -11,7 +11,7 @@ import {
   ApplicationNoteType,
 } from '@/types/application';
 
-const KANBAN_STATUSES = KANBAN_COLUMNS.map((c) => c.status);
+const KANBAN_STATUSES = [...KANBAN_COLUMNS.map((c) => c.status), 'ADOPTION_COMPLETED'];
 
 interface ApplicationState {
   items: AdoptionApplication[];
