@@ -56,7 +56,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
 
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
-
+  // Thêm 2 biến điều kiện, đặt gần chỗ khai báo displayTags
+  const isAdopted = application.status === 'ADOPTION_COMPLETED';
+  const isInterviewCompleted = application.appointment?.status === 'COMPLETED';
   const documents = (application as any).documents as { status: string }[] | undefined;
   const totalDocs = documents?.length ?? 0;
   const acceptedDocs = documents?.filter((d) => d.status === 'ACCEPTED').length ?? 0;
@@ -142,7 +144,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           document.body
         )}
       </div>
- 
+
       {/* 1. Ảnh đại diện & Tên — nén lại: avatar nhỏ hơn, margin bottom giảm */}
       <div className="flex items-center gap-2.5 w-full mb-2.5">
         <img
@@ -168,7 +170,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       </div>
- 
+
       {/* 2. Thông tin liên hệ — gộp gọn, font/icon nhỏ hơn, margin giảm */}
       <div className="flex flex-col gap-1.5 mb-2.5">
         <div className="flex items-center gap-2 w-full">
@@ -184,15 +186,27 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       </div>
- 
+
       {/* 3. Nhãn — chỉ chiếm khoảng trống khi có tag, không còn min-h cố định to */}
-      {displayTags.length > 0 && (
+      {/* 3. Nhãn — badge trạng thái thay thế tags khi phỏng vấn xong / đã nhận nuôi */}
+      {isAdopted || isInterviewCompleted ? (
+        <div
+          className="w-full mb-2.5 px-3 py-1.5 rounded-[10px] border text-center text-[11px] font-semibold tracking-tight leading-tight"
+          style={
+            isAdopted
+              ? { backgroundColor: '#F3F4F6', borderColor: '#6B728040', color: '#6B7280' }
+              : { backgroundColor: '#F9F5FD', borderColor: '#5A1B8D40', color: '#5A1B8D' }
+          }
+        >
+          {isAdopted ? 'Đã nhận nuôi' : 'Đã hoàn thành phỏng vấn'}
+        </div>
+      ) : displayTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 mb-2.5">
           {displayTags.map((tag: any, idx: number) => {
             const tagColor = tag.color || (typeof tag.tag === 'object' ? tag.tag?.color : null);
             const fallbackColors = ['#5982E6', '#FF922B', '#40C057', '#7950F2'];
             const activeColor = getTagColor(tag.name) || tagColor || fallbackColors[idx % fallbackColors.length];
- 
+
             return (
               <div
                 key={tag.id || idx}
@@ -209,7 +223,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           })}
         </div>
       )}
- 
+
       {showDocsBadge && (
         <div
           className={`flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'
@@ -225,10 +239,10 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       )}
- 
+
       {/* 4. Đường kẻ phân cách — margin giảm */}
       <div className="w-full h-px bg-[#EEEEEE] mb-2" />
- 
+
       {/* 5. Chân thẻ */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1.5">

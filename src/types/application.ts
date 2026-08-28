@@ -182,7 +182,29 @@ export interface ApplicationDocumentSummary {
   key: string;
   status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
 }
+export type AppointmentStatusType =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'RESCHEDULED'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'REJECTED';
 
+export type AppointmentFormatType = 'IN_PERSON' | 'ONLINE';
+
+// 🆕
+export interface AppointmentSummary {
+  id?: string;
+  title?: string | null;
+  appointmentDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  type?: AppointmentFormatType;
+  status?: AppointmentStatusType;
+  location?: string | null;
+  meetLink?: string | null;
+  members?: unknown;
+}
 export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;
@@ -206,6 +228,7 @@ export interface AdoptionApplication {
   pet?: AdoptionApplicantPetSummary;
   user?: AdoptionApplicantUser;
   documents?: ApplicationDocumentSummary[];
+  appointment?: AppointmentSummary | null; 
   createdAt: string;
   updatedAt?: string;
 }
