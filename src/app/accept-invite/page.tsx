@@ -2,8 +2,8 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Lock, User as UserIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { shelterTeamService } from '@/services/shelterTeamService'; // giữ nguyên path bạn đã sửa đúng
+import { Mail, Lock, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { shelterTeamService } from '@/services/shelterTeamService';
 import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 
 type PreviewState =
@@ -23,7 +23,6 @@ function AcceptInviteContent() {
   const token = searchParams.get('token') || '';
 
   const [preview, setPreview] = useState<PreviewState>({ status: 'loading' });
-  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,10 +57,6 @@ function AcceptInviteContent() {
     e.preventDefault();
     setSubmitError('');
 
-    if (!name.trim()) {
-      setSubmitError('Vui lòng nhập tên.');
-      return;
-    }
     if (password.length < 6) {
       setSubmitError('Mật khẩu phải có ít nhất 6 ký tự.');
       return;
@@ -73,7 +68,7 @@ function AcceptInviteContent() {
 
     setIsSubmitting(true);
     try {
-      await shelterTeamService.acceptInvitation(token, name.trim(), password);
+      await shelterTeamService.acceptInvitation(token, password);
       setIsDone(true);
       setTimeout(() => router.push('/login'), 2000);
     } catch (err: any) {
@@ -132,20 +127,6 @@ function AcceptInviteContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="text-[12px] font-bold text-gray-500 mb-1.5 block">Họ và tên</label>
-            <div className="flex items-center gap-2.5 bg-[#F9FAFB] rounded-[10px] px-3.5 py-2.5 border border-transparent focus-within:border-[#E89B5A]">
-              <UserIcon size={16} className="text-gray-400 shrink-0" />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nguyễn Văn A"
-                className="w-full bg-transparent outline-none text-[14px] text-gray-900"
-              />
-            </div>
-          </div>
-
           <div>
             <label className="text-[12px] font-bold text-gray-500 mb-1.5 block">Mật khẩu</label>
             <div className="flex items-center gap-2.5 bg-[#F9FAFB] rounded-[10px] px-3.5 py-2.5 border border-transparent focus-within:border-[#E89B5A]">

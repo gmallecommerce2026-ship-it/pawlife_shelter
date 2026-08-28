@@ -1,4 +1,5 @@
 // src/lib/api/ApiClient.ts
+import { getAuthToken, handleUnauthorizedRedirect } from '@/lib/auth/tokenStorage';
 
 export class ApiClient {
   private baseUrl: string;
@@ -10,8 +11,8 @@ export class ApiClient {
   }
 
   private normalizeUrl(path: string): string {
-    const cleanBase = this.baseUrl.replace(/\/+$/, ''); // Bỏ dấu / ở cuối base
-    const cleanPath = path.replace(/^\/+/, ''); // Bỏ dấu / ở đầu path
+    const cleanBase = this.baseUrl.replace(/\/+$/, '');
+    const cleanPath = path.replace(/^\/+/, '');
     return `${cleanBase}/${cleanPath}`;
   }
 
@@ -19,10 +20,10 @@ export class ApiClient {
     const token = this.getToken();
     const fullUrl = this.normalizeUrl(path);
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
-
+    
     const headers: HeadersInit = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      'x-client-type': 'web', // <-- BỔ SUNG DÒNG NÀY ĐỂ BACKEND NHẬN DIỆN WEB
+      'x-client-type': 'web',
       ...options?.headers as any,
     };
 
@@ -36,49 +37,39 @@ export class ApiClient {
         headers,
       });
 
-      // 2. Xử lý lỗi từ Backend (4xx, 5xx)
+      // Bắt mã 401 Unauthorized -> Xoá token và chuyển hướng về /login
+      if (res.status === 401) {
+        handleUnauthorizedRedirect();
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
       if (!res.ok) {
         let errorMessage = `API Error: ${res.status} (${res.statusText})`;
         try {
-          // Cố gắng đọc message JSON từ server trả về
           const errorBody = await res.json();
-          // Ưu tiên hiển thị message từ backend
           errorMessage = errorBody.message || errorBody.error || JSON.stringify(errorBody);
         } catch (e) {
-          // Nếu không phải JSON (vd: lỗi 500 trang HTML), giữ nguyên text mặc định
+          // Fallback text nếu không parse được JSON
         }
         throw new Error(errorMessage);
       }
 
-      // 3. Xử lý Data trả về (Tự động Parse JSON)
-
-      // Nếu là 204 No Content -> trả về null
       if (res.status === 204) return null as T;
 
-      // Kiểm tra Content-Type để parse cho đúng
       const contentType = res.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         return await res.json() as T;
       }
 
-      // Trường hợp hiếm: Text hoặc Blob (nếu không phải JSON)
-      // Trả về text để tránh crash
-      // Lưu ý: Nếu các module cũ đang mong đợi đối tượng "Response" gốc, 
-      // đoạn này sẽ trả về string -> Có thể cần điều chỉnh module gọi.
-      // Tuy nhiên, đa số logic React (như useCartStore) đều cần data JSON.
       return await res.text() as unknown as T;
-
     } catch (error) {
-      console.warn(`❌ [API Error] ${fullUrl}:`, error);
+      console.warn(`⚠️ [API Error] ${fullUrl}:`, error);
       throw error;
     }
   }
 
-  // --- CÁC METHOD (Thêm Generics <T> để gợi ý code tốt hơn) ---
-
   get<T = any>(path: string, options: RequestInit & { params?: Record<string, any> } = {}) {
     let url = path;
-
     if (options.params) {
       const params = new URLSearchParams();
       Object.entries(options.params).forEach(([key, value]) => {
@@ -92,7 +83,6 @@ export class ApiClient {
       }
       delete options.params;
     }
-
     return this.request<T>(url, { ...options, method: 'GET' });
   }
 
@@ -114,45 +104,9 @@ export class ApiClient {
   delete<T = any>(path: string) {
     return this.request<T>(path, { method: 'DELETE' });
   }
-
-  // Giữ nguyên logic sendBeacon vì nó hoạt động độc lập
-  sendBeacon(path: string, body: any, customHeaders: Record<string, string> = {}) {
-    const fullUrl = this.normalizeUrl(path);
-    const token = this.getToken();
-
-    const headers: any = {
-      'Content-Type': 'application/json',
-      ...customHeaders,
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // [FIX] Thay đổi điều kiện kiểm tra để TypeScript không báo lỗi
-    // Cũ: if (typeof navigator !== 'undefined' && navigator.sendBeacon)
-    // Mới: Kiểm tra kỹ xem nó có phải là function không
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      // Tạo Blob để đảm bảo headers content-type chính xác khi dùng beacon
-      const blob = new Blob([JSON.stringify(body)], { type: 'application/json' });
-
-      // sendBeacon trả về true nếu push vào queue thành công
-      const success = navigator.sendBeacon(fullUrl, blob);
-      if (success) return; // Nếu gửi thành công thì dừng, không cần fallback
-    }
-
-    // Fallback: Nếu không có sendBeacon hoặc gửi thất bại, dùng fetch bình thường
-    fetch(fullUrl, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(body),
-      keepalive: true,
-    }).catch((err) => console.warn('Tracking error:', err));
-  }
 }
 
 export const apiClient = new ApiClient(
-  // Ưu tiên biến môi trường, fallback về localhost
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
-  () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+  () => getAuthToken()
 );

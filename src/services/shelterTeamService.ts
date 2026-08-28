@@ -27,6 +27,6 @@ export const shelterTeamService = {
   getInvitationPreview: async (token: string) =>
     unwrap(await apiClient.get(`/invitations/${token}`)),
 
-  acceptInvitation: async (token: string, name: string, password: string) =>
-    unwrap(await apiClient.post(`/invitations/${token}/accept`, { name, password })),
+  acceptInvitation: async (token: string, password: string) =>
+    unwrap(await apiClient.post(`/invitations/${token}/accept`, { password })),
 };
