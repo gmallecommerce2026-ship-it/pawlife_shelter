@@ -10,17 +10,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-
-interface DashboardStats {
-  stats: { availablePets: number; pendingApplications: number; adoptedCount: number; qrIssued: number };
-  adoptionTrend: { month: string; dogs: number; cats: number }[];
-  petTypeDistribution: { name: string; value: number; color: string }[];
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL; // ví dụ: https://api.pawcare.app
+import { shelterService, ShelterDashboardStats } from '@/services/shelterService';
 
 export default function ShelterDashboardPage() {
-  const [data, setData] = useState<DashboardStats | null>(null);
+  const [data, setData] = useState<ShelterDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,17 +26,10 @@ export default function ShelterDashboardPage() {
       try {
         setLoading(true);
         setError(null);
-        // TODO: thay bằng cách lấy token thực tế của bạn (cookie/localStorage/context)
-        const token = localStorage.getItem('accessToken');
-        const res = await fetch(`${API_BASE}/pets/shelter/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store',
-        });
-        if (!res.ok) throw new Error('Không thể tải dữ liệu dashboard');
-        const json: DashboardStats = await res.json();
-        setData(json);
+        const res = await shelterService.getDashboardStats();
+        setData(res);
       } catch (err: any) {
-        setError(err.message || 'Đã có lỗi xảy ra');
+        setError(err.message || 'Đã có lỗi xảy ra khi tải dashboard');
       } finally {
         setLoading(false);
       }
@@ -71,8 +57,6 @@ export default function ShelterDashboardPage() {
 
   return (
     <div className="w-full max-w-[1100px] mx-auto flex flex-col gap-8 pb-10 font-sans">
-
-      {/* 1. Header */}
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-bold text-[#E89B5A] tracking-widest uppercase">{today}</p>
         <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[32px] sm:text-[40px] text-[#0D062D] font-bold leading-tight tracking-tight">
@@ -83,7 +67,6 @@ export default function ShelterDashboardPage() {
         </p>
       </div>
 
-      {/* 2. Quick Stats — dữ liệu thật */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard title="Thú cưng có sẵn" value={String(stats.availablePets)} icon={<PawPrint size={20} />} color="text-[#3B82F6]" bg="bg-[#EFF6FF]" />
         <StatCard title="Đơn chờ duyệt" value={String(stats.pendingApplications)} icon={<ClipboardList size={20} />} color="text-[#E89B5A]" bg="bg-[#FFF4EA]" />
@@ -91,7 +74,6 @@ export default function ShelterDashboardPage() {
         <StatCard title="QR đã cấp" value={String(stats.qrIssued)} icon={<QrCode size={20} />} color="text-[#A855F7]" bg="bg-[#FAF5FF]" />
       </div>
 
-      {/* 3. Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[24px] p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
           <div className="mb-6">
@@ -163,7 +145,6 @@ export default function ShelterDashboardPage() {
         </div>
       </div>
 
-      {/* 4. Lối tắt quản lý — giữ nguyên, không cần API */}
       <div className="mt-2">
         <h2 className="text-[18px] font-bold text-[#0D062D] mb-4">Lối tắt quản lý</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
