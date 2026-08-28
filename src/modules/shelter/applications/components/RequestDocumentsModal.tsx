@@ -114,7 +114,7 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
       key: o.key,
       label: o.label,
       description: descriptions[o.key],
-      category: (o as any).category || 'APPLICANT',
+      category: (o as any).category || 'APPLICANT', 
     }));
 
     // Tài liệu cần huỷ: đã tồn tại, đang PENDING_SUBMISSION, nhưng vừa bị bỏ tick
