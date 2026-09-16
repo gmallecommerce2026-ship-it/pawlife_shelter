@@ -600,6 +600,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                         <span className="font-bold text-[12px] text-gray-900">
                           {note.authorName || 'Nhân viên trạm'}
                         </span>
+              
                         <span className="text-[10px] text-gray-400">{note.createdAt}</span>
                       </div>
                       <p className="text-[12px] text-gray-600 mt-0.5">{note.content}</p>

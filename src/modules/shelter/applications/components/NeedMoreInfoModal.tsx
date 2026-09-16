@@ -20,7 +20,10 @@ import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDoc
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { SelectTagsModal } from './SelectTagsModal';
+import { useSocket } from '@/contexts/SocketContext';
+
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
+import { Socket } from 'socket.io-client';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
 // ============================================================================
@@ -180,6 +183,7 @@ const mapBackendDoc = (doc: RequestedDocument): RequiredDocRow => ({
 interface NeedMoreInfoModalProps {
   application: AdoptionApplication;
   initialDocuments?: RequestedDocument[];
+  socket?: Socket | null;
   onClose: () => void;
   onSubmit: (data: any) => void;
   onRefresh?: () => void;
@@ -188,6 +192,7 @@ interface NeedMoreInfoModalProps {
 export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   application,
   initialDocuments,
+  socket,
   onClose,
   onSubmit,
   onRefresh,
@@ -197,6 +202,37 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [isNotesOpen, setIsNotesOpen] = useState(true);
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!socket || !application?.id) return;
+
+    const refetchDocs = () => {
+      applicationService
+        .getDocuments(application.id)
+        .then((docs: RequestedDocument[]) =>
+          setRequiredDocs((Array.isArray(docs) ? docs : []).map(mapBackendDoc)),
+        )
+        .catch((err) => console.error('Lỗi đồng bộ realtime tài liệu:', err));
+    };
+
+    const handleEvent = (payload?: any) => {
+      if (!payload?.applicationId || payload.applicationId === application.id) {
+        refetchDocs();
+      }
+    };
+
+    const events = [
+      'documents_requested',
+      'document_submitted',
+      'document_reviewed',
+      'document_removed',
+    ];
+
+    events.forEach((e) => socket.on(e, handleEvent));
+    return () => {
+      events.forEach((e) => socket.off(e, handleEvent));
+    };
+  }, [socket, application?.id]);
 
   const [tags, setTags] = useState<ApplicationTag[]>(
     application.tags ? application.tags.map((t: any) => t.tag || t) : []
@@ -347,7 +383,12 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     try {
       const created: RequestedDocument[] = await applicationService.requestDocuments(
         application.id,
-        [{ key: doc.key, label: doc.label, description: doc.description }],
+        [{
+          key: doc.key,
+          label: doc.label,
+          description: doc.description,
+          category: (doc as any).category || 'APPLICANT', // 👈 bổ sung, khớp với RequestDocumentsModal
+        }],
       );
       setRequiredDocs((prev) => prev.map((d) => (d.key === key ? mapBackendDoc(created[0]) : d)));
     } catch (error: any) {
@@ -594,8 +635,8 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                       <span
                         key={tag.id}
                         className={`px-3 py-1 text-[12px] font-medium rounded-full flex items-center gap-1.5 transition-all ${isFirst
-                            ? 'bg-[#EBF2FF] text-[#4F75E2]'
-                            : 'bg-[#F4F5F7] text-gray-600'
+                          ? 'bg-[#EBF2FF] text-[#4F75E2]'
+                          : 'bg-[#F4F5F7] text-gray-600'
                           }`}
                       >
                         {tag.name}

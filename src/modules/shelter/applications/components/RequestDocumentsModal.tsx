@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { X, Pencil, Check, Loader2, Lock } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { X, Pencil, Check, Loader2, Lock, Radio } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { DOCUMENT_TYPE_OPTIONS, RequiredDocument } from '@/constants/adoptionDocuments';
 import { applicationService } from '@/services/applicationService';
+import { useWebsocket } from '@/hooks/useWebsocket';
 
-// Document đã tồn tại thật trong DB (có id) — dùng để truyền tiếp sang
-// NeedMoreInfoModal, nơi cần id để gọi submit/review/remove.
 export type RequestedDocument = RequiredDocument & {
   id: string;
   status: 'PENDING_SUBMISSION' | 'PENDING_REVIEW' | 'ACCEPTED' | 'REJECTED';
@@ -18,14 +17,15 @@ export type RequestedDocument = RequiredDocument & {
 interface RequestDocumentsModalProps {
   application: AdoptionApplication;
   onClose: () => void;
-  /** Gọi sau khi đã đồng bộ xong với BE -> board mở tiếp NeedMoreInfoModal với danh sách có id thật */
   onNext: (documents: RequestedDocument[]) => void;
+  userToken?: string;
 }
 
 export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
   application,
   onClose,
   onNext,
+  userToken,
 }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -33,55 +33,78 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
     Object.fromEntries(DOCUMENT_TYPE_OPTIONS.map((o) => [o.key, o.description]))
   );
 
-  // Danh sách tài liệu ĐÃ tồn tại trong DB cho đơn này (yêu cầu từ trước)
   const [existingDocs, setExistingDocs] = useState<RequestedDocument[]>([]);
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Tra nhanh existingDoc theo key
+  const socket = useWebsocket(userToken, (application as any).pet?.shelterId);
+
+  // Map tra nhanh document theo key
   const existingDocsByKey = useMemo(() => {
     const map: Record<string, RequestedDocument> = {};
-    existingDocs.forEach((d) => { map[d.key] = d; });
+    existingDocs.forEach((d) => {
+      map[d.key] = d;
+    });
     return map;
   }, [existingDocs]);
 
-  // Nạp danh sách đã yêu cầu từ trước, tự tick sẵn các mục đó
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
+  // Load danh sách từ Server
+  const loadDocuments = useCallback(async () => {
+    try {
       setIsLoadingExisting(true);
-      try {
-        const docs: RequestedDocument[] = await applicationService.getDocuments(application.id);
-        if (cancelled) return;
-        setExistingDocs(docs);
-        setSelectedKeys(docs.map((d) => d.key)); // tự tick những cái đã yêu cầu
-        setDescriptions((prev) => {
-          const next = { ...prev };
-          docs.forEach((d) => { next[d.key] = d.description; });
-          return next;
+      const docs: RequestedDocument[] = await applicationService.getDocuments(application.id);
+      setExistingDocs(docs);
+      setSelectedKeys(docs.map((d) => d.key));
+      setDescriptions((prev) => {
+        const next = { ...prev };
+        docs.forEach((d) => {
+          if (d.description) next[d.key] = d.description;
         });
-      } catch (error) {
-        console.error('Lỗi khi tải danh sách tài liệu đã yêu cầu:', error);
-      } finally {
-        if (!cancelled) setIsLoadingExisting(false);
+        return next;
+      });
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách tài liệu:', error);
+    } finally {
+      setIsLoadingExisting(false);
+    }
+  }, [application.id]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+  // 📡 REALTIME: Lắng nghe các thay đổi từ Mobile App (khi adopter nộp bài)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDocumentUpdate = (payload: { applicationId: string }) => {
+      if (payload.applicationId === application.id) {
+        loadDocuments();
       }
     };
 
-    load();
-    return () => { cancelled = true; };
-  }, [application.id]);
+    socket.on('document_submitted', handleDocumentUpdate);
+    socket.on('documents_requested', handleDocumentUpdate);
+    socket.on('document_reviewed', handleDocumentUpdate);
+    socket.on('document_removed', handleDocumentUpdate);
 
-  // Mục đã có applicant nộp/duyệt rồi -> khoá, không cho bỏ tick (tránh mất dữ liệu đã nộp)
+    return () => {
+      socket.off('document_submitted', handleDocumentUpdate);
+      socket.off('documents_requested', handleDocumentUpdate);
+      socket.off('document_reviewed', handleDocumentUpdate);
+      socket.off('document_removed', handleDocumentUpdate);
+    };
+  }, [socket, application.id, loadDocuments]);
+
+  // Đã nộp/duyệt -> Khoá không cho gỡ bỏ tick
   const isLocked = (key: string) => {
     const existing = existingDocsByKey[key];
     return !!existing && existing.status !== 'PENDING_SUBMISSION';
   };
 
   const toggleSelect = (key: string) => {
-    if (isLocked(key)) return; // đã nộp/duyệt rồi -> không cho bỏ tick
+    if (isLocked(key)) return;
 
     setSelectedKeys((prev) => {
       const isSelected = prev.includes(key);
@@ -96,7 +119,7 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
 
   const toggleEdit = (e: React.MouseEvent, key: string) => {
     e.stopPropagation();
-    if (existingDocsByKey[key]) return; // tài liệu đã tồn tại trong DB -> không sửa mô tả ở đây
+    if (existingDocsByKey[key]) return;
     setEditingKey((prev) => (prev === key ? null : key));
   };
 
@@ -107,25 +130,21 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
   const handleNext = async () => {
     if (selectedKeys.length === 0 || isSubmitting || isLoadingExisting) return;
 
-    // Tài liệu mới cần tạo: đang được tick nhưng chưa tồn tại trong DB (bổ sung trường category)
     const itemsToCreate = DOCUMENT_TYPE_OPTIONS.filter(
       (o) => selectedKeys.includes(o.key) && !existingDocsByKey[o.key]
     ).map((o) => ({
       key: o.key,
       label: o.label,
       description: descriptions[o.key],
-      category: (o as any).category || 'APPLICANT', 
+      category: (o as any).category || 'APPLICANT',
     }));
 
-    // Tài liệu cần huỷ: đã tồn tại, đang PENDING_SUBMISSION, nhưng vừa bị bỏ tick
     const itemsToRemove = existingDocs.filter(
       (d) => d.status === 'PENDING_SUBMISSION' && !selectedKeys.includes(d.key)
     );
 
-    // Tài liệu giữ nguyên: đã tồn tại và vẫn đang được tick
     const remainingExisting = existingDocs.filter((d) => selectedKeys.includes(d.key));
 
-    // Không có gì thay đổi -> khỏi gọi API, đi tiếp luôn
     if (itemsToCreate.length === 0 && itemsToRemove.length === 0) {
       onNext(remainingExisting);
       return;
@@ -174,7 +193,12 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-[20px] font-bold text-[#0D062D]">Tài liệu yêu cầu</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[20px] font-bold text-[#0D062D]">Tài liệu yêu cầu</h2>
+              <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+              </span>
+            </div>
             <p className="text-[13px] text-gray-500 mt-1">Chọn các loại tài liệu cần bổ sung từ người đăng ký</p>
           </div>
           <button
@@ -273,7 +297,7 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
           </div>
         )}
 
-        {/* Nút bấm */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-1">
           <button
             type="button"

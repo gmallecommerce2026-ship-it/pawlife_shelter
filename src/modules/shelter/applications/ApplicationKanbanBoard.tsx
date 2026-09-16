@@ -38,7 +38,8 @@ import { RequestDocumentsModal } from './components/RequestDocumentsModal';
 import { RequiredDocument } from '@/constants/adoptionDocuments';
 import { applicationService } from '@/services/applicationService';
 import { useTagColorStore } from '@/stores/useTagColorStore';
-
+import { useWebsocket } from '@/hooks/useWebsocket';
+import { getUserFromToken } from '@/utils/getUserFromToken';
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
@@ -71,10 +72,46 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
   const [closeReason, setCloseReason] = useState('');
   const [isClosingApp, setIsClosingApp] = useState(false);
+  const CLOSE_REASONS = [
+    'Không phù hợp',
+    'Đã có người nhận nuôi',
+    'Người đăng ký hủy đơn',
+    'Hết thời hạn phản hồi',
+  ];
 
+  const [isCustomCloseReason, setIsCustomCloseReason] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrollable, setIsScrollable] = useState(false);
+  const user = getUserFromToken();
+  const socket = useWebsocket(undefined, user?.shelterId);
+  useEffect(() => {
+    if (closeAppTarget) {
+      setIsCustomCloseReason(false);
+      setCloseReason(CLOSE_REASONS[0]);
+    }
+  }, [closeAppTarget]);
+  // Lắng nghe realtime để tự reload lại danh sách đơn trên Kanban
+  useEffect(() => {
+    if (!socket) return;
 
+    const handleRealtimeUpdate = () => {
+      fetchApplications();
+    };
+
+    socket.on('documents_requested', handleRealtimeUpdate);
+    socket.on('document_submitted', handleRealtimeUpdate);
+    socket.on('document_reviewed', handleRealtimeUpdate);
+    socket.on('document_removed', handleRealtimeUpdate);
+    socket.on('application_updated', handleRealtimeUpdate);
+
+    return () => {
+      socket.off('documents_requested', handleRealtimeUpdate);
+      socket.off('document_submitted', handleRealtimeUpdate);
+      socket.off('document_reviewed', handleRealtimeUpdate);
+      socket.off('document_removed', handleRealtimeUpdate);
+      socket.off('application_updated', handleRealtimeUpdate);
+    };
+  }, [socket, fetchApplications]);
   const formattedItems = useMemo(() => {
     return localItems.map((app: any) => ({
       ...app,
@@ -284,11 +321,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
+    if (app.status === 'SUBMITTED' || app.status === 'PENDING') {
+      setPendingApp(app); // Gọi chung modal MoveToPendingModal (modal xem đơn ban đầu)
+      return;
+    }
+
     const nextStatus = NEXT_STATUS_MAP[app.status];
     switch (nextStatus) {
-      case 'PENDING':
-        setPendingApp(app);
-        return;
       case 'INTERVIEW_SCHEDULED':
         setInterviewApp(app);
         return;
@@ -433,13 +472,50 @@ export const ApplicationKanbanBoard: React.FC = () => {
             </p>
             <div className="mb-4">
               <label className="text-[11px] font-medium text-gray-500 mb-1 block">Lý do đóng:</label>
-              <textarea
-                rows={2}
-                value={closeReason}
-                onChange={(e) => setCloseReason(e.target.value)}
-                placeholder="Nhập lý do..."
-                className="w-full border border-gray-200 rounded-[8px] p-2 text-[12px] outline-none focus:border-red-400"
-              />
+              <div className="mb-4">
+                <label className="text-[11px] font-medium text-gray-500 mb-2 block">Lý do đóng:</label>
+
+                <div className="flex flex-col gap-1.5 mb-2">
+                  {CLOSE_REASONS.map((reason) => (
+                    <label key={reason} className="flex items-center gap-2 text-[12px] text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="close-reason"
+                        checked={!isCustomCloseReason && closeReason === reason}
+                        onChange={() => {
+                          setIsCustomCloseReason(false);
+                          setCloseReason(reason);
+                        }}
+                      />
+                      {reason}
+                    </label>
+                  ))}
+
+                  <label className="flex items-center gap-2 text-[12px] text-gray-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="close-reason"
+                      checked={isCustomCloseReason}
+                      onChange={() => {
+                        setIsCustomCloseReason(true);
+                        setCloseReason('');
+                      }}
+                    />
+                    Khác (nhập lý do)
+                  </label>
+                </div>
+
+                {isCustomCloseReason && (
+                  <textarea
+                    rows={2}
+                    value={closeReason}
+                    onChange={(e) => setCloseReason(e.target.value)}
+                    placeholder="Nhập lý do..."
+                    className="w-full border border-gray-200 rounded-[8px] p-2 text-[12px] outline-none focus:border-red-400"
+                    autoFocus
+                  />
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-end gap-2">
               <button
@@ -453,7 +529,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmClose}
-                disabled={isClosingApp}
+                disabled={isClosingApp || !closeReason.trim()}
                 className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold rounded-md disabled:opacity-60"
               >
                 {isClosingApp ? 'Đang đóng...' : 'Xác nhận'}
@@ -536,6 +612,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
         <NeedMoreInfoModal
           application={needInfoApp}
           initialDocuments={pendingRequiredDocs}
+          socket={socket}
           onClose={() => { setNeedInfoApp(null); setPendingRequiredDocs([]); fetchApplications(); }}
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
