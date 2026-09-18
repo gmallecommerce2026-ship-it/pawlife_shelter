@@ -18,7 +18,7 @@ import {
   RotateCw,
   MapPin,
 } from 'lucide-react';
-import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG } from '@/types/application';
+import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG, ROLE_BADGE_STYLE } from '@/types/application';
 import { CommitmentItem, isCommitmentAgreed } from './MoveToPendingModal';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
@@ -28,6 +28,7 @@ import { PartyPopper } from 'lucide-react';
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
+import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
@@ -1070,14 +1071,20 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                       className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
                       alt="Nhân sự"
                     />
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-[13px] text-gray-900">
                           {note.authorName || 'Nhân viên trạm'}
                         </span>
-                        <span className="text-[11px] text-gray-400">{formatTimeAgo(note.createdAt)}</span>
+                        {/* Hiển thị Badge Role nếu có */}
+                        {note.authorRole && (
+                          <span className={`px-2.5 py-[2px] rounded-full text-[10.5px] font-semibold tracking-tight ${ROLE_BADGE_STYLE[note.authorRole]}`}>
+                            {STAFF_ROLE_LABEL[note.authorRole]}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-gray-400 ml-auto">{formatTimeAgo(note.createdAt)}</span>
                       </div>
-                      <p className="text-[13px] text-gray-600 leading-snug">
+                      <p className="text-[13px] text-gray-600 leading-snug mt-0.5">
                         {note.content}
                       </p>
                     </div>

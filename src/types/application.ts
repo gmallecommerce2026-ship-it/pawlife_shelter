@@ -1,5 +1,7 @@
 // src/types/application.ts
 
+import { ShelterStaffRole } from "./shelterTeam";
+
 export type ApplicationStatus =
   | 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO'
   | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';
@@ -71,11 +73,17 @@ export interface ApplicationNote {
   authorId: string;
   authorName?: string;
   authorAvatar?: string;
+  authorRole?: ShelterStaffRole;
   content: string;
   type: ApplicationNoteType; // 🆕 bắt buộc — khớp với schema mới
   createdAt: string;
 }
-
+export const ROLE_BADGE_STYLE: Record<ShelterStaffRole, string> = {
+  ADMIN: 'bg-[#F4E8FF] text-[#A855F7]',      // Tím
+  MEMBER: 'bg-[#E0F2FE] text-[#3B82F6]',     // Xanh dương
+  VOLUNTEER: 'bg-[#DCFCE7] text-[#22C55E]',  // Xanh lá
+  VETERINARIAN: 'bg-[#FCE7F3] text-[#EC4899]',// Hồng
+};
 export interface ApplicantProfileResponse {
   applicant: {
     id: string;

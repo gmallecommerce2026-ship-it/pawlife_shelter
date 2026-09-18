@@ -14,11 +14,12 @@ import {
   Mars,
   Venus,
 } from 'lucide-react';
-import { AdoptionApplication, ApplicationTag, ApplicationNote } from '@/types/application';
+import { AdoptionApplication, ApplicationTag, ApplicationNote, ROLE_BADGE_STYLE } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
+import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 // Bảng màu đồng bộ chuẩn với ApplicationCard
 const TAG_COLOR_PALETTE = [
   'bg-[#EEF3FF] text-[#5982E6]', // Xanh dương
@@ -413,9 +414,18 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
                     />
                     <div className="flex flex-col flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-[12px] text-gray-900">
-                          {note.authorName || 'Staff Member'}
-                        </span>
+                        {/* Nhóm Avatar Name và Badge lại với nhau bằng gap-2 */}
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[12px] text-gray-900">
+                            {note.authorName || 'Staff Member'}
+                          </span>
+                          {/* Hiển thị Badge Role nếu có */}
+                          {note.authorRole && (
+                            <span className={`px-2.5 py-[2px] rounded-full text-[10px] font-semibold tracking-tight ${ROLE_BADGE_STYLE[note.authorRole]}`}>
+                              {STAFF_ROLE_LABEL[note.authorRole]}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-gray-400">{note.createdAt}</span>
                       </div>
                       <p className="text-[12px] text-gray-600 mt-0.5">{note.content}</p>
