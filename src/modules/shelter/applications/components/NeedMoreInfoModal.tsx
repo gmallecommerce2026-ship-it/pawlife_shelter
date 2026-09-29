@@ -506,9 +506,16 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     const reviewNote =
       requestedLabels.length > 0
         ? `Cần bổ sung tài liệu: ${requestedLabels.join(', ')}${noteInput ? '. ' + noteInput : ''}`
-        : noteInput || 'Yêu cầu bổ sung tài liệu';
+        : noteInput || 'Đã duyệt yêu cầu tài liệu';
 
-    onSubmit({ reviewNote, tags, notes, requiredDocuments: requiredDocs });
+    // Bổ sung thuộc tính action để báo cho Kanban Board biết cần move đi đâu
+    onSubmit({
+      reviewNote,
+      tags,
+      notes,
+      requiredDocuments: requiredDocs,
+      action: allAccepted ? 'MOVE_TO_INTERVIEW' : 'UPDATE_INFO' // <--- THÊM DÒNG NÀY
+    });
   };
 
   const allAccepted =
@@ -990,7 +997,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
             onClick={handleSubmit}
             className="w-full bg-[#E59754] hover:bg-[#D98844] active:bg-[#C97B38] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[14px] shadow-sm cursor-pointer text-center"
           >
-            Di chuyển tới hẹn phỏng vấn
+            {allAccepted ? 'Di chuyển tới hẹn phỏng vấn' : 'Lưu & Cập nhật yêu cầu'}
           </button>
         </div>
 

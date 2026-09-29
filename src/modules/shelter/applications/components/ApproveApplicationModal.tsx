@@ -18,7 +18,7 @@ import {
   RotateCw,
   MapPin,
 } from 'lucide-react';
-import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG, ROLE_BADGE_STYLE } from '@/types/application';
+import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG, resolveNoteRole, ROLE_BADGE_STYLE } from '@/types/application';
 import { CommitmentItem, isCommitmentAgreed } from './MoveToPendingModal';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
@@ -28,8 +28,7 @@ import { PartyPopper } from 'lucide-react';
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
-import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
-
+import { STAFF_ROLE_LABEL, ShelterStaffRole } from '@/types/shelterTeam';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
   key: doc.key,
@@ -342,6 +341,9 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
+  useEffect(() => {
+    console.log('NOTES RAW:', JSON.stringify(application.notes, null, 2));
+  }, [application.id]);
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isSubmittingInterview, setIsSubmittingInterview] = useState(false);
 
@@ -532,6 +534,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
         authorId: addedNote?.authorId || 'current-user',
         authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Nhân viên trạm',
         authorAvatar: addedNote?.author?.avatarUrl || primaryStaffAvatar,
+        authorRole: resolveNoteRole(addedNote) ,
         content: addedNote?.content || noteInput.trim(),
         type: addedNote?.type || 'FOLLOW_UP',
         createdAt: new Date().toISOString(),
@@ -1064,32 +1067,31 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
             {isNotesOpen && (
               <div className="space-y-3 animate-in fade-in duration-150">
-                {notes.map((note) => (
-                  <div key={note.id} className="flex gap-2.5 items-start">
-                    <img
-                      src={note.authorAvatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100'}
-                      className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
-                      alt="Nhân sự"
-                    />
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-[13px] text-gray-900">
-                          {note.authorName || 'Nhân viên trạm'}
-                        </span>
-                        {/* Hiển thị Badge Role nếu có */}
-                        {note.authorRole && (
-                          <span className={`px-2.5 py-[2px] rounded-full text-[10.5px] font-semibold tracking-tight ${ROLE_BADGE_STYLE[note.authorRole]}`}>
-                            {STAFF_ROLE_LABEL[note.authorRole]}
+                {notes.map((note) => {
+                  const role = resolveNoteRole(note);
+                  return (
+                    <div key={note.id} className="flex gap-2.5 items-start">
+                      {/* avatar giữ nguyên */}
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[13px] text-gray-900">
+                            {note.authorName || 'Nhân viên trạm'}
                           </span>
-                        )}
-                        <span className="text-[11px] text-gray-400 ml-auto">{formatTimeAgo(note.createdAt)}</span>
+                          {role && (
+                            <span
+                              className={`px-2.5 py-[2px] rounded-full text-[10.5px] font-semibold tracking-tight ${(ROLE_BADGE_STYLE as any)[role] ?? 'bg-gray-100 text-gray-600'
+                                }`}
+                            >
+                              {(STAFF_ROLE_LABEL as any)[role] ?? role}
+                            </span>
+                          )}
+                          <span className="text-[11px] text-gray-400 ml-auto">{formatTimeAgo(note.createdAt)}</span>
+                        </div>
+                        <p className="text-[13px] text-gray-600 leading-snug mt-0.5">{note.content}</p>
                       </div>
-                      <p className="text-[13px] text-gray-600 leading-snug mt-0.5">
-                        {note.content}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="relative">
                   <input

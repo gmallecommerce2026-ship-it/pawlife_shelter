@@ -1,7 +1,22 @@
 // src/types/application.ts
 
-import { ShelterStaffRole } from "./shelterTeam";
+import { ShelterStaffRole, STAFF_ROLE_LABEL } from "./shelterTeam";
+export const resolveNoteRole = (note: any): ShelterStaffRole | undefined => {
+  const raw =
+    note?.authorRole ??
+    note?.author?.role ??
+    note?.author?.shelterRole ??
+    note?.author?.staffRole ??
+    note?.author?.membership?.role ??
+    note?.authorMember?.role;
 
+  if (!raw) return undefined;
+
+  const normalized = String(raw).toUpperCase();
+
+  // Chỉ chấp nhận giá trị nằm trong enum/union thật
+  return normalized in STAFF_ROLE_LABEL ? (normalized as ShelterStaffRole) : undefined;
+};
 export type ApplicationStatus =
   | 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO'
   | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';

@@ -616,7 +616,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
           onClose={() => { setNeedInfoApp(null); setPendingRequiredDocs([]); fetchApplications(); }}
           onRefresh={fetchApplications}
           onSubmit={async (data) => {
-            await moveApplication(needInfoApp.id, 'NEED_MORE_INFO', data?.reviewNote);
+            // 1. Kiểm tra action trả về từ Modal
+            const targetStatus = data.action === 'MOVE_TO_INTERVIEW'
+              ? 'INTERVIEW_SCHEDULED'
+              : 'NEED_MORE_INFO';
+
+            // 2. Truyền targetStatus thay vì hardcode 'NEED_MORE_INFO'
+            await moveApplication(needInfoApp.id, targetStatus, data?.reviewNote);
             await fetchApplications();
             setNeedInfoApp(null);
             setPendingRequiredDocs([]);
