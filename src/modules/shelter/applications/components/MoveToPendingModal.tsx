@@ -232,6 +232,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
 
   const isMale = application.pet?.gender !== 'FEMALE';
+  const isAlreadyPending = application.status === 'PENDING';
   const petName = application.pet?.name || 'Bé';
   const applicantFullName = application.fullName || application.user?.name || 'Người đăng ký';
   const applicantFirstName = applicantFullName.split(' ')[0] || 'Người đăng ký';
@@ -344,6 +345,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   };
 
   const handleSubmit = () => {
+    if (isAlreadyPending) return;
     onSubmit({
       reviewNote: noteInput || 'Đã chuyển sang Đang xem xét',
       tags,
@@ -614,17 +616,23 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             )}
           </div>
 
-          {/* Nút hành động */}
-          <div className="mt-2">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="w-full bg-[#F3A571] hover:bg-[#E89B5A] active:scale-[0.99] transition-all text-white font-semibold text-[14.5px] py-3.5 px-6 rounded-[16px] shadow-sm flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <span>Chuyển sang đang xem xét</span>
-              <ChevronRight size={16} strokeWidth={2.5} />
-            </button>
-          </div>
+          {!isAlreadyPending && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="w-full bg-[#F3A571] hover:bg-[#E89B5A] active:scale-[0.99] transition-all text-white font-semibold text-[14.5px] py-3.5 px-6 rounded-[16px] shadow-sm flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <span>Chuyển sang đang xem xét</span>
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+          {isAlreadyPending && (
+            <p className="mt-2 text-center text-[12.5px] text-gray-400 italic">
+              Đơn đang ở trạng thái đang xem xét
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -471,7 +471,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
               cho bé <strong className="text-gray-900">{closeAppTarget.pet?.name}</strong>?
             </p>
             <div className="mb-4">
-              <label className="text-[11px] font-medium text-gray-500 mb-1 block">Lý do đóng:</label>
               <div className="mb-4">
                 <label className="text-[11px] font-medium text-gray-500 mb-2 block">Lý do đóng:</label>
 
