@@ -195,7 +195,7 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
 
     try {
       const response = await applicationService.addNote(application.id, content);
-      const addedNote = response?.data || response;
+      const addedNote = unwrapNote(response);
       if (addedNote?.id) {
         setNotes((prev) =>
           prev.map((n) =>

@@ -19,7 +19,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { AdoptionApplication, ApplicationNote, COMMITMENTS_CONFIG } from '@/types/application';
-import { NoteItem, resolveNoteRole } from './NoteItem';
+import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { CommitmentItem, isCommitmentAgreed } from './MoveToPendingModal';
 import { applicationService } from '@/services/applicationService';
 import { apiClient } from '@/lib/api/ApiClient';
@@ -512,7 +512,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
     setIsSubmittingNote(true);
     try {
       const response = await applicationService.addNote(application.id, noteInput.trim(), 'FOLLOW_UP');
-      const addedNote = response?.data || response;
+      const addedNote = unwrapNote(response);
 
       const newNoteObj: ApplicationNote = {
         id: addedNote?.id || Date.now().toString(),

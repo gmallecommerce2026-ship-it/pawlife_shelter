@@ -27,7 +27,7 @@ import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
-import { NoteItem, resolveNoteRole } from './NoteItem';
+import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 const matchKeyword = (
   val: string,
   rules: { keywords: string[]; result: string }[],
@@ -316,7 +316,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
 
     try {
       const response = await applicationService.addNote(application.id, content, "FOLLOW_UP");
-      const addedNote = response?.data || response;
+      const addedNote = unwrapNote(response);
       if (addedNote?.id) {
         setNotes((prev) =>
           prev.map((n: any) =>

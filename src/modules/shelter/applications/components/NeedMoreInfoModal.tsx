@@ -21,7 +21,7 @@ import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { SelectTagsModal } from './SelectTagsModal';
 import { useSocket } from '@/contexts/SocketContext';
-import { NoteItem, resolveNoteRole } from './NoteItem';
+import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { Socket } from 'socket.io-client';
 // ============================================================================
@@ -316,7 +316,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           `Từ chối tài liệu "${doc.label}": ${reason.trim()}`,
           'CONCERN',
         );
-        const addedNote = response?.data || response;
+        const addedNote = unwrapNote(response);
 
         const rejectNote: ApplicationNote = {
           id: addedNote?.id || Date.now().toString(),
@@ -482,7 +482,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         noteInput.trim(),
         'FOLLOW_UP',
       );
-      const addedNote = response?.data || response;
+      const addedNote = unwrapNote(response);
 
       const newNoteObj: ApplicationNote = {
         id: addedNote?.id || Date.now().toString(),

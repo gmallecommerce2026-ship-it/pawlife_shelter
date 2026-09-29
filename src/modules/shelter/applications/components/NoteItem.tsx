@@ -8,7 +8,7 @@ export const resolveNoteRole = (note: any): ShelterStaffRole | undefined => {
   const normalized = String(raw).toUpperCase();
   return normalized in STAFF_ROLE_LABEL ? (normalized as ShelterStaffRole) : undefined;
 };
-
+export const unwrapNote = (res: any) => res?.data?.data ?? res?.data ?? res;    
 export const formatNoteTime = (value?: string | Date | null): string => {
   if (!value) return 'Vừa xong';
   const date = new Date(value);
