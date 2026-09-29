@@ -21,7 +21,7 @@ import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { SelectTagsModal } from './SelectTagsModal';
 import { useSocket } from '@/contexts/SocketContext';
-
+import { NoteItem, resolveNoteRole } from './NoteItem';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { Socket } from 'socket.io-client';
 // ============================================================================
@@ -313,22 +313,23 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
       try {
         const response = await applicationService.addNote(
           application.id,
-          `Từ chối tài liệu "${doc.label}": ${reason.trim()}`
+          `Từ chối tài liệu "${doc.label}": ${reason.trim()}`,
+          'CONCERN',
         );
         const addedNote = response?.data || response;
-        setNotes((prev) => [
-          {
-            id: addedNote?.id || Date.now().toString(),
-            authorId: addedNote?.authorId || 'current-user',
-            authorName: addedNote?.author?.name || 'Nhân viên trạm',
-            authorAvatar:
-              addedNote?.author?.avatarUrl ||
-              'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
-            content: addedNote?.content || `Từ chối tài liệu "${doc.label}": ${reason.trim()}`,
-            createdAt: 'Vừa xong',
-          },
-          ...prev,
-        ]);
+
+        const rejectNote: ApplicationNote = {
+          id: addedNote?.id || Date.now().toString(),
+          authorId: addedNote?.authorId || 'current-user',
+          authorName: addedNote?.authorName || addedNote?.author?.name || 'Nhân viên trạm',
+          authorAvatar: addedNote?.authorAvatar || addedNote?.author?.avatarUrl || null,
+          authorRole: resolveNoteRole(addedNote) ?? null,
+          type: addedNote?.type || 'CONCERN',
+          content: addedNote?.content || `Từ chối tài liệu "${doc.label}": ${reason.trim()}`,
+          createdAt: addedNote?.createdAt || new Date().toISOString(),
+        };
+
+        setNotes((prev) => [rejectNote, ...prev]);
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error('Lỗi khi ghi lại lý do từ chối:', error);
@@ -476,23 +477,26 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     if (!noteInput.trim() || isSubmittingNote) return;
     setIsSubmittingNote(true);
     try {
-      const response = await applicationService.addNote(application.id, noteInput.trim());
+      const response = await applicationService.addNote(
+        application.id,
+        noteInput.trim(),
+        'FOLLOW_UP',
+      );
       const addedNote = response?.data || response;
 
       const newNoteObj: ApplicationNote = {
         id: addedNote?.id || Date.now().toString(),
         authorId: addedNote?.authorId || 'current-user',
-        authorName: addedNote?.author?.name || addedNote?.author?.fullName || 'Staff Member',
-        authorAvatar:
-          addedNote?.author?.avatarUrl ||
-          'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
+        authorName: addedNote?.authorName || addedNote?.author?.name || 'Nhân viên trạm',
+        authorAvatar: addedNote?.authorAvatar || addedNote?.author?.avatarUrl || null,
+        authorRole: resolveNoteRole(addedNote) ?? null,
         content: addedNote?.content || noteInput.trim(),
-        createdAt: 'Vừa xong',
+        type: addedNote?.type || 'FOLLOW_UP',   
+        createdAt: addedNote?.createdAt || new Date().toISOString(),
       };
 
       setNotes((prev) => [newNoteObj, ...prev]);
       setNoteInput('');
-
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Lỗi khi thêm ghi chú:', error);
@@ -942,28 +946,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
             {isNotesOpen && (
               <div className="flex flex-col gap-3.5">
                 {notes.map((note) => (
-                  <div key={note.id} className="flex gap-2.5 items-start">
-                    <img
-                      src={
-                        note.authorAvatar ||
-                        (note as any).author?.avatarUrl ||
-                        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'
-                      }
-                      className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
-                      alt="Staff"
-                    />
-                    <div className="flex flex-col w-full">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-[12.5px] text-gray-900">
-                          {note.authorName || (note as any).author?.name || 'Staff Member'}
-                        </span>
-                        <span className="text-[11px] text-gray-400">
-                          {typeof note.createdAt === 'string' ? note.createdAt : '2h ago'}
-                        </span>
-                      </div>
-                      <p className="text-[12px] text-gray-500 leading-snug">{note.content}</p>
-                    </div>
-                  </div>
+                  <NoteItem key={note.id} note={note} />
                 ))}
 
                 {/* Input thêm ghi chú */}

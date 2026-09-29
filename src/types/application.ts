@@ -88,7 +88,7 @@ export interface ApplicationNote {
   authorId: string;
   authorName?: string;
   authorAvatar?: string;
-  authorRole?: ShelterStaffRole;
+  authorRole?: ShelterStaffRole | null;
   content: string;
   type: ApplicationNoteType; // 🆕 bắt buộc — khớp với schema mới
   createdAt: string;
@@ -202,6 +202,7 @@ export interface ApplicationNote {
   authorId: string;
   authorName?: string;
   authorAvatar?: string;
+  authorRole?: ShelterStaffRole | null;
   content: string;
   createdAt: string | Date;
 }

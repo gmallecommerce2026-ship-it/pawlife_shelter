@@ -185,6 +185,7 @@ export const ApplicationQuickViewModal: React.FC<ApplicationQuickViewModalProps>
       authorAvatar:
         'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
       content,
+      type: 'CONCERN',
       createdAt: 'Vừa xong',
     };
 

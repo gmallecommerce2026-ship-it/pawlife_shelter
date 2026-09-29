@@ -27,7 +27,7 @@ import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { SelectTagsModal } from './SelectTagsModal';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
-
+import { NoteItem, resolveNoteRole } from './NoteItem';
 const matchKeyword = (
   val: string,
   rules: { keywords: string[]; result: string }[],
@@ -303,10 +303,11 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
       id: `temp-${Date.now()}`,
       authorId: 'current-user',
       authorName: 'Nhân viên trạm',
-      authorAvatar:
-        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100',
+      authorAvatar: "",
+      authorRole: null,
       content,
-      createdAt: 'Vừa xong',
+      type: 'FOLLOW_UP',
+      createdAt: new Date().toISOString(),
     };
 
     setNotes((prev) => [tempNote, ...prev]);
@@ -318,13 +319,16 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
       const addedNote = response?.data || response;
       if (addedNote?.id) {
         setNotes((prev) =>
-          prev.map((n) =>
+          prev.map((n: any) =>
             n.id === tempNote.id
               ? {
                 ...n,
                 id: addedNote.id,
-                authorName: addedNote.author?.name || n.authorName,
-                authorAvatar: addedNote.author?.avatarUrl || n.authorAvatar,
+                authorId: addedNote.authorId ?? n.authorId,
+                authorName: addedNote.authorName || addedNote.author?.name || n.authorName,
+                authorAvatar: addedNote.authorAvatar || addedNote.author?.avatarUrl || n.authorAvatar,
+                authorRole: resolveNoteRole(addedNote) ?? n.authorRole ?? null,
+                createdAt: addedNote.createdAt ?? n.createdAt,
               }
               : n
           )
@@ -586,26 +590,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             {isNotesOpen && (
               <div className="flex flex-col gap-3 mt-3 animate-in fade-in duration-200">
                 {notes.map((note) => (
-                  <div key={note.id} className="flex gap-2.5 items-start">
-                    <img
-                      src={
-                        note.authorAvatar ||
-                        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'
-                      }
-                      className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
-                      alt="Nhân viên"
-                    />
-                    <div className="flex flex-col flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[12px] text-gray-900">
-                          {note.authorName || 'Nhân viên trạm'}
-                        </span>
-              
-                        <span className="text-[10px] text-gray-400">{note.createdAt}</span>
-                      </div>
-                      <p className="text-[12px] text-gray-600 mt-0.5">{note.content}</p>
-                    </div>
-                  </div>
+                  <NoteItem key={note.id} note={note} />
                 ))}
                 <div className="relative w-full mt-1">
                   <input
