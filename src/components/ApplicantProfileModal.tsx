@@ -5,12 +5,16 @@ import { createPortal } from 'react-dom';
 import { 
   X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag, 
   Loader2, MoreVertical, Pencil, Trash2, 
-  Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile // <-- Thêm Icons cho PawHistory
+  Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile
 } from 'lucide-react';
 import { AdoptionApplication, ROLE_BADGE_STYLE } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import type { ApplicantProfileResponse, ApplicationNoteType } from '@/types/application';
 import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
+
+// IMPORT THÊM ĐỂ KIỂM TRA QUYỀN ADMIN
+import { useShelterTeam } from '@/store/useShelterTeamStore';
+import { getUserFromToken } from '@/utils/getUserFromToken';
 
 interface ApplicantProfileModalProps {
   application: AdoptionApplication;
@@ -90,6 +94,10 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Lấy thông tin user hiện tại để xét quyền Admin
+  const { me } = useShelterTeam();
+  const [tokenUser, setTokenUser] = useState<any>(null);
+
   // State mở/đóng PawHistory cho từng pet
   const [expandedPawHistoryId, setExpandedPawHistoryId] = useState<string | null>(null);
 
@@ -117,7 +125,11 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
 
   useEffect(() => {
     setMounted(true);
+    setTokenUser(getUserFromToken());
   }, []);
+
+  // Xác định quyền Admin
+  const isAdmin = me?.shelterRole === 'ADMIN' || tokenUser?.role === 'SHELTER_ADMIN' || tokenUser?.role === 'ADMIN';
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -596,19 +608,21 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                      ref={(el) => { noteButtonRefs.current[note.id] = el; }}
-                                      type="button"
-                                      onClick={(e) => toggleNoteMenu(e, note.id)}
-                                      disabled={isDeletingThis}
-                                      className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50"
-                                    >
-                                      {isDeletingThis ? (
-                                        <Loader2 size={14} className="animate-spin" />
-                                      ) : (
-                                        <MoreVertical size={16} strokeWidth={2} />
-                                      )}
-                                    </button>
+                                    {isAdmin && (
+                                      <button
+                                        ref={(el) => { noteButtonRefs.current[note.id] = el; }}
+                                        type="button"
+                                        onClick={(e) => toggleNoteMenu(e, note.id)}
+                                        disabled={isDeletingThis}
+                                        className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50"
+                                      >
+                                        {isDeletingThis ? (
+                                          <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                          <MoreVertical size={16} strokeWidth={2} />
+                                        )}
+                                      </button>
+                                    )}
                                     <Flag size={14} className="text-gray-400" />
                                   </div>
                                 </div>
@@ -627,75 +641,77 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                 </div>
 
                 {/* Add New Note */}
-                <div className="mt-6 border border-dashed border-gray-300 rounded-[16px] p-5 bg-[#FAFAFA]">
-                  <h4 className="font-bold text-[14px] text-gray-900 mb-4">Thêm ghi chú</h4>
+                {isAdmin && (
+                  <div className="mt-6 border border-dashed border-gray-300 rounded-[16px] p-5 bg-[#FAFAFA]">
+                    <h4 className="font-bold text-[14px] text-gray-900 mb-4">Thêm ghi chú</h4>
 
-                  <div className="flex flex-col gap-4">
-                    <div className="relative" ref={typeDropdownRef}>
-                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Loại ghi chú</label>
-                      <button
-                        type="button"
-                        onClick={() => setIsTypeOpen((v) => !v)}
-                        className={`w-full bg-white border rounded-lg px-3 py-2.5 flex justify-between items-center text-left transition-colors ${isTypeOpen ? 'border-[#E89B5A] ring-2 ring-[#E89B5A]/20' : 'border-gray-200'
-                          }`}
-                      >
-                        <span className={`text-[13px] ${noteType ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
-                          {noteType ? NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label : 'Chọn loại ghi chú'}
-                        </span>
-                        <ChevronDown size={16} className={`text-gray-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
-                      </button>
+                    <div className="flex flex-col gap-4">
+                      <div className="relative" ref={typeDropdownRef}>
+                        <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Loại ghi chú</label>
+                        <button
+                          type="button"
+                          onClick={() => setIsTypeOpen((v) => !v)}
+                          className={`w-full bg-white border rounded-lg px-3 py-2.5 flex justify-between items-center text-left transition-colors ${isTypeOpen ? 'border-[#E89B5A] ring-2 ring-[#E89B5A]/20' : 'border-gray-200'
+                            }`}
+                        >
+                          <span className={`text-[13px] ${noteType ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+                            {noteType ? NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label : 'Chọn loại ghi chú'}
+                          </span>
+                          <ChevronDown size={16} className={`text-gray-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
+                        </button>
 
-                      {isTypeOpen && (
-                        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => { setNoteType(''); setIsTypeOpen(false); }}
-                            className="w-full text-left px-3 py-2.5 text-[13px] text-gray-400 hover:bg-gray-50"
-                          >
-                            Chọn loại ghi chú...
-                          </button>
-                          {NOTE_TYPE_OPTIONS.map((opt) => (
+                        {isTypeOpen && (
+                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
                             <button
-                              key={opt.value}
                               type="button"
-                              onClick={() => { setNoteType(opt.value); setIsTypeOpen(false); }}
-                              className={`w-full text-left px-3 py-2.5 text-[13px] transition-colors ${noteType === opt.value
-                                ? 'bg-[#E89B5A] text-white font-bold'
-                                : 'text-gray-700 hover:bg-gray-50'
-                                }`}
+                              onClick={() => { setNoteType(''); setIsTypeOpen(false); }}
+                              className="w-full text-left px-3 py-2.5 text-[13px] text-gray-400 hover:bg-gray-50"
                             >
-                              {opt.label}
+                              Chọn loại ghi chú...
                             </button>
-                          ))}
-                        </div>
-                      )}
+                            {NOTE_TYPE_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => { setNoteType(opt.value); setIsTypeOpen(false); }}
+                                className={`w-full text-left px-3 py-2.5 text-[13px] transition-colors ${noteType === opt.value
+                                  ? 'bg-[#E89B5A] text-white font-bold'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                                  }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Chi tiết</label>
+                        <textarea
+                          rows={3}
+                          value={noteContent}
+                          onChange={(e) => setNoteContent(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] outline-none resize-none focus:border-[#E89B5A]"
+                          placeholder="Chia sẻ dưới tên shelter name"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Chi tiết</label>
-                      <textarea
-                        rows={3}
-                        value={noteContent}
-                        onChange={(e) => setNoteContent(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] outline-none resize-none focus:border-[#E89B5A]"
-                        placeholder="Chia sẻ dưới tên shelter name"
-                      />
+                    <div className="flex flex-col items-center mt-4 gap-3">
+                      <span className="text-[11px] text-gray-500 text-center">
+                        Chia sẻ thông tin khách quan · Chỉ hiển thị nội bộ
+                      </span>
+                      <button
+                        onClick={handleAddNote}
+                        disabled={isSubmittingNote || !noteContent.trim() || !noteType}
+                        className="bg-[#F49494] hover:bg-[#FF7070] transition-colors text-white font-bold text-[13px] py-[10px] px-[32px] rounded-full shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isSubmittingNote ? 'Đang lưu...' : 'Thêm ghi chú'}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex flex-col items-center mt-4 gap-3">
-                    <span className="text-[11px] text-gray-500 text-center">
-                      Chia sẻ thông tin khách quan · Chỉ hiển thị nội bộ
-                    </span>
-                    <button
-                      onClick={handleAddNote}
-                      disabled={isSubmittingNote || !noteContent.trim() || !noteType}
-                      className="bg-[#F49494] hover:bg-[#FF7070] transition-colors text-white font-bold text-[13px] py-[10px] px-[32px] rounded-full shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isSubmittingNote ? 'Đang lưu...' : 'Thêm ghi chú'}
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
