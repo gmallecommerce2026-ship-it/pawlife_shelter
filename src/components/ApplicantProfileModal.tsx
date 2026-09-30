@@ -2,15 +2,21 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Mail, ChevronDown, Check, MessageSquare, Flag, Loader2, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { AdoptionApplication } from '@/types/application';
+import { 
+  X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag, 
+  Loader2, MoreVertical, Pencil, Trash2, 
+  Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile // <-- Thêm Icons cho PawHistory
+} from 'lucide-react';
+import { AdoptionApplication, ROLE_BADGE_STYLE } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import type { ApplicantProfileResponse, ApplicationNoteType } from '@/types/application';
+import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 
 interface ApplicantProfileModalProps {
   application: AdoptionApplication;
   onClose: () => void;
 }
+
 const NOTE_TYPE_OPTIONS: { value: ApplicationNoteType; label: string }[] = [
   { value: 'HOME_VISIT', label: 'Home Visit' },
   { value: 'VET_RECORDS', label: 'Vet Records' },
@@ -30,14 +36,50 @@ const NOTE_TYPE_STYLE: Record<ApplicationNoteType, { label: string; color: strin
   REFERENCE_CHECK: { label: 'Reference Check', color: '#7C3AED' },
   BACKGROUND_CHECK: { label: 'Background Check', color: '#8A38D4' },
 };
+
 const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; text: string }> = {
-  SUBMITTED: { label: 'Submitted', bg: '#F3F4F6', border: '#E5E7EB', text: '#374151' },
-  PENDING: { label: 'Pending', bg: '#FFF8F0', border: '#FFE1C2', text: '#E89B5A' },
-  NEED_MORE_INFO: { label: 'Need Info', bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
-  INTERVIEW_SCHEDULED: { label: 'Interview', bg: '#F4E8FF', border: '#E9D5FF', text: '#8A38D4' },
-  APPROVED: { label: 'Approved', bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
-  ADOPTION_COMPLETED: { label: 'Adopted', bg: '#F2FCF5', border: '#D1F2D9', text: '#1B8A44' },
-  CLOSED: { label: 'Closed', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
+  SUBMITTED: { label: 'Mới', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
+  PENDING: { label: 'Đang xem xét', bg: '#EFF6FF', border: '#BFDBFE', text: '#3B82F6' },
+  NEED_MORE_INFO: { label: 'Cần bổ sung', bg: '#FFF8F0', border: '#FFE1C2', text: '#E89B5A' },
+  INTERVIEW_SCHEDULED: { label: 'Hẹn phỏng vấn', bg: '#F4E8FF', border: '#E9D5FF', text: '#8A38D4' },
+  APPROVED: { label: 'Đã duyệt', bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+  ADOPTION_COMPLETED: { label: 'Đã nhận nuôi', bg: '#F2FCF5', border: '#D1F2D9', text: '#1B8A44' },
+  CLOSED: { label: 'Đóng', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
+};
+
+// ==========================================
+// CẤU HÌNH PAWHISTORY
+// ==========================================
+const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
+  BIRTH: { Icon: Cake, bg: '#FFF4EC', color: '#F2A465' },
+  CREATED: { Icon: QrCode, bg: '#EAE7FB', color: '#885BF2' },
+  QR_LINKED: { Icon: QrCode, bg: '#EAE7FB', color: '#885BF2' },
+  TRANSFER: { Icon: Home, bg: '#EBFFE2', color: '#77C582' },
+  VACCINE: { Icon: Syringe, bg: '#E3F0FF', color: '#5A90DA' },
+  DENTAL_CARE: { Icon: Smile, bg: '#E8FFD8', color: '#5FA83D' },
+  ANNUAL_CHECKUP: { Icon: Stethoscope, bg: '#E8FFD8', color: '#5FA83D' },
+  CURRENT_OWNER: { Icon: User, bg: '#FFE9B8', color: '#CF7900' },
+  PREVIOUS_OWNER: { Icon: User, bg: '#FFE9B8', color: '#CF7900' },
+  UNDER_SHELTER_CARE: { Icon: HeartHandshake, bg: '#FFE4F0', color: '#D6447A' },
+};
+
+const DEFAULT_HISTORY_CONFIG = { Icon: Cake, bg: '#F5F5F5', color: '#8E8E93' };
+
+// Hàm tạo Seed Data cho Pet chưa có lịch sử
+const getOrGeneratePawHistory = (pet: any) => {
+  if (Array.isArray(pet.pawHistory) && pet.pawHistory.length > 0) {
+    return pet.pawHistory;
+  }
+  // Tạo data ngẫu nhiên để test UI
+  const now = Date.now();
+  const dayMs = 86400000;
+  return [
+    { id: `transfer-${pet.id}`, type: 'TRANSFER', title: 'Nhận nuôi thành công', description: `Chuyển giao quyền chăm sóc ${pet.name}`, date: new Date(now - dayMs * 2).toISOString() },
+    { id: `qr-${pet.id}`, type: 'QR_LINKED', title: 'Đăng ký mã QR', description: 'Kích hoạt vòng cổ PawLife', date: new Date(now - dayMs * 10).toISOString() },
+    { id: `vaccine-${pet.id}`, type: 'VACCINE', title: 'Tiêm phòng dại', description: 'Tiêm phòng định kỳ (Rabies)', date: new Date(now - dayMs * 45).toISOString() },
+    { id: `shelter-${pet.id}`, type: 'UNDER_SHELTER_CARE', title: 'Được cứu hộ', description: 'Đưa về trạm chăm sóc và điều trị', date: new Date(now - dayMs * 120).toISOString() },
+    { id: `birth-${pet.id}`, type: 'BIRTH', title: 'Sinh nhật', description: `Ngày sinh dự kiến của ${pet.name}`, date: new Date(now - dayMs * 730).toISOString() },
+  ];
 };
 
 const formatDate = (iso: string) =>
@@ -47,6 +89,9 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
   const [profile, setProfile] = useState<ApplicantProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // State mở/đóng PawHistory cho từng pet
+  const [expandedPawHistoryId, setExpandedPawHistoryId] = useState<string | null>(null);
 
   const [noteContent, setNoteContent] = useState('');
   const [noteType, setNoteType] = useState<ApplicationNoteType | ''>('');
@@ -162,7 +207,6 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
       setDeletingNoteId(null);
     }
   };
-  // ----- End note item actions -----
 
   const handleAddNote = async () => {
     if (!noteContent.trim() || !noteType) return;
@@ -179,6 +223,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
       setIsSubmittingNote(false);
     }
   };
+
   const loadProfile = async () => {
     try {
       setIsLoading(true);
@@ -200,8 +245,6 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [application.id]);
-
-
 
   const fullName = profile?.applicant.fullName || application.fullName || application.user?.name || '';
   const phone = profile?.applicant.phone || application.phone || '';
@@ -246,19 +289,19 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                   <span className="text-[22px] font-bold text-gray-900 leading-none mb-1">
                     {profile ? profile.stats.activeApplications : '–'}
                   </span>
-                  <span className="text-[13px] text-gray-500">Active Applications</span>
+                  <span className="text-[13px] text-gray-500">Đang đăng ký</span>
                 </div>
                 <div className="flex flex-col border-r border-gray-200 pr-10">
                   <span className="text-[22px] font-bold text-gray-900 leading-none mb-1">
                     {profile ? profile.stats.successfulAdoptions : '–'}
                   </span>
-                  <span className="text-[13px] text-gray-500">Successful Adoptions</span>
+                  <span className="text-[13px] text-gray-500">Đã nhận nuôi</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[22px] font-bold text-gray-900 leading-none mb-1">
                     {profile ? profile.stats.totalApplications : '–'}
                   </span>
-                  <span className="text-[13px] text-gray-500">Total Applications</span>
+                  <span className="text-[13px] text-gray-500">Đơn đã ghi nhận</span>
                 </div>
               </div>
             </div>
@@ -286,7 +329,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
               <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-[16px] text-gray-900">
-                    Active Applications ({profile!.activeApplications.length})
+                    Đơn đang đăng ký
                   </h3>
                   <ChevronDown size={18} className="text-gray-400" />
                 </div>
@@ -298,20 +341,22 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                     return (
                       <div
                         key={app.id}
-                        className={`flex items-center gap-3 ${idx !== 0 ? 'border-t border-gray-100 pt-4 mt-4' : ''}`}
+                        className={`flex items-center justify-between gap-3 ${idx !== 0 ? 'border-t border-gray-100 pt-4 mt-4' : ''}`}
                       >
-                        <img
-                          src={app.pet.avatarUrl || '/images/dog-placeholder.png'}
-                          alt={app.pet.name}
-                          className="w-[52px] h-[52px] rounded-[12px] object-cover"
-                        />
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="font-bold text-[15px] text-gray-900">{app.pet.name}</span>
-                          <span className="text-[13px] text-gray-500">{app.shelterName || '—'}</span>
-                          <span className="text-[11px] text-gray-400 mt-0.5">Applied on {formatDate(app.createdAt)}</span>
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <img
+                            src={app.pet.avatarUrl || '/images/dog-placeholder.png'}
+                            alt={app.pet.name}
+                            className="w-[52px] h-[52px] rounded-[12px] object-cover"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-[15px] text-gray-900">{app.pet.name}</span>
+                            <span className="text-[13px] text-gray-500">{app.shelterName || '—'}</span>
+                            <span className="text-[11px] text-gray-400 mt-0.5">Đăng ký ngày {formatDate(app.createdAt)}</span>
+                          </div>
                         </div>
                         <div
-                          className="px-3 py-1 rounded-full border"
+                          className="px-3 py-1 rounded-full border shrink-0"
                           style={{ background: badge.bg, borderColor: badge.border }}
                         >
                           <span className="text-[11px] font-bold" style={{ color: badge.text }}>
@@ -328,7 +373,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
               <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-[16px] text-gray-900">
-                    Adoption History ({profile!.adoptionHistory.length})
+                    Đã nhận nuôi
                   </h3>
                   <ChevronDown size={18} className="text-gray-400" />
                 </div>
@@ -338,7 +383,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                   profile!.adoptionHistory.map((app, idx) => (
                     <div
                       key={app.id}
-                      className={`flex items-center gap-3 py-4 ${idx !== 0 ? 'border-t border-gray-100' : 'pt-0'}`}
+                      className={`flex items-center gap-3 py-4 ${idx !== 0 ? 'border-t border-gray-100' : 'pt-0 pb-0'}`}
                     >
                       <img
                         src={app.pet.avatarUrl || '/images/dog-placeholder.png'}
@@ -348,49 +393,100 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="font-bold text-[15px] text-gray-900">{app.pet.name}</span>
                         <span className="text-[13px] text-gray-500">{app.shelterName || '—'}</span>
-                        <span className="text-[11px] text-gray-400 mt-0.5">Applied on {formatDate(app.createdAt)}</span>
-                      </div>
-                      <div className="bg-[#F2FCF5] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#D1F2D9]">
-                        <Check size={12} className="text-[#1B8A44]" />
-                        <span className="text-[11px] font-bold text-[#1B8A44]">Adopted</span>
+                        <span className="text-[11px] text-gray-400 mt-0.5">Nhận nuôi {formatDate(app.createdAt)}</span>
                       </div>
                     </div>
                   ))
                 )}
               </div>
 
-              {/* Current Pets */}
+              {/* Current Pets with PawHistory */}
               <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-[16px] text-gray-900">
-                    Current Pet ({profile!.currentPets.length})
+                    Thú cưng đang nuôi
                   </h3>
                   <ChevronDown size={18} className="text-gray-400" />
                 </div>
                 {profile!.currentPets.length === 0 ? (
                   <p className="text-[13px] text-gray-400 py-2">Chưa ghi nhận thú cưng nào.</p>
                 ) : (
-                  profile!.currentPets.map((pet, idx) => (
-                    <div
-                      key={pet.id}
-                      className={`flex items-center gap-3 py-4 ${idx !== 0 ? 'border-t border-gray-100' : 'pt-0'}`}
-                    >
-                      <img
-                        src={pet.avatarUrl || '/images/dog-placeholder.png'}
-                        alt={pet.name}
-                        className="w-[52px] h-[52px] rounded-[12px] object-cover"
-                      />
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="font-bold text-[15px] text-gray-900">{pet.name}</span>
-                        <span className="text-[13px] text-gray-500">{pet.status}</span>
-                      </div>
-                      {pet.qrVerificationStatus === 'VERIFIED' && (
-                        <div className="bg-[#FFF8F0] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#FFE1C2]">
-                          <span className="text-[11px] font-bold text-[#E89B5A]">QR Registered</span>
+                  profile!.currentPets.map((pet, idx) => {
+                    const isExpanded = expandedPawHistoryId === pet.id;
+                    const historyData = getOrGeneratePawHistory(pet);
+                    const sortedHistory = [...historyData].sort(
+                      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                    );
+
+                    return (
+                      <div key={pet.id} className={`flex flex-col py-4 ${idx !== 0 ? 'border-t border-gray-100' : 'pt-0 pb-0'}`}>
+                        {/* Pet Info Row */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <img
+                              src={pet.avatarUrl || '/images/dog-placeholder.png'}
+                              alt={pet.name}
+                              className="w-[52px] h-[52px] rounded-[12px] object-cover"
+                            />
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-bold text-[15px] text-gray-900">{pet.name}</span>
+                              <span className="text-[13px] text-gray-500">2 tuổi · {pet.status || 'Chó ta'}</span>
+                              <button 
+                                type="button" 
+                                onClick={() => setExpandedPawHistoryId(isExpanded ? null : pet.id)}
+                                className="flex items-center gap-1 text-[11px] font-semibold text-[#E89B5A] mt-1 hover:underline w-fit"
+                              >
+                                Xem PawHistory 
+                                {isExpanded ? <ChevronUp size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {pet.qrVerificationStatus === 'VERIFIED' && (
+                            <div className="bg-[#FFF8F0] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#FFE1C2] shrink-0">
+                              <span className="text-[11px] font-bold text-[#E89B5A]">QR Registered</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))
+
+                        {/* PawHistory Timeline (Dropdown) */}
+                        {isExpanded && (
+                          <div className="mt-4 pl-[64px] pr-2 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex flex-col">
+                              {sortedHistory.map((item, index) => {
+                                const isLastItem = index === sortedHistory.length - 1;
+                                const cfg = HISTORY_TYPE_CONFIG[item.type] ?? DEFAULT_HISTORY_CONFIG;
+                                const Icon = cfg.Icon;
+                                return (
+                                  <div key={item.id ?? index} className="flex min-h-[44px]">
+                                    <div className="w-6 relative mr-2.5 shrink-0">
+                                      {!isLastItem && (
+                                        <div className="absolute w-[1px] bg-gray-200" style={{ top: 26, bottom: -4, left: 11.5 }} />
+                                      )}
+                                      <div className="w-6 h-6 rounded-full flex items-center justify-center relative z-10" style={{ backgroundColor: cfg.bg }}>
+                                        <Icon size={12} style={{ color: cfg.color }} />
+                                      </div>
+                                    </div>
+                                    <div className={`flex-1 ${!isLastItem ? 'pb-3' : ''}`}>
+                                      <div className="flex justify-between items-start gap-2">
+                                        <p className="text-[12px] font-medium text-black">{item.title}</p>
+                                        <span className="text-[10px] text-[#8E8E93] shrink-0">
+                                          {formatDate(item.date)}
+                                        </span>
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-[10px] text-[#8E8E93] mt-0.5 line-clamp-2">{item.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -399,7 +495,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
             <div className="w-1/2 flex flex-col h-full">
               <div className="bg-white border border-gray-200 rounded-[16px] p-6 shadow-sm flex-1 flex flex-col">
                 <h3 className="font-bold text-[16px] text-gray-900 mb-6">
-                  Shelter Notes ({profile!.notes.length})
+                  Ghi chú từ các trạm
                 </h3>
 
                 <div className="flex flex-col gap-6">
@@ -411,14 +507,21 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       const isLast = idx === profile!.notes.length - 1;
                       const isEditingThis = editingNoteId === note.id;
                       const isDeletingThis = deletingNoteId === note.id;
+                      
+                      // Lấy role của tác giả để hiển thị badge
+                      const authorRole = (note.author as any)?.role || (note as any).authorRole;
 
                       return (
                         <div key={note.id} className="flex gap-4">
                           <div
-                            className="w-10 h-10 rounded-full border flex items-center justify-center shrink-0"
-                            style={{ borderColor: style.color }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
+                            style={{ borderColor: style.color, backgroundColor: `${style.color}10` }}
                           >
-                            <MessageSquare size={18} style={{ color: style.color }} />
+                            <img 
+                               src={note.author?.avatarUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100"} 
+                               className="w-full h-full rounded-full object-cover"
+                               alt="Trạm"
+                            />
                           </div>
                           <div className={`flex flex-col flex-1 ${!isLast ? 'border-b border-gray-100 pb-5' : ''}`}>
                             {isEditingThis ? (
@@ -481,9 +584,17 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             ) : (
                               <>
                                 <div className="flex justify-between items-start mb-1 gap-2">
-                                  <h4 className="font-bold text-[14px] text-gray-900">
-                                    {note.author.name || 'Nhân viên trạm'}
-                                  </h4>
+                                  {/* Tên trạm và Role Badge */}
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-bold text-[14px] text-gray-900">
+                                      {note.author.name || 'Nhân viên trạm'}
+                                    </h4>
+                                    {authorRole && STAFF_ROLE_LABEL[authorRole as keyof typeof STAFF_ROLE_LABEL] && (
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-tight ${ROLE_BADGE_STYLE[authorRole as keyof typeof ROLE_BADGE_STYLE] || 'bg-gray-100 text-gray-600'}`}>
+                                        {STAFF_ROLE_LABEL[authorRole as keyof typeof STAFF_ROLE_LABEL]}
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <button
                                       ref={(el) => { noteButtonRefs.current[note.id] = el; }}
@@ -517,11 +628,11 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
 
                 {/* Add New Note */}
                 <div className="mt-6 border border-dashed border-gray-300 rounded-[16px] p-5 bg-[#FAFAFA]">
-                  <h4 className="font-bold text-[14px] text-gray-900 mb-4">Add New Note</h4>
+                  <h4 className="font-bold text-[14px] text-gray-900 mb-4">Thêm ghi chú</h4>
 
                   <div className="flex flex-col gap-4">
                     <div className="relative" ref={typeDropdownRef}>
-                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Note Type</label>
+                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Loại ghi chú</label>
                       <button
                         type="button"
                         onClick={() => setIsTypeOpen((v) => !v)}
@@ -529,7 +640,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                           }`}
                       >
                         <span className={`text-[13px] ${noteType ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
-                          {noteType ? NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label : 'Select type...'}
+                          {noteType ? NOTE_TYPE_OPTIONS.find((o) => o.value === noteType)?.label : 'Chọn loại ghi chú'}
                         </span>
                         <ChevronDown size={16} className={`text-gray-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
                       </button>
@@ -541,7 +652,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             onClick={() => { setNoteType(''); setIsTypeOpen(false); }}
                             className="w-full text-left px-3 py-2.5 text-[13px] text-gray-400 hover:bg-gray-50"
                           >
-                            Select type...
+                            Chọn loại ghi chú...
                           </button>
                           {NOTE_TYPE_OPTIONS.map((opt) => (
                             <button
@@ -549,7 +660,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                               type="button"
                               onClick={() => { setNoteType(opt.value); setIsTypeOpen(false); }}
                               className={`w-full text-left px-3 py-2.5 text-[13px] transition-colors ${noteType === opt.value
-                                ? 'bg-[#2563EB] text-white font-bold'
+                                ? 'bg-[#E89B5A] text-white font-bold'
                                 : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                             >
@@ -561,27 +672,27 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                     </div>
 
                     <div>
-                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Detail</label>
+                      <label className="text-[12px] font-bold text-gray-700 mb-1.5 block">Chi tiết</label>
                       <textarea
                         rows={3}
                         value={noteContent}
                         onChange={(e) => setNoteContent(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] outline-none resize-none"
-                        placeholder="Enter note detail..."
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] outline-none resize-none focus:border-[#E89B5A]"
+                        placeholder="Chia sẻ dưới tên shelter name"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col items-center mt-4 gap-3">
                     <span className="text-[11px] text-gray-500 text-center">
-                      Share observable facts · Visible only to verified shelters
+                      Chia sẻ thông tin khách quan · Chỉ hiển thị nội bộ
                     </span>
                     <button
                       onClick={handleAddNote}
                       disabled={isSubmittingNote || !noteContent.trim() || !noteType}
-                      className="bg-[#F49494] hover:bg-[#FF7070] transition-colors text-white font-bold text-[13px] py-[12px] px-[29px] rounded-full shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="bg-[#F49494] hover:bg-[#FF7070] transition-colors text-white font-bold text-[13px] py-[10px] px-[32px] rounded-full shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isSubmittingNote ? 'Đang lưu...' : 'Add Shelter Note'}
+                      {isSubmittingNote ? 'Đang lưu...' : 'Thêm ghi chú'}
                     </button>
                   </div>
                 </div>
