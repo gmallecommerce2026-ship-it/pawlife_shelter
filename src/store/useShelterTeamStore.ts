@@ -79,22 +79,22 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
   },
   changeMyPassword: async (oldPassword, newPassword) => {
     try {
-      await apiClient.put('/shelter/team/me/password', { oldPassword, newPassword });
+      await apiClient.patch('/shelter-dashboard/team/me/password', { oldPassword, newPassword });
       toast.success('Đổi mật khẩu thành công');
       return true;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Đổi mật khẩu thất bại');
+      toast.error(error?.response?.data?.message || error?.message || 'Đổi mật khẩu thất bại');
       return false;
     }
   },
 
   changeMemberPassword: async (memberId, newPassword) => {
     try {
-      await apiClient.put(`/shelter/team/members/${memberId}/password`, { newPassword });
+      await apiClient.patch(`/shelter-dashboard/team/${memberId}/password`, { newPassword });
       toast.success('Đặt lại mật khẩu thành công');
       return true;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Đặt lại mật khẩu thất bại');
+      toast.error(error?.response?.data?.message || error?.message || 'Đặt lại mật khẩu thất bại');
       return false;
     }
   },
