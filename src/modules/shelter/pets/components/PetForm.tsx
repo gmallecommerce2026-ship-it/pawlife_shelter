@@ -48,7 +48,11 @@ import { AdoptionApplication } from '@/types/application';
 import { PetStatusDropdown } from '@/components/PetStatusBadge';
 import { CustomSelect, SelectOption } from '@/components/ui/CustomSelect';
 import { BREED_DATA } from '@/constants/breedData';
-import { localizeHistoryDescription, localizeHistoryTitle } from '@/utils/pawHistoryLocalize';
+import {
+  localizeHistoryDescription,
+  localizeHistoryTitle,
+  formatAgeFromDob,
+} from '@/utils/pawHistoryLocalize';
 export interface Bilingual {
   vi: string;
   en: string;
@@ -1344,9 +1348,11 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                           </div>
                           <div className={`flex-1 ${!isLastItem ? 'pb-3' : ''}`}>
                             <div className="flex justify-between items-start gap-2">
-                              <p className="text-[12px] font-medium text-black">{localizeHistoryTitle(item.title)}</p>
+                              <p className="text-[12px] font-medium text-black">{localizeHistoryTitle(item)}</p>
                               <span className="text-[10px] text-[#8E8E93] shrink-0">
-                                {new Date(item.date).toLocaleDateString('vi-VN')}
+                                {item.type === 'BIRTH'
+                                  ? formatAgeFromDob(item.date) || new Date(item.date).toLocaleDateString('vi-VN')
+                                  : new Date(item.date).toLocaleDateString('vi-VN')}
                               </span>
                             </div>
                             {item.description && (

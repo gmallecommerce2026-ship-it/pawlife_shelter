@@ -49,7 +49,11 @@ import { NeedMoreInfoModal } from '@/modules/shelter/applications/components/Nee
 import { InterviewScheduleModal } from '@/modules/shelter/applications/components/InterviewScheduleModal';
 import { ApproveApplicationModal } from '@/modules/shelter/applications/components/ApproveApplicationModal';
 import { applicationService } from '@/services/applicationService';
-import { localizeHistoryTitle, localizeHistoryDescription } from '@/utils/pawHistoryLocalize';
+import {
+  localizeHistoryDescription,
+  localizeHistoryTitle,
+  formatAgeFromDob,
+} from '@/utils/pawHistoryLocalize';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; text: string }> = {
   SUBMITTED: { label: 'Mới', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
@@ -944,7 +948,11 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                             <div className={`flex-1 ${!isLastItem ? 'pb-3' : ''}`}>
                               <div className="flex justify-between items-start gap-2">
                                 <p className="text-[12px] font-medium text-black">{title}</p>
-                                <p className="text-[10px] text-[#8E8E93] shrink-0">{fmtDate(item.date)}</p>
+                                <span className="text-[10px] text-[#8E8E93] shrink-0">
+                                  {item.type === 'BIRTH'
+                                    ? formatAgeFromDob(item.date) || new Date(item.date).toLocaleDateString('vi-VN')
+                                    : new Date(item.date).toLocaleDateString('vi-VN')}
+                                </span>
                               </div>
                               {item.description && (
                                 <p className="text-[10px] text-[#8E8E93] mt-0.5">{localizeHistoryDescription(item.description)}</p>
