@@ -48,6 +48,7 @@ import { MoveToPendingModal } from '@/modules/shelter/applications/components/Mo
 import { NeedMoreInfoModal } from '@/modules/shelter/applications/components/NeedMoreInfoModal';
 import { InterviewScheduleModal } from '@/modules/shelter/applications/components/InterviewScheduleModal';
 import { ApproveApplicationModal } from '@/modules/shelter/applications/components/ApproveApplicationModal';
+import { applicationService } from '@/services/applicationService';
 
 const APPLICATION_STATUS_STYLE: Record<AdoptionApplication['status'], { bg: string; color: string; label: string }> = {
   PENDING: { bg: '#E8F1FF', color: '#5A90DA', label: 'Pending' },
@@ -686,6 +687,16 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       console.error('[PetDetailPage] Lỗi tải lại đơn nhận nuôi:', err);
     }
   };
+  const handleCompleteAdoption = async (applicationId: string) => {
+    try {
+      await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
+      setApproveApp(null);
+      refetchApplications();
+    } catch (error) {
+      console.error('Lỗi khi hoàn tất nhận nuôi:', error);
+      alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
+    }
+  };
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row gap-7 items-start px-2 py-1">
@@ -1258,6 +1269,13 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {applications.map((app) => {
                   const badge = APPLICATION_STATUS_STYLE[app.status] || APPLICATION_STATUS_STYLE.PENDING;
+
+                  // 👇 Map đúng dữ liệu từ AdoptionApplication
+                  const applicantName = app.fullName || app.user?.name || 'Người nhận nuôi';
+                  const applicantAvatar = app.user?.avatarUrl || null;
+                  const applicantPhone = app.phone || 'Chưa có SĐT';
+                  const applicantEmail = app.user?.email || app.zalo || 'Chưa có email';
+
                   return (
                     <button
                       key={app.id}
@@ -1265,9 +1283,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       onClick={() => handleOpenApplication(app)}
                       className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#E89B5A] shadow-sm p-5 flex items-start gap-3.5 transition-colors cursor-pointer"
                     >
-                      <div className="relative w-[57px] h-[57px] rounded-full overflow-hidden bg-gray-100 shrink-0">
-                        {isValidImageUrl(app.applicantAvatar) ? (
-                          <Image src={app.applicantAvatar as string} alt={app.applicantName} fill className="object-cover" />
+                      <div className="relative w-[57px] h-[57px] rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                        {isValidImageUrl(applicantAvatar) ? (
+                          <Image src={applicantAvatar as string} alt={applicantName} fill className="object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
                             <UserIcon size={20} />
@@ -1276,7 +1294,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[15px] font-semibold text-black truncate">{app.applicantName}</p>
+                          <p className="text-[15px] font-semibold text-black truncate">{applicantName}</p>
                           <span
                             className="text-[11px] font-medium px-[13px] py-[5px] rounded-full shrink-0"
                             style={{ backgroundColor: badge.bg, color: badge.color }}
@@ -1286,15 +1304,15 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
                           <FiPhone size={13} className="text-gray-400 shrink-0" />
-                          <span className="truncate">{app.applicantPhone || 'Chưa có SĐT'}</span>
+                          <span className="truncate">{applicantPhone}</span>
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
                           <FiMail size={13} className="text-gray-400 shrink-0" />
-                          <span className="truncate">{app.applicantEmail || 'Chưa có email'}</span>
+                          <span className="truncate">{applicantEmail}</span>
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
                           <FiCalendar size={13} className="text-gray-400 shrink-0" />
-                          <span className="truncate">Submitted on: {fmtDate(app.submittedAt) || 'Chưa rõ'}</span>
+                          <span className="truncate">Ngày nộp: {fmtDate(app.createdAt) || 'Chưa rõ'}</span>
                         </div>
                       </div>
                     </button>
@@ -1410,9 +1428,17 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       {needInfoApp && (
         <NeedMoreInfoModal
           application={needInfoApp}
-          onClose={() => setNeedInfoApp(null)}
-          onSubmit={async () => {
-            await moveApplication(needInfoApp.id, 'NEED_MORE_INFO');
+          initialDocuments={[]} // Ở trang detail không có pre-load docs
+          socket={null}
+          onClose={() => { setNeedInfoApp(null); refetchApplications(); }}
+          onRefresh={refetchApplications}
+          onSubmit={async (data) => {
+            // 👇 Bắt action trả về để chuyển cột tương tự Kanban
+            const targetStatus = data.action === 'MOVE_TO_INTERVIEW'
+              ? 'INTERVIEW_SCHEDULED'
+              : 'NEED_MORE_INFO';
+
+            await moveApplication(needInfoApp.id, targetStatus, data?.reviewNote);
             setNeedInfoApp(null);
             refetchApplications();
           }}
@@ -1421,20 +1447,30 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       {interviewApp && (
         <InterviewScheduleModal
           application={interviewApp}
-          onClose={() => setInterviewApp(null)}
-          onSubmit={async () => {
-            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED');
+          onClose={() => { setInterviewApp(null); refetchApplications(); }}
+          onRefresh={refetchApplications}
+          onSubmit={async (data) => {
+            const res = await applicationService.scheduleAppointment(interviewApp.id, data);
+            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED'); // Đồng bộ store nếu cần
             setInterviewApp(null);
             refetchApplications();
+            return res;
           }}
         />
       )}
       {approveApp && (
         <ApproveApplicationModal
           application={approveApp}
-          onClose={() => setApproveApp(null)}
-          onSubmit={async () => {
-            await moveApplication(approveApp.id, 'APPROVED');
+          onClose={() => { setApproveApp(null); refetchApplications(); }}
+          onRefresh={refetchApplications}
+          onCompleteAdoption={handleCompleteAdoption} // 👈 Gắn hàm hoàn tất nhận nuôi
+          onScheduleInterview={async (id, d) => {
+            const res = await applicationService.scheduleAppointment(id, d);
+            refetchApplications();
+            return res;
+          }}
+          onSubmit={async (data) => {
+            await moveApplication(approveApp.id, 'APPROVED', data?.reviewNote);
             setApproveApp(null);
             refetchApplications();
           }}
