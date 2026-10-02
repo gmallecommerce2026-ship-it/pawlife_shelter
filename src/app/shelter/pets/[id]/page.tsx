@@ -50,10 +50,14 @@ import { InterviewScheduleModal } from '@/modules/shelter/applications/component
 import { ApproveApplicationModal } from '@/modules/shelter/applications/components/ApproveApplicationModal';
 import { applicationService } from '@/services/applicationService';
 
-const APPLICATION_STATUS_STYLE: Record<AdoptionApplication['status'], { bg: string; color: string; label: string }> = {
-  PENDING: { bg: '#E8F1FF', color: '#5A90DA', label: 'Pending' },
-  APPROVED: { bg: '#EBFFE2', color: '#77C852', label: 'Approved' },
-  REJECTED: { bg: '#FFEAEA', color: '#FF5A5A', label: 'Rejected' },
+const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; text: string }> = {
+  SUBMITTED: { label: 'Mới', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
+  PENDING: { label: 'Đang xem xét', bg: '#EFF6FF', border: '#BFDBFE', text: '#3B82F6' },
+  NEED_MORE_INFO: { label: 'Cần bổ sung', bg: '#FFF8F0', border: '#FFE1C2', text: '#E89B5A' },
+  INTERVIEW_SCHEDULED: { label: 'Hẹn phỏng vấn', bg: '#F4E8FF', border: '#E9D5FF', text: '#8A38D4' },
+  APPROVED: { label: 'Đã duyệt', bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+  ADOPTION_COMPLETED: { label: 'Đã nhận nuôi', bg: '#F2FCF5', border: '#D1F2D9', text: '#1B8A44' },
+  CLOSED: { label: 'Đóng', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
 };
 
 const MOCK_DOCUMENTS = [
@@ -1268,10 +1272,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
             applications.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {applications.map((app: any) => {
-                  const badge = APPLICATION_STATUS_STYLE[app.status as keyof typeof APPLICATION_STATUS_STYLE] || APPLICATION_STATUS_STYLE.PENDING;
+                  // 👇 SỬA DÒNG NÀY: Dùng STATUS_BADGE thay vì APPLICATION_STATUS_STYLE
+                  const badge = STATUS_BADGE[app.status] || STATUS_BADGE.PENDING;
                   
-                  // 👇 SỬA LẠI ĐOẠN NÀY: Ưu tiên lấy các trường rút gọn (applicantName, applicantPhone...)
-                  // Nếu không có mới fallback về các trường gốc của bảng AdoptionApplication
                   const applicantName = app.applicantName || app.fullName || app.user?.name || 'Người nhận nuôi';
                   const applicantAvatar = app.applicantAvatar || app.user?.avatarUrl || null;
                   const applicantPhone = app.applicantPhone || app.phone || 'Chưa có SĐT';
@@ -1297,12 +1300,20 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[15px] font-semibold text-black truncate">{applicantName}</p>
+                          
+                          {/* 👇 SỬA THẺ SPAN NÀY: Thêm border và đổi màu chữ (color: badge.text) */}
                           <span
-                            className="text-[11px] font-medium px-[13px] py-[5px] rounded-full shrink-0"
-                            style={{ backgroundColor: badge.bg, color: badge.color }}
+                            className="text-[11px] font-bold px-[10px] py-[3px] rounded-full border shrink-0"
+                            style={{ 
+                              backgroundColor: badge.bg, 
+                              borderColor: badge.border, 
+                              color: badge.text 
+                            }}
                           >
                             {badge.label}
                           </span>
+                          {/* 👆 KẾT THÚC SỬA */}
+
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
                           <FiPhone size={13} className="text-gray-400 shrink-0" />
