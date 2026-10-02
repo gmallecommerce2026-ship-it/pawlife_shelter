@@ -49,6 +49,7 @@ import { NeedMoreInfoModal } from '@/modules/shelter/applications/components/Nee
 import { InterviewScheduleModal } from '@/modules/shelter/applications/components/InterviewScheduleModal';
 import { ApproveApplicationModal } from '@/modules/shelter/applications/components/ApproveApplicationModal';
 import { applicationService } from '@/services/applicationService';
+import { localizeHistoryTitle, localizeHistoryDescription } from '@/utils/pawHistoryLocalize';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; text: string }> = {
   SUBMITTED: { label: 'Mới', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
@@ -931,7 +932,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         const isLastItem = index === sortedHistory.length - 1;
                         const cfg = HISTORY_TYPE_CONFIG[item.type] ?? DEFAULT_HISTORY_CONFIG;
                         const Icon = cfg.Icon;
-                        const title = item.title || HISTORY_TYPE_LABEL[item.type] || item.type;
+                        const title = localizeHistoryTitle(item);
                         return (
                           <div key={item.id ?? index} className="flex min-h-[48px]">
                             <div className="w-6 relative mr-2.5 shrink-0">
@@ -945,7 +946,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                 <p className="text-[12px] font-medium text-black">{title}</p>
                                 <p className="text-[10px] text-[#8E8E93] shrink-0">{fmtDate(item.date)}</p>
                               </div>
-                              {item.description && <p className="text-[10px] text-[#8E8E93] mt-0.5">{item.description}</p>}
+                              {item.description && (
+                                <p className="text-[10px] text-[#8E8E93] mt-0.5">{localizeHistoryDescription(item.description)}</p>
+                              )}
                             </div>
                           </div>
                         );
@@ -1185,7 +1188,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 {applications.map((app: any) => {
                   // 👇 Dùng STATUS_BADGE chuẩn
                   const badge = STATUS_BADGE[app.status] || STATUS_BADGE.PENDING;
-                  
+
                   // 👇 Xử lý an toàn dữ liệu từ backend (ưu tiên trường phẳng -> trường gốc -> mặc định)
                   const applicantName = app.applicantName || app.fullName || app.user?.name || 'Người nhận nuôi';
                   const applicantAvatar = app.applicantAvatar || app.user?.avatarUrl || null;
@@ -1212,13 +1215,13 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[15px] font-semibold text-black truncate">{applicantName}</p>
-                          
+
                           <span
                             className="text-[11px] font-bold px-[10px] py-[3px] rounded-full border shrink-0"
-                            style={{ 
-                              backgroundColor: badge.bg, 
-                              borderColor: badge.border, 
-                              color: badge.text 
+                            style={{
+                              backgroundColor: badge.bg,
+                              borderColor: badge.border,
+                              color: badge.text
                             }}
                           >
                             {badge.label}
@@ -1374,7 +1377,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           onRefresh={refetchApplications}
           onSubmit={async (data) => {
             const res = await applicationService.scheduleAppointment(interviewApp.id, data);
-            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED'); 
+            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED');
             setInterviewApp(null);
             refetchApplications();
             return res;
@@ -1386,7 +1389,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           application={approveApp}
           onClose={() => { setApproveApp(null); refetchApplications(); }}
           onRefresh={refetchApplications}
-          onCompleteAdoption={handleCompleteAdoption} 
+          onCompleteAdoption={handleCompleteAdoption}
           onScheduleInterview={async (id, d) => {
             const res = await applicationService.scheduleAppointment(id, d);
             refetchApplications();
