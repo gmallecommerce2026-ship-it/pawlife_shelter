@@ -1267,14 +1267,16 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           {activeTab === 'application' && (
             applications.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {applications.map((app) => {
-                  const badge = APPLICATION_STATUS_STYLE[app.status] || APPLICATION_STATUS_STYLE.PENDING;
-
-                  // 👇 Map đúng dữ liệu từ AdoptionApplication
-                  const applicantName = app.fullName || app.user?.name || 'Người nhận nuôi';
-                  const applicantAvatar = app.user?.avatarUrl || null;
-                  const applicantPhone = app.phone || 'Chưa có SĐT';
-                  const applicantEmail = app.user?.email || app.zalo || 'Chưa có email';
+                {applications.map((app: any) => {
+                  const badge = APPLICATION_STATUS_STYLE[app.status as keyof typeof APPLICATION_STATUS_STYLE] || APPLICATION_STATUS_STYLE.PENDING;
+                  
+                  // 👇 SỬA LẠI ĐOẠN NÀY: Ưu tiên lấy các trường rút gọn (applicantName, applicantPhone...)
+                  // Nếu không có mới fallback về các trường gốc của bảng AdoptionApplication
+                  const applicantName = app.applicantName || app.fullName || app.user?.name || 'Người nhận nuôi';
+                  const applicantAvatar = app.applicantAvatar || app.user?.avatarUrl || null;
+                  const applicantPhone = app.applicantPhone || app.phone || 'Chưa có SĐT';
+                  const applicantEmail = app.applicantEmail || app.user?.email || app.zalo || 'Chưa có email';
+                  const submittedDate = app.submittedAt || app.createdAt;
 
                   return (
                     <button
@@ -1312,7 +1314,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
                           <FiCalendar size={13} className="text-gray-400 shrink-0" />
-                          <span className="truncate">Ngày nộp: {fmtDate(app.createdAt) || 'Chưa rõ'}</span>
+                          <span className="truncate">Ngày nộp: {fmtDate(submittedDate) || 'Chưa rõ'}</span>
                         </div>
                       </div>
                     </button>
