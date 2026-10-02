@@ -280,6 +280,12 @@ export const ShelterProfileForm = () => {
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
+    const bio = (values.bio || '').trim();
+    const desc = (values.description || '').trim();
+    if (bio && desc && bio === desc) {
+      alert('Mô tả ngắn và Giới thiệu đang giống nhau. Vui lòng nhập nội dung khác nhau để app không hiển thị lặp.');
+      return;
+    }
     if (e) e.preventDefault();
     if (!values.address) {
       alert('Vui lòng chọn địa chỉ trên bản đồ');
@@ -406,20 +412,11 @@ export const ShelterProfileForm = () => {
                   {values.bio && (
                     <p className="text-[15px] text-gray-600 mb-2 leading-relaxed">{values.bio}</p>
                   )}
-
-                  <div className="flex flex-col gap-5">
-                    <div>
-                      <span className="text-[12px] text-gray-400 font-bold mb-1.5 block">Giới thiệu</span>
-                      <p className="text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
-                        {values.description || 'Chưa cập nhật'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[12px] text-gray-400 font-bold mb-1.5 block">Chính sách nhận nuôi</span>
-                      <p className="text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
-                        {values.policy || 'Chưa cập nhật'}
-                      </p>
-                    </div>
+                  <div>
+                    <span className="text-[12px] text-gray-400 font-bold mb-1.5 block">Giới thiệu</span>
+                    <p className="text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
+                      {values.description || 'Chưa cập nhật'}
+                    </p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-2">
                     <div className="flex items-start gap-4">
