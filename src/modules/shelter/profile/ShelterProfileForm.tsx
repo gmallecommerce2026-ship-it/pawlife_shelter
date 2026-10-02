@@ -515,16 +515,6 @@ export const ShelterProfileForm = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Chính sách nhận nuôi</label>
-                    <textarea
-                      value={values.policy}
-                      onChange={(e) => setValues(p => ({ ...p, policy: e.target.value }))}
-                      placeholder="Điều kiện, quy trình, phí hỗ trợ, cam kết sau nhận nuôi..."
-                      rows={5}
-                      className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-y"
-                    />
-                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
