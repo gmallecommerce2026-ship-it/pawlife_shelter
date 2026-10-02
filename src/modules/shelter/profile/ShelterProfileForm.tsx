@@ -101,7 +101,7 @@ export const ShelterProfileForm = () => {
   const profileCoverUrl = profile?.coverUrl;
 
   const { members, invitations, me, isLoading: isTeamLoading } = useShelterTeam();
-  
+
   // BỔ SUNG CÁC ACTION ĐỔI PASSWORD
   const { fetchTeam, fetchMe, updateMe, updateMemberRole, removeMember, cancelInvitation, updateMemberName, changeMyPassword, changeMemberPassword } = useShelterTeamActions() as any;
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -192,26 +192,38 @@ export const ShelterProfileForm = () => {
   const handleSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pwdTarget || !newPwd.trim()) return;
-    
-    setIsSavingPwd(true);
-    let success = false;
-    
-    if (pwdTarget.type === 'me') {
-      if (!oldPwd.trim()) {
-        alert("Vui lòng nhập mật khẩu cũ!");
-        setIsSavingPwd(false);
-        return;
-      }
-      success = await changeMyPassword(oldPwd, newPwd);
-    } else {
-      success = await changeMemberPassword(pwdTarget.id, newPwd);
+
+    if (pwdTarget.type === 'me' && !oldPwd.trim()) {
+      alert('Vui lòng nhập mật khẩu cũ!');
+      return;
     }
 
-    setIsSavingPwd(false);
-    if (success) {
-      setPwdTarget(null);
-      setOldPwd('');
-      setNewPwd('');
+    setIsSavingPwd(true);
+    try {
+      let success = false;
+
+      if (pwdTarget.type === 'me') {
+        if (typeof changeMyPassword !== 'function') {
+          throw new Error('changeMyPassword chưa được định nghĩa trong store');
+        }
+        success = await changeMyPassword(oldPwd, newPwd);
+      } else {
+        if (typeof changeMemberPassword !== 'function') {
+          throw new Error('changeMemberPassword chưa được định nghĩa trong store');
+        }
+        success = await changeMemberPassword(pwdTarget.id, newPwd);
+      }
+
+      if (success) {
+        setPwdTarget(null);
+        setOldPwd('');
+        setNewPwd('');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Có lỗi xảy ra khi đổi mật khẩu');
+    } finally {
+      setIsSavingPwd(false);
     }
   };
 
@@ -554,12 +566,16 @@ export const ShelterProfileForm = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* BỔ SUNG: Nút Đổi mật khẩu cá nhân */}
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setPwdTarget({ id: me?.id || '', name: displayName, type: 'me' })}
+                  onClick={() => {
+                    setOldPwd('');
+                    setNewPwd('');
+                    setPwdTarget({ id: me?.id || '', name: displayName, type: 'me' });
+                  }}
                   className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium text-[14px] px-4 py-2.5 rounded-[8px] transition-colors flex items-center gap-2"
                 >
                   <Key size={16} /> Đổi mật khẩu
@@ -632,7 +648,7 @@ export const ShelterProfileForm = () => {
                             alt={member.name || member.email}
                             className="w-8 h-8 rounded-full object-cover shrink-0"
                           />
-                          
+
                           {/* KHU VỰC CHỈNH SỬA TÊN THÀNH VIÊN */}
                           {editingMemberId === member.id ? (
                             <div className="flex items-center gap-2">
@@ -677,18 +693,18 @@ export const ShelterProfileForm = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <span className="text-[14px] text-gray-500 truncate pr-2">{member.email}</span>
-                        
+
                         <div>
                           {canEditRole ? (
                             <select
                               value={member.shelterRole}
                               onChange={(e) => updateMemberRole(member.id, e.target.value as any)}
                               className={`px-3 py-1 rounded-full text-[12px] font-medium border outline-none cursor-pointer ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
-                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
-                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
-                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                    'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
                                 }`}
                             >
                               {(['ADMIN', 'MEMBER', 'VOLUNTEER', 'VETERINARIAN'] as const).map((r) => (
@@ -698,23 +714,27 @@ export const ShelterProfileForm = () => {
                           ) : (
                             <span
                               className={`px-3 py-1 rounded-full text-[12px] font-medium border w-fit inline-block ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
-                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
-                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
-                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                    'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
                                 }`}
                             >
                               {STAFF_ROLE_LABEL[member.shelterRole]}
                             </span>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center justify-end gap-3">
                           {isCurrentUserAdmin && !isSelf && (
                             <>
                               {/* BỔ SUNG: Nút đổi mật khẩu cho thành viên (Chỉ Admin) */}
                               <button
                                 type="button"
-                                onClick={() => setPwdTarget({ id: member.id, name: member.name || member.email, type: 'member' })}
+                                onClick={() => {
+                                  setOldPwd('');
+                                  setNewPwd('');
+                                  setPwdTarget({ id: member.id, name: member.name || member.email, type: 'member' });
+                                }}
                                 className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors"
                                 title="Đổi mật khẩu"
                               >
@@ -794,15 +814,15 @@ export const ShelterProfileForm = () => {
           </div>
         </div>
       )}
-      
+
       {isInviteOpen && <InviteMemberModal onClose={() => setIsInviteOpen(false)} />}
 
       {/* MODAL ĐỔI MẬT KHẨU */}
       {pwdTarget && (
         <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setPwdTarget(null)}>
-          <form 
+          <form
             onSubmit={handleSubmitPassword}
-            className="bg-white w-full max-w-[420px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150" 
+            className="bg-white w-full max-w-[420px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -812,12 +832,12 @@ export const ShelterProfileForm = () => {
             >
               <X size={20} strokeWidth={2} />
             </button>
-            
+
             <h3 className="text-[18px] font-bold text-gray-900 mb-1">
               {pwdTarget.type === 'me' ? 'Đổi mật khẩu cá nhân' : 'Đặt lại mật khẩu'}
             </h3>
             <p className="text-[13px] text-gray-500 mb-6">
-              {pwdTarget.type === 'me' 
+              {pwdTarget.type === 'me'
                 ? 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới của bạn.'
                 : <>Bạn đang đặt lại mật khẩu cho thành viên <strong className="text-gray-800">{pwdTarget.name}</strong>.</>
               }

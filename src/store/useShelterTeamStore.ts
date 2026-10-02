@@ -206,6 +206,8 @@ export const useShelterTeamActions = () =>
     fetchMe: s.fetchMe,
     updateMe: s.updateMe,
     updateMemberName: s.updateMemberName, // XUẤT HÀM NÀY RA CHO UI DÙNG
+    changeMyPassword: s.changeMyPassword,
+    changeMemberPassword: s.changeMemberPassword,
     inviteMember: s.inviteMember,
     updateMemberRole: s.updateMemberRole,
     removeMember: s.removeMember,
