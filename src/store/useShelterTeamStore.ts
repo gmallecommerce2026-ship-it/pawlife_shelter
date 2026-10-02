@@ -79,16 +79,14 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
     set({ isSubmitting: true });
     try {
       let avatarUrl = undefined;
-      
-      // Nếu user có chọn file ảnh mới -> Upload lên cloud để lấy URL
       if (avatarFile) {
-        avatarUrl = await uploadOne(avatarFile, 'user-avatars');
+        // 👇 ĐỔI TÊN FOLDER Ở DÒNG NÀY (VD: 'avatars' hoặc 'images')
+        avatarUrl = await uploadOne(avatarFile, 'avatars'); 
       }
 
-      // Gọi API cập nhật thông tin
+      // Gọi API cập nhật
       const updated = await shelterTeamService.updateMe(name, avatarUrl);
       
-      // Cập nhật lại UI state ngay lập tức
       set((s) => ({
         me: updated,
         members: s.members.map((m) => (m.id === updated.id ? { ...m, name: updated.name, avatarUrl: updated.avatarUrl || m.avatarUrl } : m)),
