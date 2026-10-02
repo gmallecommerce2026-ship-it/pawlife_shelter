@@ -17,6 +17,13 @@ export const resolveNoteRole = (note: any): ShelterStaffRole | undefined => {
   // Chỉ chấp nhận giá trị nằm trong enum/union thật
   return normalized in STAFF_ROLE_LABEL ? (normalized as ShelterStaffRole) : undefined;
 };
+export interface PawHistoryItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  date: string;
+}
 export type ApplicationStatus =
   | 'SUBMITTED' | 'PENDING' | 'NEED_MORE_INFO'
   | 'INTERVIEW_SCHEDULED' | 'APPROVED' | 'ADOPTION_COMPLETED' | 'CLOSED';
@@ -120,6 +127,7 @@ export interface ApplicantProfileResponse {
     status: string;
     avatarUrl: string | null;
     qrVerificationStatus: string;
+    pawHistory: PawHistoryItem[];
   }[];
   notes: {
     id: string;

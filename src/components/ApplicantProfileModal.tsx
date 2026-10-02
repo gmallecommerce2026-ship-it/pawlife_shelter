@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag, 
-  Loader2, MoreVertical, Pencil, Trash2, 
+import {
+  X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag,
+  Loader2, MoreVertical, Pencil, Trash2,
   Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile
 } from 'lucide-react';
 import { AdoptionApplication, ROLE_BADGE_STYLE } from '@/types/application';
@@ -70,21 +70,21 @@ const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string;
 const DEFAULT_HISTORY_CONFIG = { Icon: Cake, bg: '#F5F5F5', color: '#8E8E93' };
 
 // Hàm tạo Seed Data cho Pet chưa có lịch sử
-const getOrGeneratePawHistory = (pet: any) => {
-  if (Array.isArray(pet.pawHistory) && pet.pawHistory.length > 0) {
-    return pet.pawHistory;
-  }
-  // Tạo data ngẫu nhiên để test UI
-  const now = Date.now();
-  const dayMs = 86400000;
-  return [
-    { id: `transfer-${pet.id}`, type: 'TRANSFER', title: 'Nhận nuôi thành công', description: `Chuyển giao quyền chăm sóc ${pet.name}`, date: new Date(now - dayMs * 2).toISOString() },
-    { id: `qr-${pet.id}`, type: 'QR_LINKED', title: 'Đăng ký mã QR', description: 'Kích hoạt vòng cổ PawLife', date: new Date(now - dayMs * 10).toISOString() },
-    { id: `vaccine-${pet.id}`, type: 'VACCINE', title: 'Tiêm phòng dại', description: 'Tiêm phòng định kỳ (Rabies)', date: new Date(now - dayMs * 45).toISOString() },
-    { id: `shelter-${pet.id}`, type: 'UNDER_SHELTER_CARE', title: 'Được cứu hộ', description: 'Đưa về trạm chăm sóc và điều trị', date: new Date(now - dayMs * 120).toISOString() },
-    { id: `birth-${pet.id}`, type: 'BIRTH', title: 'Sinh nhật', description: `Ngày sinh dự kiến của ${pet.name}`, date: new Date(now - dayMs * 730).toISOString() },
-  ];
-};
+// const getOrGeneratePawHistory = (pet: any) => {
+//   if (Array.isArray(pet.pawHistory) && pet.pawHistory.length > 0) {
+//     return pet.pawHistory;
+//   }
+//   // Tạo data ngẫu nhiên để test UI
+//   const now = Date.now();
+//   const dayMs = 86400000;
+//   return [
+//     { id: `transfer-${pet.id}`, type: 'TRANSFER', title: 'Nhận nuôi thành công', description: `Chuyển giao quyền chăm sóc ${pet.name}`, date: new Date(now - dayMs * 2).toISOString() },
+//     { id: `qr-${pet.id}`, type: 'QR_LINKED', title: 'Đăng ký mã QR', description: 'Kích hoạt vòng cổ PawLife', date: new Date(now - dayMs * 10).toISOString() },
+//     { id: `vaccine-${pet.id}`, type: 'VACCINE', title: 'Tiêm phòng dại', description: 'Tiêm phòng định kỳ (Rabies)', date: new Date(now - dayMs * 45).toISOString() },
+//     { id: `shelter-${pet.id}`, type: 'UNDER_SHELTER_CARE', title: 'Được cứu hộ', description: 'Đưa về trạm chăm sóc và điều trị', date: new Date(now - dayMs * 120).toISOString() },
+//     { id: `birth-${pet.id}`, type: 'BIRTH', title: 'Sinh nhật', description: `Ngày sinh dự kiến của ${pet.name}`, date: new Date(now - dayMs * 730).toISOString() },
+//   ];
+// };
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -425,7 +425,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                 ) : (
                   profile!.currentPets.map((pet, idx) => {
                     const isExpanded = expandedPawHistoryId === pet.id;
-                    const historyData = getOrGeneratePawHistory(pet);
+                    const historyData = pet.pawHistory || [];
                     const sortedHistory = [...historyData].sort(
                       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
                     );
@@ -443,17 +443,17 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             <div className="flex flex-col min-w-0 flex-1">
                               <span className="font-bold text-[15px] text-gray-900">{pet.name}</span>
                               <span className="text-[13px] text-gray-500">2 tuổi · {pet.status || 'Chó ta'}</span>
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => setExpandedPawHistoryId(isExpanded ? null : pet.id)}
                                 className="flex items-center gap-1 text-[11px] font-semibold text-[#E89B5A] mt-1 hover:underline w-fit"
                               >
-                                Xem PawHistory 
+                                Xem PawHistory
                                 {isExpanded ? <ChevronUp size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
                               </button>
                             </div>
                           </div>
-                          
+
                           {pet.qrVerificationStatus === 'VERIFIED' && (
                             <div className="bg-[#FFF8F0] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#FFE1C2] shrink-0">
                               <span className="text-[11px] font-bold text-[#E89B5A]">QR Registered</span>
@@ -519,7 +519,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       const isLast = idx === profile!.notes.length - 1;
                       const isEditingThis = editingNoteId === note.id;
                       const isDeletingThis = deletingNoteId === note.id;
-                      
+
                       // Lấy role của tác giả để hiển thị badge
                       const authorRole = (note.author as any)?.role || (note as any).authorRole;
 
@@ -529,10 +529,10 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
                             style={{ borderColor: style.color, backgroundColor: `${style.color}10` }}
                           >
-                            <img 
-                               src={note.author?.avatarUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100"} 
-                               className="w-full h-full rounded-full object-cover"
-                               alt="Trạm"
+                            <img
+                              src={note.author?.avatarUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100"}
+                              className="w-full h-full rounded-full object-cover"
+                              alt="Trạm"
                             />
                           </div>
                           <div className={`flex flex-col flex-1 ${!isLast ? 'border-b border-gray-100 pb-5' : ''}`}>
