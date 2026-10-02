@@ -14,7 +14,9 @@ import {
   Plus,
   Check,
   Lock,
-  Clock
+  Clock,
+  X,
+  Loader2
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShelterProfile, useShelterProfileActions } from '@/stores/useShelterProfileStore';
@@ -24,6 +26,7 @@ import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamSto
 import { STAFF_ROLE_LABEL, STAFF_ROLE_COLOR } from '@/types/shelterTeam';
 import { InviteMemberModal } from '@/components/InviteMemberModal';
 import { getUserFromToken } from '@/utils/getUserFromToken';
+
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   ssr: false,
   loading: () => <div className="w-full h-[50px] bg-gray-50 border border-gray-200 rounded-xl animate-pulse" />
@@ -95,18 +98,29 @@ export const ShelterProfileForm = () => {
   const profileLat = profile?.latitude;
   const profileLng = profile?.longitude;
   const profileCoverUrl = profile?.coverUrl;
+  
   const { members, invitations, me, isLoading: isTeamLoading } = useShelterTeam();
-  const { fetchTeam, fetchMe, updateMe, updateMemberRole, removeMember, cancelInvitation } = useShelterTeamActions();
+  // LƯU Ý: Thêm updateMemberName vào store nếu chưa có
+  const { fetchTeam, fetchMe, updateMe, updateMemberRole, removeMember, cancelInvitation, updateMemberName } = useShelterTeamActions() as any;
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
+  // States cho quản lý tài khoản cá nhân (Me)
   const [meName, setMeName] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isSavingMe, setIsSavingMe] = useState(false);
+
+  // States cho chỉnh sửa tên thành viên trong danh sách
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editMemberName, setEditMemberName] = useState('');
+  const [isSavingMember, setIsSavingMember] = useState(false);
+
   const [tokenUser, setTokenUser] = useState<any>(null);
   useEffect(() => {
     setTokenUser(getUserFromToken());
   }, []);
 
-  // Tìm chính mình trong danh sách team member (nguồn dữ liệu đang đổ đúng)
   const currentMember = React.useMemo(() => {
     if (!members?.length) return null;
     return (
@@ -118,11 +132,11 @@ export const ShelterProfileForm = () => {
     );
   }, [members, me, tokenUser]);
 
-  // Gộp dữ liệu: ưu tiên `me`, fallback currentMember, fallback token
   const displayAvatar = me?.avatarUrl || currentMember?.avatarUrl;
   const displayName = me?.name || currentMember?.name || '';
   const displayEmail = me?.email || currentMember?.email || tokenUser?.email || '';
   const displayRole = me?.shelterRole || currentMember?.shelterRole;
+
   useEffect(() => {
     if (activeTab === 'members') {
       (async () => {
@@ -136,11 +150,36 @@ export const ShelterProfileForm = () => {
     setMeName(displayName);
   }, [displayName]);
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSaveMe = async () => {
     if (!meName.trim()) return;
     setIsSavingMe(true);
-    await updateMe(meName.trim());
+    // LƯU Ý: Cần chỉnh sửa store updateMe để nhận tham số thứ 2 là file (avatarFile) nếu có
+    await updateMe(meName.trim(), avatarFile);
     setIsSavingMe(false);
+    setAvatarFile(null); // Reset sau khi lưu
+  };
+
+  const handleSaveMemberName = async (id: string) => {
+    if (!editMemberName.trim()) return;
+    setIsSavingMember(true);
+    try {
+      if (updateMemberName) {
+        await updateMemberName(id, editMemberName.trim());
+      } else {
+        alert("Chức năng updateMemberName chưa được định nghĩa trong store!");
+      }
+    } finally {
+      setIsSavingMember(false);
+      setEditingMemberId(null);
+    }
   };
 
   useEffect(() => {
@@ -149,9 +188,7 @@ export const ShelterProfileForm = () => {
   }, []);
 
   useEffect(() => {
-    if (profile) {
-      populateFormWithProfile();
-    }
+    if (profile) populateFormWithProfile();
   }, [profile]);
 
   const populateFormWithProfile = () => {
@@ -216,13 +253,10 @@ export const ShelterProfileForm = () => {
     );
   }
 
-  const shelterTypeLabel =
-    SHELTER_TYPE_OPTIONS.find((o) => o.value === values.shelterType)?.label ||
-    SHELTER_TYPE_OPTIONS[0].label;
+  const shelterTypeLabel = SHELTER_TYPE_OPTIONS.find((o) => o.value === values.shelterType)?.label || SHELTER_TYPE_OPTIONS[0].label;
 
   return (
     <div className="w-full max-w-[1000px] mx-auto flex flex-col font-sans mb-20">
-
       {/* HEADER */}
       <div className="flex justify-between items-start mb-6">
         <div>
@@ -239,32 +273,19 @@ export const ShelterProfileForm = () => {
       <div className="bg-gray-100 p-1.5 rounded-full flex w-full mb-8">
         <button
           onClick={() => setActiveTab('info')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Thông tin trạm cứu hộ
         </button>
-
-        {/* Tab 2: Bị khóa không thể click/activate */}
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
+          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Tài khoản & thành viên
         </button>
-
-        {/* Popup Tooltip khi Hover */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-all duration-200">
-          <div className="w-2.5 h-2.5 bg-gray-900 rotate-45 -mb-1 rounded-sm"></div>
-          <div className="bg-gray-900 text-white text-[12px] font-medium px-3.5 py-2 rounded-xl shadow-xl whitespace-nowrap flex items-center gap-1.5">
-            <Lock size={13} className="text-amber-400" />
-            <span>Tính năng đang trong giai đoạn phát triển</span>
-          </div>
-        </div>
       </div>
 
-      {/* TAB 1: THÔNG TIN TRẠM CỨU HỘ */}
+      {/* TAB 1: THÔNG TIN TRẠM */}
       {activeTab === 'info' && (
         <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-in fade-in duration-300">
           <div
@@ -329,7 +350,7 @@ export const ShelterProfileForm = () => {
 
             <div className="flex flex-col gap-6">
               <div>
-                <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Sân Nhà Nhiều Chó'}</h1>
+                <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Tên Trạm Cứu Hộ'}</h1>
                 <p className="text-[14px] text-gray-400">{shelterTypeLabel}</p>
               </div>
 
@@ -338,7 +359,6 @@ export const ShelterProfileForm = () => {
                   <p className="text-[15px] text-gray-500 mb-2 leading-relaxed">
                     {values.bio || 'Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.'}
                   </p>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-2">
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Mail size={18} /></div>
@@ -347,7 +367,6 @@ export const ShelterProfileForm = () => {
                         <span className="text-[15px] font-medium text-gray-900">{values.email || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
-
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><MapPin size={18} /></div>
                       <div className="flex flex-col">
@@ -355,7 +374,6 @@ export const ShelterProfileForm = () => {
                         <span className="text-[15px] font-medium text-gray-900 leading-snug">{values.address || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
-
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Phone size={18} /></div>
                       <div className="flex flex-col">
@@ -363,7 +381,6 @@ export const ShelterProfileForm = () => {
                         <span className="text-[15px] font-medium text-gray-900">{values.phone || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
-
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Globe size={18} /></div>
                       <div className="flex flex-col">
@@ -371,8 +388,6 @@ export const ShelterProfileForm = () => {
                         <span className="text-[15px] font-medium text-gray-900">{values.website || 'Chưa cập nhật'}</span>
                       </div>
                     </div>
-
-                    {/* Khối Giờ hoạt động ở View Mode */}
                     <div className="col-span-1 md:col-span-2 flex items-start gap-4 mt-5">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5 border border-[#FCE8D5]">
                         <Clock size={18} />
@@ -385,23 +400,6 @@ export const ShelterProfileForm = () => {
                           onChange={() => { }}
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="w-full border-t border-dashed border-gray-200 mb-8" />
-
-                  <div className="flex justify-around items-center px-4">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[28px] font-bold text-[#4ADE80]">1000</span>
-                      <span className="text-[13px] text-gray-400 font-medium">Available Pets</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[28px] font-bold text-[#F472B6]">1000</span>
-                      <span className="text-[13px] text-gray-400 font-medium">Adopted</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[28px] font-bold text-[#60A5FA]">1000</span>
-                      <span className="text-[13px] text-gray-400 font-medium">Followers</span>
                     </div>
                   </div>
                 </>
@@ -418,7 +416,6 @@ export const ShelterProfileForm = () => {
                       className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-none"
                     />
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Email</label>
@@ -432,7 +429,6 @@ export const ShelterProfileForm = () => {
                         />
                       </div>
                     </div>
-
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Địa chỉ</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -447,7 +443,6 @@ export const ShelterProfileForm = () => {
                         </div>
                       </div>
                     </div>
-
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Số điện thoại</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -460,7 +455,6 @@ export const ShelterProfileForm = () => {
                         />
                       </div>
                     </div>
-
                     <div>
                       <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Website</label>
                       <div className="flex items-center gap-3 bg-[#F9FAFB] rounded-[12px] px-4 py-3 border border-transparent focus-within:border-[#E89B5A] transition-colors">
@@ -475,8 +469,6 @@ export const ShelterProfileForm = () => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Section Cấu hình Giờ hoạt động ở Edit Mode */}
                   <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2 mb-1">
                       <Clock size={16} className="text-[#E89B5A]" />
@@ -502,12 +494,24 @@ export const ShelterProfileForm = () => {
         <div className="flex flex-col gap-8 animate-in fade-in duration-300">
           <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
             <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-4">
-                <img
-                  src={displayAvatar || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
-                  alt="Avatar"
-                  className="w-[84px] h-[84px] rounded-full object-cover border border-gray-100"
-                />
+              <div className="flex items-center gap-5">
+                
+                {/* ẢNH AVATAR CÁ NHÂN CÓ THỂ THAY ĐỔI */}
+                <div 
+                  className="relative w-[84px] h-[84px] rounded-full group cursor-pointer overflow-hidden border border-gray-100 shrink-0"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <img
+                    src={avatarPreview || displayAvatar || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera size={22} className="text-white" />
+                  </div>
+                  <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                </div>
+
                 <div className="flex flex-col">
                   <h3 className="text-[20px] font-bold text-gray-900 mb-1">{displayName || 'Chưa đặt tên'}</h3>
                   <p className="text-[14px] text-gray-400 mb-2">{displayEmail}</p>
@@ -520,7 +524,7 @@ export const ShelterProfileForm = () => {
               </div>
               <button
                 onClick={handleSaveMe}
-                disabled={isSavingMe || !meName.trim() || meName.trim() === (displayName || '')}
+                disabled={isSavingMe || (!meName.trim() && !avatarFile) || (meName.trim() === (displayName || '') && !avatarFile)}
                 className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingMe ? 'Đang lưu...' : 'Lưu Thay Đổi'}
@@ -575,7 +579,6 @@ export const ShelterProfileForm = () => {
                   {members.map((member) => {
                     const isSelf = member.id === me?.id;
                     const isCurrentUserAdmin = me?.shelterRole === 'ADMIN';
-                    // Chỉ admin mới được sửa role của người khác; không ai được tự sửa role của mình
                     const canEditRole = isCurrentUserAdmin && !isSelf;
 
                     return (
@@ -584,14 +587,56 @@ export const ShelterProfileForm = () => {
                           <img
                             src={member.avatarUrl || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
                             alt={member.name || member.email}
-                            className="w-8 h-8 rounded-full object-cover"
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
                           />
-                          <span className="text-[14px] font-bold text-gray-900">
-                            {member.name || 'Chưa đặt tên'}
-                            {isSelf && <span className="text-gray-400 font-normal"> (Bạn)</span>}
-                          </span>
+                          
+                          {/* KHU VỰC CHỈNH SỬA TÊN THÀNH VIÊN */}
+                          {editingMemberId === member.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                autoFocus
+                                value={editMemberName}
+                                onChange={(e) => setEditMemberName(e.target.value)}
+                                className="border border-[#E89B5A] rounded px-2 py-1 text-[13px] outline-none w-[130px]"
+                                placeholder="Nhập tên..."
+                              />
+                              {isSavingMember ? (
+                                <Loader2 size={16} className="text-[#E89B5A] animate-spin shrink-0" />
+                              ) : (
+                                <>
+                                  <button onClick={() => handleSaveMemberName(member.id)} className="text-green-500 hover:text-green-600 transition-colors shrink-0">
+                                    <Check size={16} />
+                                  </button>
+                                  <button onClick={() => setEditingMemberId(null)} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[14px] font-bold text-gray-900 truncate max-w-[120px]">
+                                {member.name || 'Chưa đặt tên'}
+                                {isSelf && <span className="text-gray-400 font-normal"> (Bạn)</span>}
+                              </span>
+                              {canEditRole && (
+                                <button 
+                                  onClick={() => {
+                                    setEditingMemberId(member.id);
+                                    setEditMemberName(member.name || '');
+                                  }} 
+                                  className="text-gray-400 hover:text-[#E89B5A] transition-colors shrink-0"
+                                  title="Chỉnh sửa tên"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <span className="text-[14px] text-gray-500">{member.email}</span>
+                        
+                        <span className="text-[14px] text-gray-500 truncate pr-2">{member.email}</span>
+                        
                         <div>
                           {canEditRole ? (
                             <select
@@ -619,6 +664,7 @@ export const ShelterProfileForm = () => {
                             </span>
                           )}
                         </div>
+                        
                         <div className="flex items-center justify-end gap-4">
                           {isCurrentUserAdmin && !isSelf && (
                             <button
@@ -626,6 +672,7 @@ export const ShelterProfileForm = () => {
                                 if (window.confirm(`Xoá ${member.name || member.email} khỏi trạm?`)) removeMember(member.id);
                               }}
                               className="text-gray-400 hover:text-red-500 transition-colors"
+                              title="Xóa thành viên"
                             >
                               <Trash2 size={16} />
                             </button>
