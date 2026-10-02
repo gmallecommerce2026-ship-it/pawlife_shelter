@@ -4,18 +4,19 @@ import { toast } from 'react-hot-toast';
 import { shelterTeamService } from '@/services/shelterTeamService';
 import type { ShelterTeamMember, ShelterInvitationItem, ShelterStaffRole } from '@/types/shelterTeam';
 import axiosClient from '@/lib/api/axiosClient';
+import { apiClient } from '@/lib/api/ApiClient';
 
 // HÀM UPLOAD ẢNH (Tương tự như bên upload ảnh Pet/Shelter)
 async function uploadOne(file: File, folder: string): Promise<string> {
   const { data } = await axiosClient.post('/storage/presigned-url', {
-    fileName: file.name, 
-    fileType: file.type || 'image/jpeg', 
+    fileName: file.name,
+    fileType: file.type || 'image/jpeg',
     folder,
   });
-  const res = await fetch(data.uploadUrl, { 
-    method: 'PUT', 
-    headers: { 'Content-Type': file.type }, 
-    body: file 
+  const res = await fetch(data.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file
   });
   if (!res.ok) throw new Error('Upload ảnh thất bại');
   return data.fileUrl;
@@ -28,6 +29,8 @@ interface ShelterTeamState {
   isLoading: boolean;
   isMeLoading: boolean;
   isSubmitting: boolean;
+  changeMyPassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
+  changeMemberPassword: (memberId: string, newPassword: string) => Promise<boolean>;
 }
 
 interface ShelterTeamActions {
@@ -74,6 +77,27 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
       set({ isMeLoading: false });
     }
   },
+  changeMyPassword: async (oldPassword, newPassword) => {
+    try {
+      await apiClient.put('/shelter/team/me/password', { oldPassword, newPassword });
+      toast.success('Đổi mật khẩu thành công');
+      return true;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Đổi mật khẩu thất bại');
+      return false;
+    }
+  },
+
+  changeMemberPassword: async (memberId, newPassword) => {
+    try {
+      await apiClient.put(`/shelter/team/members/${memberId}/password`, { newPassword });
+      toast.success('Đặt lại mật khẩu thành công');
+      return true;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Đặt lại mật khẩu thất bại');
+      return false;
+    }
+  },
 
   updateMe: async (name, avatarFile) => {
     set({ isSubmitting: true });
@@ -81,17 +105,17 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
       let avatarUrl = undefined;
       if (avatarFile) {
         // 👇 ĐỔI TÊN FOLDER Ở DÒNG NÀY (VD: 'avatars' hoặc 'images')
-        avatarUrl = await uploadOne(avatarFile, 'avatars'); 
+        avatarUrl = await uploadOne(avatarFile, 'avatars');
       }
 
       // Gọi API cập nhật
       const updated = await shelterTeamService.updateMe(name, avatarUrl);
-      
+
       set((s) => ({
         me: updated,
         members: s.members.map((m) => (m.id === updated.id ? { ...m, name: updated.name, avatarUrl: updated.avatarUrl || m.avatarUrl } : m)),
       }));
-      
+
       toast.success('Đã cập nhật thông tin tài khoản.');
       return true;
     } catch (e: any) {
