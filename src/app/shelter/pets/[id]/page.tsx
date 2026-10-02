@@ -60,65 +60,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; 
   CLOSED: { label: 'Đóng', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
 };
 
-const MOCK_DOCUMENTS = [
-  {
-    id: 'doc_1',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_2',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đang xác minh',
-    statusClass: 'bg-[#E8F1FF] text-[#5A90DA]',
-  },
-  {
-    id: 'doc_3',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_4',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_5',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_6',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-  {
-    id: 'doc_7',
-    fileName: 'Khám tổng quát hằng năm.pdf',
-    date: '01/01/2026',
-    uploader: 'Nguyễn Văn A',
-    statusLabel: 'Đã xác minh',
-    statusClass: 'bg-[#EBFFE2] text-[#77C852]',
-  },
-];
-
 const isValidImageUrl = (url: unknown): url is string => typeof url === 'string' && url.trim().length > 0;
 const getImageUrl = (img: unknown): string | null => {
   if (typeof img === 'string') return isValidImageUrl(img) ? img : null;
@@ -167,24 +108,6 @@ const TRAIT_STYLES = [
   { bg: '#FBF7EB', border: '#E8A53C', color: '#E8A53C' },
   { bg: '#E8F1FF', border: '#5A90DA', color: '#5A90DA' },
   { bg: '#EBFFE2', border: '#77C852', color: '#77C852' },
-];
-
-const FALLBACK_MOCK_PETS: Record<string, any>[] = [
-  {
-    id: 'pet_001',
-    name: 'Luna',
-    species: 'CAT',
-    breed: { vi: 'Mèo Anh Lông Ngắn', en: 'British Shorthair' },
-    gender: 'FEMALE',
-    age: 24,
-    status: 'AVAILABLE',
-    images: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
-    description: { vi: 'Rất ngoan, quấn người.', en: 'Very well-behaved and affectionate.' },
-    healthStatus: ['Đã tiêm phòng dại', 'Tẩy giun'],
-    weightKg: 4.2,
-    isSterilized: true,
-    isVaccinated: true,
-  },
 ];
 
 const HISTORY_TYPE_CONFIG: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
@@ -302,7 +225,6 @@ const NEXT_STATUS_MAP: Partial<Record<AdoptionApplication['status'], Application
   SUBMITTED: 'PENDING',
   PENDING: 'INTERVIEW_SCHEDULED',
   INTERVIEW_SCHEDULED: 'APPROVED',
-  // APPROVED, ADOPTION_COMPLETED, CLOSED: không có bước kế tiếp -> fallback xem chi tiết
 };
 type VaccineCategory = 'RABIES' | 'CORE' | 'OTHER';
 const CORE_VACCINE_IDS = ['DOG_DHP', 'DOG_DHPP', 'CAT_FVRCP'];
@@ -317,7 +239,6 @@ const MEDICAL_TYPE_LABEL: Record<string, string> = {
   ANNUAL_CHECKUP: 'Khám tổng quát',
   DENTAL_CARE: 'Khám răng miệng',
   OTHER: 'Khác',
-  // fallback cho record cũ đã lỡ lưu tiếng Việt trước khi sửa
   'Tiêm chủng': 'Tiêm chủng',
   'Khám tổng quát': 'Khám tổng quát',
   'Khám răng miệng': 'Khám răng miệng',
@@ -331,11 +252,11 @@ const VACCINATION_STATUS_CONFIG: Record<VaccinationStatusKey, { label: string; c
   VACCINATED: { label: 'Đầy đủ', color: '#E89B5A', bgIcon: '#FFF4EC' },
 };
 
-// Fallback giống PetForm: pet cũ chưa có vaccinationStatus thì suy ra từ isVaccinated
 const getVaccinationStatusKey = (pet: Record<string, any>): VaccinationStatusKey => {
   if (pet?.vaccinationStatus) return pet.vaccinationStatus as VaccinationStatusKey;
   return pet?.isVaccinated === false ? 'NOT_VACCINATED' : 'VACCINATED';
 };
+
 export default function PetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const router = useRouter();
@@ -355,17 +276,14 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   const [show3DModal, setShow3DModal] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<AdoptionApplication | null>(null);
-  // Dropdown đổi trạng thái
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Ghi chú
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [newNoteInput, setNewNoteInput] = useState('');
   const [applications, setApplications] = useState<AdoptionApplication[]>([]);
 
-  // Hồ sơ y tế
   const [medicalFile, setMedicalFile] = useState<File | null>(null);
   const [isSavingMedical, setIsSavingMedical] = useState(false);
 
@@ -392,7 +310,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   }, [medicalType]);
   const safeSpecies = resolveSpeciesKey(pet?.species);
 
-  // Effect 2: tính lại Nhắc lịch mỗi khi Chi tiết / Ngày / Mũi tiêm đổi — KHÔNG đụng medicalDetail
   useEffect(() => {
     if (!medicalType) return;
 
@@ -403,7 +320,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       return;
     }
     if (medicalType === 'VACCINATION' && !vaccineId) {
-      // Chưa chọn vaccine cụ thể → chưa đủ dữ liệu để tính lịch nhắc
       setMedicalHasReminder(false);
       setMedicalNextDueDetail('');
       setMedicalNextDueDate('');
@@ -433,6 +349,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     setMedicalNextDueDetail(medicalDetail || medicalType);
     setMedicalNextDueDate(next.toISOString().slice(0, 10));
   }, [medicalType, medicalDetail, medicalDate, doseNumber, vaccineId]);
+
   useEffect(() => {
     if (!pet?.id) return;
     axiosClient
@@ -440,48 +357,29 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       .then((res) => setNotes(res.data))
       .catch((err) => console.error('[PetDetailPage] Lỗi tải ghi chú:', err));
   }, [pet?.id]);
+
   useEffect(() => {
     if (pet?.applications && Array.isArray(pet.applications)) {
       setApplications(pet.applications);
     }
   }, [pet?.id]);
+
   useEffect(() => {
     let active = true;
     (async () => {
       setIsLoading(true);
       setLoadError(false);
       try {
-        const res = await axiosClient.get(`/pets/${id}`);
+        // 👇 SỬA LẠI ĐỂ GỌI ĐÚNG API CỦA SHELTER (Tránh bị thiếu data hay dính Cache Public)
+        const res = await axiosClient.get(`/shelter-dashboard/pets/${id}`);
         if (active) {
           setPet(res.data);
           const firstAppId = Array.isArray(res.data?.applications) ? res.data.applications[0]?.id : undefined;
           if (firstAppId) setSelectedApplicationId(firstAppId);
         }
       } catch (err) {
-        console.warn('[PetDetailPage] API error, falling back to Mock Data:', err);
-        const mockPet = FALLBACK_MOCK_PETS.find((p) => p.id === id);
-        if (mockPet || String(id).startsWith('pet_') || String(id).startsWith('mock')) {
-          if (active) {
-            setPet(mockPet || {
-              id: id,
-              name: 'Luna',
-              species: 'CAT',
-              breed: { vi: 'Mèo Anh Lông Ngắn', en: 'British Shorthair' },
-              gender: 'FEMALE',
-              age: 24,
-              status: 'AVAILABLE',
-              images: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'],
-              description: { vi: 'Rất ngoan, quấn người.', en: 'Very well-behaved.' },
-              healthStatus: ['Đã tiêm phòng', 'Tẩy giun'],
-              weightKg: 4.2,
-              isSterilized: true,
-              isVaccinated: true,
-              applications: [],
-            });
-          }
-        } else {
-          if (active) setLoadError(true);
-        }
+        console.warn('[PetDetailPage] API error:', err);
+        if (active) setLoadError(true);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -490,16 +388,20 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       active = false;
     };
   }, [id]);
-  const handleOpenApplication = (app: AdoptionApplication) => {
-    const nextStatus = NEXT_STATUS_MAP[app.status];
 
+  // 👇 SỬA LẠI HÀM NÀY ĐỂ BẮT ĐÚNG TRẠNG THÁI MỞ MODAL NHƯ BÊN KANBAN BOARD
+  const handleOpenApplication = (app: AdoptionApplication) => {
+    if (app.status === 'NEED_MORE_INFO') {
+      setNeedInfoApp(app);
+      return;
+    }
+    if (app.status === 'SUBMITTED' || app.status === 'PENDING') {
+      setPendingApp(app);
+      return;
+    }
+
+    const nextStatus = NEXT_STATUS_MAP[app.status];
     switch (nextStatus) {
-      case 'PENDING':
-        setPendingApp(app);
-        return;
-      case 'NEED_MORE_INFO':
-        setNeedInfoApp(app);
-        return;
       case 'INTERVIEW_SCHEDULED':
         setInterviewApp(app);
         return;
@@ -507,10 +409,11 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         setApproveApp(app);
         return;
       default:
-        // Không còn bước kế tiếp (APPROVED, ADOPTION_COMPLETED, CLOSED...) -> xem chi tiết
+        // APPROVED, ADOPTION_COMPLETED, CLOSED -> xem chi tiết
         setSelectedApplication(app);
     }
   };
+
   const handleStatusChange = async (newStatus: string) => {
     setIsStatusDropdownOpen(false);
     if (!pet || pet.status === newStatus) return;
@@ -572,8 +475,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       setIsSavingMedical(true);
       const uploadedImages = medicalFile ? [await uploadMedicalFile(medicalFile)] : [];
 
-      // Giữ nguyên toàn bộ record cũ, chỉ thêm 1 record mới — updatePet ở BE sẽ tự
-      // nhận diện record không có id là record mới, không đụng verificationStatus record cũ.
       const existingRecords = (pet.medicalRecords || []).map((r: any) => ({
         id: r.id,
         type: r.type,
@@ -588,7 +489,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
       const newRecord = {
         type: medicalType,
-        vaccineCategory: medicalType === 'VACCINATION' ? getVaccineCategory(vaccineId) : undefined, // ✅ thêm dòng này
+        vaccineCategory: medicalType === 'VACCINATION' ? getVaccineCategory(vaccineId) : undefined,
         recordName: medicalDetail || medicalType,
         recordDate: medicalDate ? new Date(medicalDate).toISOString() : new Date().toISOString(),
         images: uploadedImages,
@@ -621,6 +522,42 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       alert('Lưu hồ sơ y tế thất bại. Vui lòng thử lại.');
     } finally {
       setIsSavingMedical(false);
+    }
+  };
+
+  const handleDeleteDocument = async (recordId: string) => {
+    if (!pet) return;
+    const confirmed = window.confirm('Bạn có chắc muốn xóa hồ sơ y tế này?');
+    if (!confirmed) return;
+    try {
+      await axiosClient.delete(`/pets/${pet.id}/medical-records/${recordId}`);
+      setPet((prev) =>
+        prev ? { ...prev, medicalRecords: (prev.medicalRecords || []).filter((r: any) => r.id !== recordId) } : prev
+      );
+    } catch (err) {
+      console.error('[PetDetailPage] Xóa hồ sơ y tế thất bại:', err);
+      alert('Không thể xóa hồ sơ này, vui lòng thử lại.');
+    }
+  };
+
+  const refetchApplications = async () => {
+    if (!pet?.id) return;
+    try {
+      const res = await axiosClient.get(`/shelter-dashboard/pets/${pet.id}`);
+      setApplications(Array.isArray(res.data?.applications) ? res.data.applications : []);
+    } catch (err) {
+      console.error('[PetDetailPage] Lỗi tải lại đơn nhận nuôi:', err);
+    }
+  };
+
+  const handleCompleteAdoption = async (applicationId: string) => {
+    try {
+      await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
+      setApproveApp(null);
+      refetchApplications();
+    } catch (error) {
+      console.error('Lỗi khi hoàn tất nhận nuôi:', error);
+      alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
     }
   };
 
@@ -668,39 +605,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   const pawHistory: any[] = Array.isArray(pet.pawHistory) ? pet.pawHistory : [];
   const sortedHistory = [...pawHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const documentRecords: any[] = Array.isArray(pet.medicalRecords) ? pet.medicalRecords : [];
-  const handleDeleteDocument = async (recordId: string) => {
-    if (!pet) return;
-    const confirmed = window.confirm('Bạn có chắc muốn xóa hồ sơ y tế này?');
-    if (!confirmed) return;
-    try {
-      await axiosClient.delete(`/pets/${pet.id}/medical-records/${recordId}`);
-      setPet((prev) =>
-        prev ? { ...prev, medicalRecords: (prev.medicalRecords || []).filter((r: any) => r.id !== recordId) } : prev
-      );
-    } catch (err) {
-      console.error('[PetDetailPage] Xóa hồ sơ y tế thất bại:', err);
-      alert('Không thể xóa hồ sơ này, vui lòng thử lại.');
-    }
-  };
-  const refetchApplications = async () => {
-    if (!pet?.id) return;                              // ✅ sửa initialPet -> pet
-    try {
-      const res = await axiosClient.get(`/shelter-dashboard/pets/${pet.id}`);
-      setApplications(Array.isArray(res.data?.applications) ? res.data.applications : []);
-    } catch (err) {
-      console.error('[PetDetailPage] Lỗi tải lại đơn nhận nuôi:', err);
-    }
-  };
-  const handleCompleteAdoption = async (applicationId: string) => {
-    try {
-      await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
-      setApproveApp(null);
-      refetchApplications();
-    } catch (error) {
-      console.error('Lỗi khi hoàn tất nhận nuôi:', error);
-      alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
-    }
-  };
+
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row gap-7 items-start px-2 py-1">
@@ -824,14 +729,14 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
             <button
               type="button"
               onClick={() => setShow3DModal(true)}
-              className="h-[38px] px-4 rounded-lg border border-[#E89B5A] text-[#E89B5A] text-sm font-medium flex items-center gap-2 hover:bg-[#E89B5A]/5 transition-colors"
+              className="h-[38px] px-4 rounded-lg border border-[#E89B5A] text-[#E89B5A] text-sm font-medium flex items-center gap-2 hover:bg-[#E89B5A]/5 transition-colors cursor-pointer"
             >
               <SparklesIcon size={14} /> Xem ở chế độ công khai (3D)
             </button>
             <button
               type="button"
               onClick={() => router.push(`/shelter/pets/${pet.id}/edit`)}
-              className="h-[38px] px-4 rounded-lg border border-gray-300 text-gray-500 text-sm font-medium flex items-center gap-2 hover:border-gray-400 transition-colors"
+              className="h-[38px] px-4 rounded-lg border border-gray-300 text-gray-500 text-sm font-medium flex items-center gap-2 hover:border-gray-400 transition-colors cursor-pointer"
             >
               <FiEdit2 size={13} /> Chỉnh sửa hồ sơ
             </button>
@@ -839,7 +744,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
               type="button"
               onClick={handleDelete}
               title="Xóa pet"
-              className="h-[38px] w-[38px] rounded-lg border border-gray-300 text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shrink-0"
+              className="h-[38px] w-[38px] rounded-lg border border-gray-300 text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
             >
               <FiTrash2 size={14} />
             </button>
@@ -865,7 +770,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           {/* TAB: DETAIL */}
           {activeTab === 'detail' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-
               {/* Cột trái trong Tab Detail */}
               <div className="flex flex-col gap-4">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
@@ -970,7 +874,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 {/* KHỐI GHI CHÚ */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-4">
                   <h3 className="text-sm font-bold text-gray-900">Ghi chú</h3>
-
                   <div className="flex flex-col gap-4">
                     {notes.map((note) => (
                       <div key={note.id} className="flex gap-3 items-start">
@@ -996,7 +899,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     ))}
                   </div>
 
-                  {/* Input Thêm ghi chú mới */}
                   {notes.length === 0 && (
                     <p className="text-xs text-gray-400 italic">Chưa có ghi chú nào.</p>
                   )}
@@ -1005,7 +907,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       type="text"
                       value={newNoteInput}
                       onChange={(e) => setNewNoteInput(e.target.value)}
-                      placeholder="Thêm ghi chú dưới tên Julia Nguyễn"
+                      placeholder="Thêm ghi chú..."
                       className="w-full bg-[#F9FAFB] border border-gray-200 rounded-full pl-4 pr-10 py-2.5 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
                     />
                     <button
@@ -1076,6 +978,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                       const style = MEDICAL_STATUS_STYLE[item.verificationStatus] || MEDICAL_STATUS_STYLE.PENDING;
                       const recordTitle = typeof item.recordName === 'object' ? (item.recordName?.vi || item.recordName?.en) : item.recordName;
                       const nextDueLabel = typeof item.nextDueName === 'object' ? (item.nextDueName?.vi || item.nextDueName?.en) : item.nextDueName;
+                      const firstImage = Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null;
+
                       return (
                         <div key={item.id} className="border border-gray-200 rounded-2xl p-3.5 flex flex-col gap-1 bg-white relative">
                           <div className="flex items-center justify-between gap-2">
@@ -1086,9 +990,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                 {style.icon} {style.label}
                               </span>
                             </div>
-                            <button type="button" className="text-gray-400 hover:text-gray-600">
-                              <MoreVertical size={14} />
-                            </button>
                           </div>
                           <p className="text-[11px] text-gray-400 pl-5">
                             Loại: {MEDICAL_TYPE_LABEL[item.type] || item.type} | Ngày: {fmtDate(item.recordDate)}
@@ -1098,6 +999,18 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                               Lịch tiếp theo{nextDueLabel ? ` (${nextDueLabel})` : ''}: {fmtDate(item.nextDueDate)}
                             </p>
                           )}
+                          <div className="absolute right-3 bottom-3 flex items-center gap-3">
+                            <button
+                              type="button" title="Xem" disabled={!firstImage}
+                              onClick={() => firstImage && setLightboxImage(firstImage)}
+                              className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            ><Eye size={14} /></button>
+                            <button
+                              type="button" title="Xóa"
+                              onClick={() => handleDeleteDocument(item.id)}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                            ><FiTrash2 size={14} /></button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1137,7 +1050,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                                   const label = VACCINE_OPTIONS[safeSpecies].find((v) => v.id === id)?.label || '';
                                   setMedicalDetail(label);
                                 }}
-
                                 className="w-full appearance-none bg-[#F9FAFB] border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#E89B5A]"
                               >
                                 <option value="">Chọn vắc-xin</option>
@@ -1195,7 +1107,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                           onClick={() => medicalFileInputRef.current?.click()}
                           className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-[#F9FAFB]/50 transition-colors ${medicalFile ? 'border-[#E89B5A]' : 'border-red-300 hover:border-[#E89B5A]'
                             }`}
-
                         >
                           <p className="text-xs font-semibold text-[#E89B5A]">
                             {medicalFile ? `Đã chọn: ${medicalFile.name}` : 'Tải hình ảnh hồ sơ y tế'}
@@ -1272,9 +1183,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
             applications.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {applications.map((app: any) => {
-                  // 👇 SỬA DÒNG NÀY: Dùng STATUS_BADGE thay vì APPLICATION_STATUS_STYLE
+                  // 👇 Dùng STATUS_BADGE chuẩn
                   const badge = STATUS_BADGE[app.status] || STATUS_BADGE.PENDING;
                   
+                  // 👇 Xử lý an toàn dữ liệu từ backend (ưu tiên trường phẳng -> trường gốc -> mặc định)
                   const applicantName = app.applicantName || app.fullName || app.user?.name || 'Người nhận nuôi';
                   const applicantAvatar = app.applicantAvatar || app.user?.avatarUrl || null;
                   const applicantPhone = app.applicantPhone || app.phone || 'Chưa có SĐT';
@@ -1301,7 +1213,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[15px] font-semibold text-black truncate">{applicantName}</p>
                           
-                          {/* 👇 SỬA THẺ SPAN NÀY: Thêm border và đổi màu chữ (color: badge.text) */}
                           <span
                             className="text-[11px] font-bold px-[10px] py-[3px] rounded-full border shrink-0"
                             style={{ 
@@ -1312,7 +1223,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                           >
                             {badge.label}
                           </span>
-                          {/* 👆 KẾT THÚC SỬA */}
 
                         </div>
                         <div className="flex items-center gap-2 text-[13px] text-gray-600">
@@ -1430,11 +1340,12 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       {pendingApp && (
         <MoveToPendingModal
           application={pendingApp}
-          onClose={() => setPendingApp(null)}
-          onSubmit={async () => {
-            await moveApplication(pendingApp.id, 'PENDING');
+          onClose={() => { setPendingApp(null); refetchApplications(); }}
+          onRefresh={refetchApplications}
+          onSubmit={async (data) => {
+            await moveApplication(pendingApp.id, 'PENDING', data?.reviewNote);
+            await refetchApplications();
             setPendingApp(null);
-            refetchApplications();
           }}
         />
       )}
@@ -1446,7 +1357,6 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           onClose={() => { setNeedInfoApp(null); refetchApplications(); }}
           onRefresh={refetchApplications}
           onSubmit={async (data) => {
-            // 👇 Bắt action trả về để chuyển cột tương tự Kanban
             const targetStatus = data.action === 'MOVE_TO_INTERVIEW'
               ? 'INTERVIEW_SCHEDULED'
               : 'NEED_MORE_INFO';
@@ -1464,7 +1374,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           onRefresh={refetchApplications}
           onSubmit={async (data) => {
             const res = await applicationService.scheduleAppointment(interviewApp.id, data);
-            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED'); // Đồng bộ store nếu cần
+            await moveApplication(interviewApp.id, 'INTERVIEW_SCHEDULED'); 
             setInterviewApp(null);
             refetchApplications();
             return res;
@@ -1476,7 +1386,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           application={approveApp}
           onClose={() => { setApproveApp(null); refetchApplications(); }}
           onRefresh={refetchApplications}
-          onCompleteAdoption={handleCompleteAdoption} // 👈 Gắn hàm hoàn tất nhận nuôi
+          onCompleteAdoption={handleCompleteAdoption} 
           onScheduleInterview={async (id, d) => {
             const res = await applicationService.scheduleAppointment(id, d);
             refetchApplications();
