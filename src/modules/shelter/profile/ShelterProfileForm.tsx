@@ -123,20 +123,19 @@ export const ShelterProfileForm = () => {
 
   const currentMember = React.useMemo(() => {
     if (!members?.length) return null;
-    return (
-      members.find(
-        (m) =>
-          (me?.id && m.id === me.id) ||
-          (tokenUser?.email && m.email === tokenUser.email)
-      ) || null
-    );
+    return members.find(m => (me?.id && m.id === me.id) || (tokenUser?.email && m.email === tokenUser.email)) || null;
   }, [members, me, tokenUser]);
 
-  const displayAvatar = me?.avatarUrl || currentMember?.avatarUrl;
-  const displayName = me?.name || currentMember?.name || '';
+  // 👇 SỬA LẠI ĐOẠN NÀY ĐỂ ƯU TIÊN DATA TỪ `me` (API TRẢ VỀ MỚI NHẤT)
+  const displayAvatar = me?.avatarUrl || currentMember?.avatarUrl || tokenUser?.avatarUrl;
+  const displayName = me?.name || currentMember?.name || tokenUser?.name || '';
   const displayEmail = me?.email || currentMember?.email || tokenUser?.email || '';
   const displayRole = me?.shelterRole || currentMember?.shelterRole;
 
+  // Lắng nghe thay đổi của displayName để set lại vào ô input
+  useEffect(() => {
+    if (displayName) setMeName(displayName);
+  }, [displayName]);
   useEffect(() => {
     if (activeTab === 'members') {
       (async () => {
