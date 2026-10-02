@@ -5,14 +5,15 @@ import { createPortal } from 'react-dom';
 import { 
   X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag, 
   Loader2, MoreVertical, Pencil, Trash2, 
-  Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile
+  Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile,
+  PawPrint // Import thêm PawPrint để làm icon giống React Native
 } from 'lucide-react';
 import { AdoptionApplication, ROLE_BADGE_STYLE } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
 import type { ApplicantProfileResponse, ApplicationNoteType } from '@/types/application';
 import { STAFF_ROLE_LABEL } from '@/types/shelterTeam';
 
-// IMPORT THÊM ACTIONS ĐỂ GỌI API FETCH ME
+// IMPORT THÊM ĐỂ KIỂM TRA QUYỀN ADMIN
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { getUserFromToken } from '@/utils/getUserFromToken';
 
@@ -76,7 +77,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
 
   // ----- Quyền Admin -----
   const { me } = useShelterTeam();
-  const { fetchMe } = useShelterTeamActions(); // Lấy action fetchMe
+  const { fetchMe } = useShelterTeamActions();
   const [tokenUser, setTokenUser] = useState<any>(null);
 
   const [expandedPawHistoryId, setExpandedPawHistoryId] = useState<string | null>(null);
@@ -104,10 +105,9 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
   useEffect(() => {
     setMounted(true);
     setTokenUser(getUserFromToken());
-    fetchMe(); // Gọi API ngay khi mở modal để đảm bảo biến `me` được load đầy đủ
+    fetchMe();
   }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  // Xác định quyền Admin: dựa vào shelterRole = ADMIN hoặc role trong Token = SHELTER/ADMIN
   const isAdmin = me?.shelterRole === 'ADMIN' || tokenUser?.role === 'SHELTER' || tokenUser?.role === 'ADMIN';
 
   useEffect(() => {
@@ -391,7 +391,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                 )}
               </div>
 
-              {/* Current Pets with PawHistory */}
+              {/* Current Pets with PawHistory (Perfect Pixel UI) */}
               <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-[16px] text-gray-900">
@@ -402,82 +402,107 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                 {profile!.currentPets.length === 0 ? (
                   <p className="text-[13px] text-gray-400 py-2">Chưa ghi nhận thú cưng nào.</p>
                 ) : (
-                  profile!.currentPets.map((pet, idx) => {
-                    const isExpanded = expandedPawHistoryId === pet.id;
-                    const historyData = pet.pawHistory || [];
-                    const sortedHistory = [...historyData].sort(
-                      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-                    );
+                  <div className="flex flex-col">
+                    {profile!.currentPets.map((pet, idx) => {
+                      const isExpanded = expandedPawHistoryId === pet.id;
+                      const historyData = pet.pawHistory || [];
+                      const sortedHistory = [...historyData].sort(
+                        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                      );
 
-                    return (
-                      <div key={pet.id} className={`flex flex-col py-4 ${idx !== 0 ? 'border-t border-gray-100' : 'pt-0 pb-0'}`}>
-                        {/* Pet Info Row */}
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                      return (
+                        <div 
+                          key={pet.id} 
+                          className="bg-white rounded-[16px] border border-[#FFF9F0] p-[12px] mb-[21px] last:mb-0 flex flex-col transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                        >
+                          {/* Pet Info Row (Clickable) */}
+                          <div 
+                            className="flex flex-row items-center cursor-pointer"
+                            onClick={() => setExpandedPawHistoryId(isExpanded ? null : pet.id)}
+                          >
                             <img
                               src={pet.avatarUrl || '/images/dog-placeholder.png'}
                               alt={pet.name}
-                              className="w-[52px] h-[52px] rounded-[12px] object-cover"
+                              className="w-[92px] h-[108px] rounded-[16px] object-cover bg-gray-100 shrink-0"
                             />
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="font-bold text-[15px] text-gray-900">{pet.name}</span>
-                              <span className="text-[13px] text-gray-500">2 tuổi · {pet.status || 'Chó ta'}</span>
-                              <button 
-                                type="button" 
-                                onClick={() => setExpandedPawHistoryId(isExpanded ? null : pet.id)}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-[#E89B5A] mt-1 hover:underline w-fit"
-                              >
+                            
+                            <div className="flex-1 ml-6 flex flex-col min-w-0 justify-center">
+                              {/* Title & Badge */}
+                              <div className="flex flex-row justify-between items-start mb-2">
+                                <span className="font-semibold text-gray-900 text-lg truncate flex-1 mr-2 leading-tight">
+                                  {pet.name}
+                                </span>
+                                {pet.qrVerificationStatus === 'VERIFIED' && (
+                                  <div className="bg-[#FFF8F0] px-3 py-1 rounded-full border border-[#FFE1C2] shrink-0">
+                                    <span className="text-[#E89B5A] text-[10px] uppercase font-bold tracking-wider">
+                                      QR Registered
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Details */}
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <PawPrint size={14} className="text-gray-400 shrink-0" />
+                                  <span className="text-gray-500 text-sm truncate">{pet.status || 'Chó ta'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Cake size={14} className="text-gray-400 shrink-0" />
+                                  <span className="text-gray-500 text-sm truncate">2 tuổi</span>
+                                </div>
+                              </div>
+
+                              {/* Expand Button */}
+                              <div className="mt-3 flex items-center gap-1 text-[12px] font-semibold text-[#E89B5A] hover:underline w-fit">
                                 Xem PawHistory 
-                                {isExpanded ? <ChevronUp size={12} strokeWidth={2.5} /> : <ChevronDown size={12} strokeWidth={2.5} />}
-                              </button>
+                                {isExpanded ? <ChevronUp size={14} strokeWidth={2.5} /> : <ChevronDown size={14} strokeWidth={2.5} />}
+                              </div>
                             </div>
                           </div>
-                          
-                          {pet.qrVerificationStatus === 'VERIFIED' && (
-                            <div className="bg-[#FFF8F0] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#FFE1C2] shrink-0">
-                              <span className="text-[11px] font-bold text-[#E89B5A]">QR Registered</span>
+
+                          {/* PawHistory Timeline (Dropdown) */}
+                          {isExpanded && (
+                            <div className="mt-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="flex flex-col pl-[10px]">
+                                {sortedHistory.map((item, index) => {
+                                  const isLastItem = index === sortedHistory.length - 1;
+                                  const cfg = HISTORY_TYPE_CONFIG[item.type] ?? DEFAULT_HISTORY_CONFIG;
+                                  const Icon = cfg.Icon;
+                                  return (
+                                    <div key={item.id ?? index} className="flex min-h-[44px]">
+                                      <div className="w-6 relative mr-3 shrink-0">
+                                        {!isLastItem && (
+                                          <div className="absolute w-[1px] bg-gray-200" style={{ top: 26, bottom: -4, left: 11.5 }} />
+                                        )}
+                                        <div className="w-6 h-6 rounded-full flex items-center justify-center relative z-10" style={{ backgroundColor: cfg.bg }}>
+                                          <Icon size={12} style={{ color: cfg.color }} />
+                                        </div>
+                                      </div>
+                                      <div className={`flex-1 ${!isLastItem ? 'pb-3' : ''}`}>
+                                        <div className="flex justify-between items-start gap-2">
+                                          <p className="text-[13px] font-medium text-black">{item.title}</p>
+                                          <span className="text-[11px] text-[#8E8E93] shrink-0">
+                                            {formatDate(item.date)}
+                                          </span>
+                                        </div>
+                                        {item.description && (
+                                          <p className="text-[11px] text-[#8E8E93] mt-0.5 line-clamp-2 leading-snug">{item.description}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {sortedHistory.length === 0 && (
+                                  <p className="text-[12px] text-gray-400 italic py-2 text-center">Chưa có lịch sử nào.</p>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
-
-                        {/* PawHistory Timeline (Dropdown) */}
-                        {isExpanded && (
-                          <div className="mt-4 pl-[64px] pr-2 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="flex flex-col">
-                              {sortedHistory.map((item, index) => {
-                                const isLastItem = index === sortedHistory.length - 1;
-                                const cfg = HISTORY_TYPE_CONFIG[item.type] ?? DEFAULT_HISTORY_CONFIG;
-                                const Icon = cfg.Icon;
-                                return (
-                                  <div key={item.id ?? index} className="flex min-h-[44px]">
-                                    <div className="w-6 relative mr-2.5 shrink-0">
-                                      {!isLastItem && (
-                                        <div className="absolute w-[1px] bg-gray-200" style={{ top: 26, bottom: -4, left: 11.5 }} />
-                                      )}
-                                      <div className="w-6 h-6 rounded-full flex items-center justify-center relative z-10" style={{ backgroundColor: cfg.bg }}>
-                                        <Icon size={12} style={{ color: cfg.color }} />
-                                      </div>
-                                    </div>
-                                    <div className={`flex-1 ${!isLastItem ? 'pb-3' : ''}`}>
-                                      <div className="flex justify-between items-start gap-2">
-                                        <p className="text-[12px] font-medium text-black">{item.title}</p>
-                                        <span className="text-[10px] text-[#8E8E93] shrink-0">
-                                          {formatDate(item.date)}
-                                        </span>
-                                      </div>
-                                      {item.description && (
-                                        <p className="text-[10px] text-[#8E8E93] mt-0.5 line-clamp-2">{item.description}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
@@ -499,7 +524,6 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       const isEditingThis = editingNoteId === note.id;
                       const isDeletingThis = deletingNoteId === note.id;
                       
-                      // Lấy role của tác giả để hiển thị badge
                       const authorRole = (note.author as any)?.role || (note as any).authorRole;
 
                       return (
@@ -575,7 +599,6 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             ) : (
                               <>
                                 <div className="flex justify-between items-start mb-1 gap-2">
-                                  {/* Tên trạm và Role Badge */}
                                   <div className="flex items-center gap-2">
                                     <h4 className="font-bold text-[14px] text-gray-900">
                                       {note.author.name || 'Nhân viên trạm'}
