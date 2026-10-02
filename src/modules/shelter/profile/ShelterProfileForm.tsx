@@ -98,7 +98,7 @@ export const ShelterProfileForm = () => {
   const profileLat = profile?.latitude;
   const profileLng = profile?.longitude;
   const profileCoverUrl = profile?.coverUrl;
-  
+
   const { members, invitations, me, isLoading: isTeamLoading } = useShelterTeam();
   // LƯU Ý: Thêm updateMemberName vào store nếu chưa có
   const { fetchTeam, fetchMe, updateMe, updateMemberRole, removeMember, cancelInvitation, updateMemberName } = useShelterTeamActions() as any;
@@ -161,10 +161,14 @@ export const ShelterProfileForm = () => {
   const handleSaveMe = async () => {
     if (!meName.trim()) return;
     setIsSavingMe(true);
-    // LƯU Ý: Cần chỉnh sửa store updateMe để nhận tham số thứ 2 là file (avatarFile) nếu có
-    await updateMe(meName.trim(), avatarFile);
-    setIsSavingMe(false);
-    setAvatarFile(null); // Reset sau khi lưu
+    try {
+      await updateMe(meName.trim(), avatarFile);
+      setAvatarFile(null); // Reset file ảnh sau khi thành công
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSavingMe(false); // VÔ CÙNG QUAN TRỌNG: Mở khóa nút bấm
+    }
   };
 
   const handleSaveMemberName = async (id: string) => {
@@ -495,9 +499,9 @@ export const ShelterProfileForm = () => {
           <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-5">
-                
+
                 {/* ẢNH AVATAR CÁ NHÂN CÓ THỂ THAY ĐỔI */}
-                <div 
+                <div
                   className="relative w-[84px] h-[84px] rounded-full group cursor-pointer overflow-hidden border border-gray-100 shrink-0"
                   onClick={() => avatarInputRef.current?.click()}
                 >
@@ -589,7 +593,7 @@ export const ShelterProfileForm = () => {
                             alt={member.name || member.email}
                             className="w-8 h-8 rounded-full object-cover shrink-0"
                           />
-                          
+
                           {/* KHU VỰC CHỈNH SỬA TÊN THÀNH VIÊN */}
                           {editingMemberId === member.id ? (
                             <div className="flex items-center gap-2">
@@ -620,11 +624,11 @@ export const ShelterProfileForm = () => {
                                 {isSelf && <span className="text-gray-400 font-normal"> (Bạn)</span>}
                               </span>
                               {canEditRole && (
-                                <button 
+                                <button
                                   onClick={() => {
                                     setEditingMemberId(member.id);
                                     setEditMemberName(member.name || '');
-                                  }} 
+                                  }}
                                   className="text-gray-400 hover:text-[#E89B5A] transition-colors shrink-0"
                                   title="Chỉnh sửa tên"
                                 >
@@ -634,18 +638,18 @@ export const ShelterProfileForm = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <span className="text-[14px] text-gray-500 truncate pr-2">{member.email}</span>
-                        
+
                         <div>
                           {canEditRole ? (
                             <select
                               value={member.shelterRole}
                               onChange={(e) => updateMemberRole(member.id, e.target.value as any)}
                               className={`px-3 py-1 rounded-full text-[12px] font-medium border outline-none cursor-pointer ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
-                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
-                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
-                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                    'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
                                 }`}
                             >
                               {(['ADMIN', 'MEMBER', 'VOLUNTEER', 'VETERINARIAN'] as const).map((r) => (
@@ -655,16 +659,16 @@ export const ShelterProfileForm = () => {
                           ) : (
                             <span
                               className={`px-3 py-1 rounded-full text-[12px] font-medium border w-fit inline-block ${STAFF_ROLE_COLOR[member.shelterRole] === 'purple' ? 'bg-[#F4E8FF] text-[#A855F7] border-[#E9D5FF]' :
-                                  STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
-                                    STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
-                                      'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
+                                STAFF_ROLE_COLOR[member.shelterRole] === 'blue' ? 'bg-[#E0F2FE] text-[#3B82F6] border-[#BAE6FD]' :
+                                  STAFF_ROLE_COLOR[member.shelterRole] === 'green' ? 'bg-[#DCFCE7] text-[#22C55E] border-[#BBF7D0]' :
+                                    'bg-[#FCE7F3] text-[#EC4899] border-[#FBCFE8]'
                                 }`}
                             >
                               {STAFF_ROLE_LABEL[member.shelterRole]}
                             </span>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center justify-end gap-4">
                           {isCurrentUserAdmin && !isSelf && (
                             <button

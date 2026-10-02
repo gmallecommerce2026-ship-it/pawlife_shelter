@@ -3,6 +3,23 @@ import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'react-hot-toast';
 import { shelterTeamService } from '@/services/shelterTeamService';
 import type { ShelterTeamMember, ShelterInvitationItem, ShelterStaffRole } from '@/types/shelterTeam';
+import axiosClient from '@/lib/api/axiosClient';
+
+// HÀM UPLOAD ẢNH (Tương tự như bên upload ảnh Pet/Shelter)
+async function uploadOne(file: File, folder: string): Promise<string> {
+  const { data } = await axiosClient.post('/storage/presigned-url', {
+    fileName: file.name, 
+    fileType: file.type || 'image/jpeg', 
+    folder,
+  });
+  const res = await fetch(data.uploadUrl, { 
+    method: 'PUT', 
+    headers: { 'Content-Type': file.type }, 
+    body: file 
+  });
+  if (!res.ok) throw new Error('Upload ảnh thất bại');
+  return data.fileUrl;
+}
 
 interface ShelterTeamState {
   members: ShelterTeamMember[];
@@ -16,7 +33,10 @@ interface ShelterTeamState {
 interface ShelterTeamActions {
   fetchTeam: () => Promise<void>;
   fetchMe: () => Promise<void>;
-  updateMe: (name: string) => Promise<boolean>;
+  // Bổ sung thêm tham số avatarFile
+  updateMe: (name: string, avatarFile?: File | null) => Promise<boolean>;
+  // Bổ sung hàm updateMemberName
+  updateMemberName: (userId: string, name: string) => Promise<boolean>;
   inviteMember: (email: string, role: ShelterStaffRole, name?: string) => Promise<boolean>;
   updateMemberRole: (userId: string, role: ShelterStaffRole) => Promise<boolean>;
   removeMember: (userId: string) => Promise<boolean>;
@@ -55,14 +75,25 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
     }
   },
 
-  updateMe: async (name) => {
+  updateMe: async (name, avatarFile) => {
     set({ isSubmitting: true });
     try {
-      const updated = await shelterTeamService.updateMe(name);
+      let avatarUrl = undefined;
+      
+      // Nếu user có chọn file ảnh mới -> Upload lên cloud để lấy URL
+      if (avatarFile) {
+        avatarUrl = await uploadOne(avatarFile, 'user-avatars');
+      }
+
+      // Gọi API cập nhật thông tin
+      const updated = await shelterTeamService.updateMe(name, avatarUrl);
+      
+      // Cập nhật lại UI state ngay lập tức
       set((s) => ({
         me: updated,
-        members: s.members.map((m) => (m.id === updated.id ? { ...m, name: updated.name } : m)),
+        members: s.members.map((m) => (m.id === updated.id ? { ...m, name: updated.name, avatarUrl: updated.avatarUrl || m.avatarUrl } : m)),
       }));
+      
       toast.success('Đã cập nhật thông tin tài khoản.');
       return true;
     } catch (e: any) {
@@ -70,6 +101,19 @@ const useShelterTeamStoreBase = create<ShelterTeamState & ShelterTeamActions>()(
       return false;
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+
+  // Triển khai logic updateMemberName
+  updateMemberName: async (userId, name) => {
+    try {
+      await shelterTeamService.updateMemberName(userId, name);
+      toast.success('Đã cập nhật tên thành viên.');
+      await get().fetchTeam(); // Refresh lại list
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || 'Không thể cập nhật tên thành viên.');
+      return false;
     }
   },
 
@@ -139,6 +183,7 @@ export const useShelterTeamActions = () =>
     fetchTeam: s.fetchTeam,
     fetchMe: s.fetchMe,
     updateMe: s.updateMe,
+    updateMemberName: s.updateMemberName, // XUẤT HÀM NÀY RA CHO UI DÙNG
     inviteMember: s.inviteMember,
     updateMemberRole: s.updateMemberRole,
     removeMember: s.removeMember,

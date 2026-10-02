@@ -8,9 +8,12 @@ export const shelterTeamService = {
 
   getMe: async (): Promise<ShelterTeamMember> =>
     unwrap(await apiClient.get('/shelter-dashboard/team/me')),
+  
+  updateMe: async (name: string, avatarUrl?: string): Promise<ShelterTeamMember> =>
+    unwrap(await apiClient.patch('/shelter-dashboard/team/me', { name, avatarUrl })),
 
-  updateMe: async (name: string): Promise<ShelterTeamMember> =>
-    unwrap(await apiClient.patch('/shelter-dashboard/team/me', { name })),
+  updateMemberName: async (userId: string, name: string) =>
+    unwrap(await apiClient.patch(`/shelter-dashboard/team/${userId}/name`, { name })),
 
   inviteMember: async (email: string, role: ShelterStaffRole, name?: string) =>
     unwrap(await apiClient.post('/shelter-dashboard/team/invite', { email, role, name })),
