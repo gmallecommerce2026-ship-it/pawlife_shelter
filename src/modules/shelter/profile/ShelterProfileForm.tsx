@@ -39,6 +39,7 @@ type FormValues = ShelterProfileFormValues & {
   bio?: string;
   shelterType?: string;
   website?: string;
+  policy?: string;
 };
 
 const SHELTER_TYPE_OPTIONS = [
@@ -87,6 +88,7 @@ export const ShelterProfileForm = () => {
     bio: '',
     shelterType: SHELTER_TYPE_OPTIONS[0].value,
     website: '',
+    policy: '',
   });
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -243,13 +245,14 @@ export const ShelterProfileForm = () => {
       address: profile.address,
       phone: profile.phone,
       email: profile.email,
-      description: profile.description,
+      description: profile.description || '',
       openingHours: profile.openingHours?.length ? profile.openingHours : defaultOpeningHours,
       latitude: profileLat,
       longitude: profileLng,
       bio: profile.bio || '',
       shelterType: profile.shelterType || SHELTER_TYPE_OPTIONS[0].value,
       website: (profile as any).website || '',
+      policy: (profile as any).policy || '',
     });
     setLogoPreview(profile.logoUrl);
     setCoverPreview(profileCoverUrl || null);
@@ -400,9 +403,24 @@ export const ShelterProfileForm = () => {
 
               {!isEditing ? (
                 <>
-                  <p className="text-[15px] text-gray-500 mb-2 leading-relaxed">
-                    {values.bio || 'Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.'}
-                  </p>
+                  {values.bio && (
+                    <p className="text-[15px] text-gray-600 mb-2 leading-relaxed">{values.bio}</p>
+                  )}
+
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <span className="text-[12px] text-gray-400 font-bold mb-1.5 block">Giới thiệu</span>
+                      <p className="text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
+                        {values.description || 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[12px] text-gray-400 font-bold mb-1.5 block">Chính sách nhận nuôi</span>
+                      <p className="text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
+                        {values.policy || 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-2">
                     <div className="flex items-start gap-4">
                       <div className="p-2.5 rounded-full bg-[#FFF8F3] text-[#E89B5A] shrink-0 mt-0.5"><Mail size={18} /></div>
@@ -450,14 +468,64 @@ export const ShelterProfileForm = () => {
               ) : (
                 /* FORM EDIT MODE */
                 <div className="flex flex-col gap-5 mt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Tên trạm</label>
+                      <input
+                        type="text"
+                        value={values.name}
+                        onChange={(e) => setValues(p => ({ ...p, name: e.target.value }))}
+                        className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] px-4 py-3 text-[14px] text-gray-900 outline-none focus:border-[#E89B5A] transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Loại hình</label>
+                      <select
+                        value={values.shelterType}
+                        onChange={(e) => setValues(p => ({ ...p, shelterType: e.target.value }))}
+                        className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] px-4 py-3 text-[14px] text-gray-900 outline-none focus:border-[#E89B5A] transition-colors"
+                      >
+                        {SHELTER_TYPE_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (Bio)</label>
+                    <div className="flex justify-between mb-1.5">
+                      <label className="text-[12px] font-bold text-gray-400">Mô tả ngắn (Bio)</label>
+                      <span className="text-[11px] text-gray-400">{(values.bio || '').length}/160</span>
+                    </div>
                     <textarea
                       value={values.bio}
+                      maxLength={160}
                       onChange={(e) => setValues(p => ({ ...p, bio: e.target.value }))}
-                      placeholder="Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife."
-                      rows={3}
+                      placeholder="Một câu giới thiệu ngắn hiển thị dưới tên trạm trên app"
+                      rows={2}
                       className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Giới thiệu (hiển thị ở tab Liên hệ trên app)</label>
+                    <textarea
+                      value={values.description}
+                      onChange={(e) => setValues(p => ({ ...p, description: e.target.value }))}
+                      placeholder="Câu chuyện, sứ mệnh, hoạt động của trạm..."
+                      rows={5}
+                      className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-y"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[12px] font-bold text-gray-400 mb-1.5 block">Chính sách nhận nuôi</label>
+                    <textarea
+                      value={values.policy}
+                      onChange={(e) => setValues(p => ({ ...p, policy: e.target.value }))}
+                      placeholder="Điều kiện, quy trình, phí hỗ trợ, cam kết sau nhận nuôi..."
+                      rows={5}
+                      className="w-full bg-[#F9FAFB] border border-transparent rounded-[12px] p-4 text-[14px] text-gray-800 outline-none focus:border-[#E89B5A] transition-colors resize-y"
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

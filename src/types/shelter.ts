@@ -21,6 +21,8 @@ export interface ShelterProfile {
   email: string;
   description: string;
   openingHours: OpeningHour[];
+  website: string | null;   
+  policy: string | null;
 }
 
 // Dùng khi submit form (logo xử lý riêng dưới dạng File để đẩy qua FormData)
@@ -36,6 +38,8 @@ export interface ShelterProfileFormValues {
   bio?: string;
   shelterType?: string;
   coverUrl?: string | null;
+  website?: string;        
+  policy?: string;        
 }
 
 export const WEEKDAY_LABEL: Record<WeekDay, string> = {
