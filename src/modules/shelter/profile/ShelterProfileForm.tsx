@@ -44,6 +44,7 @@ type FormValues = ShelterProfileFormValues & {
 
 const SHELTER_TYPE_OPTIONS = [
   { value: 'Animal Shelter & Rescue', label: 'Trạm cứu hộ & Bảo trợ động vật' },
+  { value: 'Nonprofit organization', label: 'Tổ chức phi lợi nhuận' },
   { value: 'Foster Home', label: 'Nhà nuôi tạm (Foster Home)' },
   { value: 'Veterinary Clinic', label: 'Phòng khám thú y kiêm cứu hộ' },
   { value: 'Individual Rescuer', label: 'Cá nhân cứu hộ tự do' },
