@@ -185,7 +185,7 @@ interface NeedMoreInfoModalProps {
   initialDocuments?: RequestedDocument[];
   socket?: Socket | null;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onMoveToInterview: () => void;
   onRefresh?: () => void;
 }
 
@@ -194,7 +194,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   initialDocuments,
   socket,
   onClose,
-  onSubmit,
+  onMoveToInterview,
   onRefresh,
 }) => {
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
@@ -491,7 +491,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         authorAvatar: addedNote?.authorAvatar || addedNote?.author?.avatarUrl || null,
         authorRole: resolveNoteRole(addedNote) ?? null,
         content: addedNote?.content || noteInput.trim(),
-        type: addedNote?.type || 'FOLLOW_UP',   
+        type: addedNote?.type || 'FOLLOW_UP',
         createdAt: addedNote?.createdAt || new Date().toISOString(),
       };
 
@@ -505,22 +505,22 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
     }
   };
 
-  const handleSubmit = () => {
-    const requestedLabels = requiredDocs.filter((d) => d.requested).map((d) => d.label);
-    const reviewNote =
-      requestedLabels.length > 0
-        ? `Cần bổ sung tài liệu: ${requestedLabels.join(', ')}${noteInput ? '. ' + noteInput : ''}`
-        : noteInput || 'Đã duyệt yêu cầu tài liệu';
+  // const handleSubmit = () => {
+  //   const requestedLabels = requiredDocs.filter((d) => d.requested).map((d) => d.label);
+  //   const reviewNote =
+  //     requestedLabels.length > 0
+  //       ? `Cần bổ sung tài liệu: ${requestedLabels.join(', ')}${noteInput ? '. ' + noteInput : ''}`
+  //       : noteInput || 'Đã duyệt yêu cầu tài liệu';
 
-    // Bổ sung thuộc tính action để báo cho Kanban Board biết cần move đi đâu
-    onSubmit({
-      reviewNote,
-      tags,
-      notes,
-      requiredDocuments: requiredDocs,
-      action: allAccepted ? 'MOVE_TO_INTERVIEW' : 'UPDATE_INFO' // <--- THÊM DÒNG NÀY
-    });
-  };
+  //   // Bổ sung thuộc tính action để báo cho Kanban Board biết cần move đi đâu
+  //   onSubmit({
+  //     reviewNote,
+  //     tags,
+  //     notes,
+  //     requiredDocuments: requiredDocs,
+  //     action: allAccepted ? 'MOVE_TO_INTERVIEW' : 'UPDATE_INFO' // <--- THÊM DÒNG NÀY
+  //   });
+  // };
 
   const allAccepted =
     requiredDocs.length > 0 &&
@@ -977,10 +977,12 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         {/* Nút hành động cố định ở chân Modal */}
         <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0">
           <button
-            onClick={handleSubmit}
-            className="w-full bg-[#E59754] hover:bg-[#D98844] active:bg-[#C97B38] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[14px] shadow-sm cursor-pointer text-center"
+            type="button"
+            onClick={onMoveToInterview}
+            disabled={!allAccepted}
+            className="w-full bg-[#E59754] hover:bg-[#D98844] active:bg-[#C97B38] transition-colors text-white font-bold text-[14px] py-3.5 rounded-[14px] shadow-sm cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {allAccepted ? 'Di chuyển tới hẹn phỏng vấn' : 'Lưu & Cập nhật yêu cầu'}
+            Di chuyển tới hẹn phỏng vấn
           </button>
         </div>
 

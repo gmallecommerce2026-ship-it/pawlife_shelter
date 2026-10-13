@@ -10,6 +10,8 @@ import {
   useSensor,
   useSensors,
   MeasuringStrategy,
+  defaultDropAnimationSideEffects,
+  type DropAnimation,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
@@ -40,6 +42,9 @@ import { applicationService } from '@/services/applicationService';
 import { useTagColorStore } from '@/stores/useTagColorStore';
 import { useWebsocket } from '@/hooks/useWebsocket';
 import { getUserFromToken } from '@/utils/getUserFromToken';
+import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
+import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
+import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
@@ -50,12 +55,27 @@ const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   INTERVIEW_SCHEDULED: 'APPROVED',
   APPROVED: 'APPROVED',
 };
-
+const dropAnimation: DropAnimation = {
+  duration: 250,
+  easing: 'cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: '0.4' } },
+  }),
+};
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { filter } = useApplicationFilter();
   const { fetchApplications, moveApplication } = useApplicationActions();
   const { getTagColor, setTagColor } = useTagColorStore();
+  const markViewed = useViewedApplicationStore((s) => s.markViewed);
+  const { me } = useShelterTeam();
+  const { fetchMe } = useShelterTeamActions();
+  const isAdmin = useIsShelterAdmin();
+
+  useEffect(() => {
+    if (!me) fetchMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [quickViewApp, setQuickViewApp] = useState<AdoptionApplication | null>(null);
   const [localItems, setLocalItems] = useState<AdoptionApplication[]>(items);
@@ -307,6 +327,10 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
 
     if (REQUIRES_CONFIRM.includes(finalStatus)) {
+      if (!isAdmin) {
+        setLocalItems(items);
+        return;
+      }
       setCloseAppTarget(originalItem);
       return;
     }
@@ -316,6 +340,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
   const handleCardClick = (app: AdoptionApplication) => {
     if (justDraggedRef.current) return;
+    markViewed(app.id);
     if (app.status === 'NEED_MORE_INFO') {
       setNeedInfoApp(app);
       return;
@@ -413,18 +438,18 @@ export const ApplicationKanbanBoard: React.FC = () => {
                     applications={col.applications}
                     movingIds={movingIds}
                     isDropTarget={overColumn === col.status && activeApp?.status !== col.status}
-                    onOpenDetail={(app) => setSelectedApp(app)}
+                    onOpenDetail={(app) => { markViewed(app.id); setSelectedApp(app); }}
                     onCardClick={handleCardClick}
-                    onOpenProfile={(app) => setProfileApp(app)}
-                    onRemove={(app) => setCloseAppTarget(app)}
-                    onOpenDocuments={(app) => setDocumentsApp(app)}
-                    onOpenQuickView={(app) => setQuickViewApp(app)}
+                    onOpenProfile={(app) => { markViewed(app.id); setProfileApp(app); }}
+                    onRemove={(app) => { if (isAdmin) setCloseAppTarget(app); }}
+                    onOpenDocuments={(app) => { markViewed(app.id); setDocumentsApp(app); }}
+                    onOpenQuickView={(app) => { markViewed(app.id); setQuickViewApp(app); }}
                   />
                 </div>
               ))}
             </div>
 
-            <DragOverlay>
+            <DragOverlay dropAnimation={dropAnimation}>
               {activeApp ? (
                 <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[270px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none">
                   <ApplicationCardContent
@@ -614,15 +639,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
           socket={socket}
           onClose={() => { setNeedInfoApp(null); setPendingRequiredDocs([]); fetchApplications(); }}
           onRefresh={fetchApplications}
-          onSubmit={async (data) => {
-            // 1. Kiểm tra action trả về từ Modal
-            const targetStatus = data.action === 'MOVE_TO_INTERVIEW'
-              ? 'INTERVIEW_SCHEDULED'
-              : 'NEED_MORE_INFO';
-
-            // 2. Truyền targetStatus thay vì hardcode 'NEED_MORE_INFO'
-            await moveApplication(needInfoApp.id, targetStatus, data?.reviewNote);
-            await fetchApplications();
+          onMoveToInterview={() => {
+            setInterviewApp(needInfoApp);
             setNeedInfoApp(null);
             setPendingRequiredDocs([]);
           }}

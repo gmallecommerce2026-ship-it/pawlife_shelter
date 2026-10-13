@@ -101,7 +101,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
           >
             <div ref={contentRef} className="flex flex-col gap-2 w-full pb-2 items-center px-1">
               {applications.length > 0 ? (
-                applications.map((app, index) => (
+                applications.map((app) => (
                   <ApplicationCard
                     key={app.id}
                     application={app}
@@ -110,7 +110,6 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
                     onOpenDetail={onOpenDetail}
                     onCardClick={onCardClick}
                     onRemove={onRemove}
-                    showRedDot={status === 'SUBMITTED' && index === 0}
                     showMenu={true}
                     onOpenDocuments={onOpenDocuments}
                     onOpenQuickView={onOpenQuickView}

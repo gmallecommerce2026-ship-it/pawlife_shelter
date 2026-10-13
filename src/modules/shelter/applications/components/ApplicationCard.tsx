@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { useTagColorStore } from '@/stores/useTagColorStore';
+import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
+import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
+import { motion } from 'framer-motion';
 
 const formatSubmittedAt = (iso: string) => {
   try {
@@ -30,7 +33,6 @@ const formatSubmittedAt = (iso: string) => {
 
 interface ApplicationCardContentProps {
   application: AdoptionApplication;
-  showRedDot?: boolean;
   showMenu?: boolean;
   onOpenProfile: (app: AdoptionApplication) => void;
   onOpenDetail: (app: AdoptionApplication) => void;
@@ -40,7 +42,6 @@ interface ApplicationCardContentProps {
 
 export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   application,
-  showRedDot,
   onOpenProfile,
   onOpenDetail,
   onRemove,
@@ -53,7 +54,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { getTagColor } = useTagColorStore();
-
+  const isAdmin = useIsShelterAdmin();
+  const isViewed = useViewedApplicationStore((s) => !!s.viewed[application.id]);
+  const shouldShowDot = mounted && !isViewed;
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
   // Thêm 2 biến điều kiện, đặt gần chỗ khai báo displayTags
@@ -141,7 +144,15 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Xem đơn đăng ký</span></button>
             <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Tất cả tài liệu</span></button>
             <div className="h-[1px] w-full bg-gray-100 my-1"></div>
-            <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left"><X size={18} className="text-red-600" /> <span className="text-[15px] font-medium text-red-600">Xoá đơn</span></button>
+            {isAdmin && (
+              <>
+                <div className="h-[1px] w-full bg-gray-100 my-1"></div>
+                <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left">
+                  <X size={18} className="text-red-600" />
+                  <span className="text-[15px] font-medium text-red-600">Xoá đơn</span>
+                </button>
+              </>
+            )}
           </div>,
           document.body
         )}
@@ -163,8 +174,8 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             >
               {application.fullName || application.user?.name || "Maria Garcia"}
             </span>
-            {showRedDot && (
-              <span className="w-[6px] h-[6px] bg-[#FF6B6B] rounded-full shrink-0"></span>
+            {shouldShowDot && (
+              <span className="w-[6px] h-[6px] bg-[#FF6B6B] rounded-full shrink-0" />
             )}
           </div>
           <span className="font-sans text-[12px] leading-tight text-[#888888] mt-0.5 truncate">
@@ -310,25 +321,25 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      tabIndex={-1}
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} tabIndex={-1}
       onClick={() => onCardClick(application)}
-      className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'
-        } ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
-      <ApplicationCardContent
-        application={application}
-        showRedDot={showRedDot}
-        showMenu={showMenu}
-        onOpenProfile={onOpenProfile}
-        onOpenDetail={onOpenDetail}
-        onRemove={onRemove}
-        onOpenDocuments={onOpenDocuments}
-      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      >
+        <ApplicationCardContent
+          application={application}
+          showMenu={showMenu}
+          onOpenProfile={onOpenProfile}
+          onOpenDetail={onOpenDetail}
+          onRemove={onRemove}
+          onOpenDocuments={onOpenDocuments}
+        />
+      </motion.div>
     </div>
   );
 };
