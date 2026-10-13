@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import { ClickEffect } from "@/components/ClickEffect";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -23,8 +25,11 @@ export default function RootLayout({
   return (
     <html lang="vi" className={beVietnamPro.variable}>
       <body className={`${beVietnamPro.className} font-sans antialiased bg-white text-gray-900`}>
-        {children}
-        <ClickEffect />
+        <ThemeProvider>
+          {children}
+          <ClickEffect />
+          <ThemeToggle />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -89,7 +89,15 @@ input:not([type='checkbox']):not([type='radio']):not([type='file']),
 textarea {
   cursor: text !important;
 }
-
+html.dark {
+  filter: invert(1) hue-rotate(180deg);
+  background: #fff;
+}
+html.dark img,
+html.dark video,
+html.dark canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
 /* --- UTILITIES & SCROLLBAR --- */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
