@@ -139,4 +139,8 @@ export const applicationService = {
     const res = await apiClient.delete(`/applications/${applicationId}/documents/${docId}`);
     return unwrapItem(res);
   },
+
+  async deleteApplication(applicationId: string) {
+    return apiClient.delete(`/applications/${applicationId}`); // đổi `api` cho khớp với updateStatus
+  },
 };

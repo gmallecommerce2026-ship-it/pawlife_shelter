@@ -45,6 +45,7 @@ import { getUserFromToken } from '@/utils/getUserFromToken';
 import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
+import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
@@ -90,6 +91,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
+  const [deleteAppTarget, setDeleteAppTarget] = useState<AdoptionApplication | null>(null);
   const [closeReason, setCloseReason] = useState('');
   const [isClosingApp, setIsClosingApp] = useState(false);
   const CLOSE_REASONS = [
@@ -123,6 +125,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     socket.on('document_reviewed', handleRealtimeUpdate);
     socket.on('document_removed', handleRealtimeUpdate);
     socket.on('application_updated', handleRealtimeUpdate);
+    socket.on('application_deleted', handleRealtimeUpdate);
 
     return () => {
       socket.off('documents_requested', handleRealtimeUpdate);
@@ -130,6 +133,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
       socket.off('document_reviewed', handleRealtimeUpdate);
       socket.off('document_removed', handleRealtimeUpdate);
       socket.off('application_updated', handleRealtimeUpdate);
+      socket.off('application_deleted', handleRealtimeUpdate);
     };
   }, [socket, fetchApplications]);
   const formattedItems = useMemo(() => {
@@ -379,7 +383,14 @@ export const ApplicationKanbanBoard: React.FC = () => {
       setIsClosingApp(false);
     }
   };
-
+  const handleConfirmDelete = async () => {
+    if (!deleteAppTarget) return;
+    const id = deleteAppTarget.id;
+    await applicationService.deleteApplication(id); // lỗi sẽ ném ra → modal tự hiện message
+    setLocalItems((prev) => prev.filter((a) => a.id !== id));
+    setDeleteAppTarget(null);
+    fetchApplications();
+  };
   const handleCompleteAdoption = async (applicationId: string) => {
     try {
       await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
@@ -441,7 +452,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
                     onOpenDetail={(app) => { markViewed(app.id); setSelectedApp(app); }}
                     onCardClick={handleCardClick}
                     onOpenProfile={(app) => { markViewed(app.id); setProfileApp(app); }}
-                    onRemove={(app) => { if (isAdmin) setCloseAppTarget(app); }}
+                    onRemove={(app) => { if (isAdmin) setDeleteAppTarget(app); }}
                     onOpenDocuments={(app) => { markViewed(app.id); setDocumentsApp(app); }}
                     onOpenQuickView={(app) => { markViewed(app.id); setQuickViewApp(app); }}
                   />
@@ -562,7 +573,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
           </div>
         </div>
       )}
-
+      {deleteAppTarget && (
+        <DeleteApplicationModal
+          application={deleteAppTarget}
+          onClose={() => setDeleteAppTarget(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
       {selectedApp && (
         <ApplicationDetailModal
           application={selectedApp}

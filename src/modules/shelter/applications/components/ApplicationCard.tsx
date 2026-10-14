@@ -120,9 +120,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
       case 'allDocuments': onOpenDocuments(application); break;
       case 'viewApplication': onOpenDetail(application); break;
       case 'removeTicket':
-        if (window.confirm('Bạn có chắc chắn muốn xoá đơn này không?')) {
-          onRemove(application);
-        }
+        onRemove(application);
         break;
     }
   };
@@ -144,7 +142,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Xem đơn đăng ký</span></button>
             <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Tất cả tài liệu</span></button>
             <div className="h-[1px] w-full bg-gray-100 my-1"></div>
-            {isAdmin && (
+            {isAdmin && application.status !== 'ADOPTION_COMPLETED' && (
               <>
                 <div className="h-[1px] w-full bg-gray-100 my-1"></div>
                 <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left">
