@@ -141,11 +141,11 @@ export const applicationService = {
   },
 
   flagApplicant: async (applicationId: string, data: { reason: string; note?: string }) => {
-    const res = await apiClient.post(`/applications/${applicationId}/applicant-flag`, data),
+    const res = await apiClient.post(`/applications/${applicationId}/applicant-flag`, data);
     return unwrapItem(res);
   },
-  unflagApplicant: async (applicationId: string) =>
-  {
+
+  unflagApplicant: async (applicationId: string) => {
     const res = await apiClient.delete(`/applications/${applicationId}/applicant-flag`);
     return unwrapItem(res);
   },
