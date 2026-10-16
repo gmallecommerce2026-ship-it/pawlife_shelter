@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-    FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowLeft, FiBold, FiDroplet, FiExternalLink, FiFilter, FiItalic,
+    FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowLeft, FiBold, FiDroplet, FiExternalLink, FiFilter, FiFolder, FiImage, FiItalic,
     FiPlus, FiRotateCcw, FiRotateCw, FiSearch, FiStar, FiTrash2, FiType, FiX,
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -420,7 +420,21 @@ export const PetSheetEditor: React.FC = () => {
     // ───────────── Hiển thị ─────────────
     const display = (col: Col, row: Row) => {
         const v = val(row, col);
-        if (col.key === 'photo' && /^https?:/.test(v)) return <a href={v} target="_blank" rel="noreferrer" onMouseDown={(e) => e.stopPropagation()} className="text-[#1a73e8] hover:underline">{v.includes('/folders/') ? '📁 Thư mục ảnh' : '🖼 Xem ảnh'}</a>;
+        if (col.key === 'photo' && v) {
+            const m = /^(.*)\|(https?:\/\/\S+)$/.exec(v);
+            const url = m ? m[2] : /^https?:/.test(v) ? v : '';
+            const text = m ? m[1] : url ? '' : v;
+            const folder = url ? url.includes('/folders/') : !/\.[a-z]{2,5}$/i.test(text);
+            const label = text || (folder ? 'Thư mục ảnh' : 'Ảnh');
+            const cls = 'inline-flex items-center gap-1.5 max-w-full px-2.5 py-0.5 rounded-full bg-[#F1F3F4] border border-gray-200 text-[13px] text-gray-800';
+            const body = (<>
+                {folder ? <FiFolder size={13} className="text-gray-700 shrink-0" /> : <FiImage size={13} className="text-[#EA4335] shrink-0" />}
+                <span className="truncate">{label}</span>
+            </>);
+            return url
+                ? <a href={url} target="_blank" rel="noreferrer" onMouseDown={(e) => e.stopPropagation()} className={`${cls} hover:bg-[#E8EAED]`}>{body}</a>
+                : <span className={cls}>{body}</span>;
+        }
         if (col.key === 'status' && v) return <span className={`${chip} ${STATUS_STYLE[v] ?? 'bg-gray-100 text-gray-500'}`}>{v}</span>;
         if (col.key === 'vacc' && v) return <span className={`${chip} ${vaccStyle(v)}`}>{v}</span>;
         if (col.key === 'apps') return v ? <span className={`${chip} bg-[#FFF3E0] text-[#E89B5A]`}>{v}</span> : null;
