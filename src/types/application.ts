@@ -1,5 +1,6 @@
 // src/types/application.ts
 
+import { ApplicantFlag } from "@/constants/applicantFlag";
 import { ShelterStaffRole, STAFF_ROLE_LABEL } from "./shelterTeam";
 export const resolveNoteRole = (note: any): ShelterStaffRole | undefined => {
   const raw =
@@ -258,7 +259,7 @@ export interface AdoptionApplication {
   petExperience?: string;
   prevPetHistory?: string;
   employmentStatus?: string;
-  
+  applicantFlag?: ApplicantFlag | null;
   adoptionReason?: string;
   commitments?: AdoptionCommitments;
   tags?: ApplicationTag[];

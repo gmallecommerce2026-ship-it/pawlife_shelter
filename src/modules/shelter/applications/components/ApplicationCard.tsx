@@ -13,6 +13,7 @@ import {
   FileText,
   MoreVertical,
   User,
+  AlertTriangle,
   Folder,
   X,
   File
@@ -22,6 +23,9 @@ import { useTagColorStore } from '@/stores/useTagColorStore';
 import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { motion } from 'framer-motion';
+import { useApplicationActions } from '@/stores/useApplicationStore';
+import { ApplicantFlagModal } from './ApplicantFlag';
+import { getApplicantFlagLabel } from '@/constants/applicantFlag';
 
 const formatSubmittedAt = (iso: string) => {
   try {
@@ -57,6 +61,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const isAdmin = useIsShelterAdmin();
   const isViewed = useViewedApplicationStore((s) => !!s.viewed[application.id]);
   const shouldShowDot = mounted && !isViewed;
+  const [isFlagOpen, setIsFlagOpen] = useState(false);
+  const { fetchApplications } = useApplicationActions();
+  const flag = application.applicantFlag;
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
   // Thêm 2 biến điều kiện, đặt gần chỗ khai báo displayTags
@@ -119,6 +126,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         break;
       case 'allDocuments': onOpenDocuments(application); break;
       case 'viewApplication': onOpenDetail(application); break;
+      case 'flagApplicant': setIsFlagOpen(true); break;
       case 'removeTicket':
         onRemove(application);
         break;
@@ -141,6 +149,12 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             <button onClick={(e) => handleMenuAction(e, 'applicantProfile')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><User size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Hồ sơ người nhận nuôi</span></button>
             <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Xem đơn đăng ký</span></button>
             <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Tất cả tài liệu</span></button>
+            {isAdmin && (
+              <button onClick={(e) => handleMenuAction(e, 'flagApplicant')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left">
+                <AlertTriangle size={18} className="text-red-600" />
+                <span className="text-[15px] font-medium text-red-600">{flag ? 'Sửa / gỡ đánh dấu' : 'Đánh dấu hành vi xấu'}</span>
+              </button>
+            )}
             <div className="h-[1px] w-full bg-gray-100 my-1"></div>
             {isAdmin && application.status !== 'ADOPTION_COMPLETED' && (
               <>
@@ -181,7 +195,17 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       </div>
-
+      {flag && (
+        <div
+          className="flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg bg-[#FEF2F2] border border-[#FECACA] w-fit max-w-full"
+          title={flag.note || undefined}
+        >
+          <AlertTriangle size={12} className="text-[#DC2626] shrink-0" strokeWidth={2} />
+          <span className="font-sans text-[11px] font-semibold text-[#DC2626] truncate">
+            {getApplicantFlagLabel(flag.reason)}
+          </span>
+        </div>
+      )}
       {/* 2. Thông tin liên hệ — gộp gọn, font/icon nhỏ hơn, margin giảm */}
       <div className="flex flex-col gap-1.5 mb-2.5">
         <div className="flex items-center gap-2 w-full">
@@ -277,6 +301,14 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </div>
         </div>
       </div>
+
+      {mounted && isFlagOpen && (
+        <ApplicantFlagModal
+          application={application}
+          onClose={() => setIsFlagOpen(false)}
+          onDone={fetchApplications}
+        />
+      )}
     </div>
   );
 };
