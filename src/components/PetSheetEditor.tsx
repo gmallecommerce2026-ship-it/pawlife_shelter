@@ -186,7 +186,7 @@ export const PetSheetEditor: React.FC = () => {
     }), [rows]);
     const areaOptions = useMemo(() => [...new Set(rows.map((r) => r.f.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')), [rows]);
     const statusOptions = cols.find((c) => c.key === 'status')?.options ?? [];
-    const nameIdx = Math.max(cols.findIndex((c) => c.key === 'id'), 0);
+    const nameIdx = Math.max(cols.findIndex((c) => c.key === 'name'), cols.findIndex((c) => c.key === 'id'), 0);
     const W = (c: Col) => widths[c.key] ?? c.width * 7 + 16;
     const totalWidth = GUT + COLA + cols.reduce((s, c) => s + W(c), 0) + 72;
 
@@ -461,7 +461,15 @@ export const PetSheetEditor: React.FC = () => {
         'Xem': [['Bật/tắt bộ lọc', () => setShowFilter((v) => !v)], ['Bật/tắt thống kê', () => setShowStats((v) => !v)], ['Thu phóng 100%', () => setZoom(100)]],
         'Chèn': [['Thêm dòng ở cuối', addRow]],
         'Định dạng': [['Đậm', () => fmtSel('b'), 'Ctrl+B'], ['Nghiêng', () => fmtSel('i'), 'Ctrl+I'], ['Căn trái', () => fmtSel('al', 'left')], ['Căn giữa', () => fmtSel('al', 'center')], ['Căn phải', () => fmtSel('al', 'right')], ['Xoá định dạng', clearFmt]],
-        'Dữ liệu': [['Sắp xếp A → Z theo cột', () => sortCol(1)], ['Sắp xếp Z → A theo cột', () => sortCol(-1)], ['Bỏ sắp xếp', () => setSort(null)], ['Xoá các dòng đã chọn', delRows]],
+        'Dữ liệu': [['Sắp xếp A → Z theo cột', () => sortCol(1)], ['Gộp pet trùng ID / tên', () => run(async () => {
+            const pre = (await axiosClient.post(`${BASE}/merge`)).data;
+            if (!pre.extra) { toast.success('Không có pet nào trùng.'); return; }
+            const ex = pre.preview.slice(0, 5).map((g: any) => `• ${g.keep} ← ${g.merge.join(', ')}`).join('\n');
+            if (!window.confirm(`Tìm thấy ${pre.groups} nhóm trùng (${pre.extra} pet thừa):\n${ex}\n\nGộp lại? Không thể hoàn tác.`)) return;
+            const r = (await axiosClient.post(`${BASE}/merge?dry=0`)).data;
+            await load(species, false);
+            toast.success(`Đã gộp ${r.merged} pet${r.blocked ? `, ${r.blocked} pet bị chặn do dữ liệu liên quan` : ''}.`);
+        })], ['Sắp xếp Z → A theo cột', () => sortCol(-1)], ['Bỏ sắp xếp', () => setSort(null)], ['Xoá các dòng đã chọn', delRows]],
     };
     const ctxItems: [string, () => void][] = [['Sao chép', copyRange], ['Dán', pasteClip], ['Xoá nội dung', clearRange], ['Thêm dòng ở cuối', addRow], ['Xoá dòng đã chọn', delRows], ['Đánh dấu / bỏ ưu tiên', () => activeRow && save([{ id: activeRow.id, patch: { extra: togglePriority(activeRow.f.extra ?? '') } }])]];
     const nameBox = rng ? `${letter(rng.c1 + 1)}${rng.r1 + 2}${rng.r1 !== rng.r2 || rng.c1 !== rng.c2 ? `:${letter(rng.c2 + 1)}${rng.r2 + 2}` : ''}` : '';
