@@ -5,97 +5,97 @@ import Link from 'next/link';
 import { FiPlus, FiSearch, FiFilter, FiChevronDown } from 'react-icons/fi';
 import { PawPrint, Bell } from 'lucide-react'; // <-- Thêm Bell vào đây
 import { PetFilter, PetSpecies, PetStatus, PET_STATUS_LABEL, PET_SPECIES_LABEL } from '@/types/pet';
-
+import PetSheetSyncMenu from '@/components/PetSheetSyncMenu';
 interface PetPageHeaderProps {
-    filter: PetFilter;
-    onFilterChange: (patch: Partial<PetFilter>) => void;
-    searchInput: string;
-    onSearchInputChange: (value: string) => void;
-    title?: string;
-    showNewPetButton?: boolean;
+  filter: PetFilter;
+  onFilterChange: (patch: Partial<PetFilter>) => void;
+  searchInput: string;
+  onSearchInputChange: (value: string) => void;
+  title?: string;
+  showNewPetButton?: boolean;
 }
 
 export const PetPageHeader: React.FC<PetPageHeaderProps> = ({
-    filter,
-    onFilterChange,
-    searchInput,
-    onSearchInputChange,
-    title = 'Quản lý Pet',
-    showNewPetButton = true,
+  filter,
+  onFilterChange,
+  searchInput,
+  onSearchInputChange,
+  title = 'Quản lý Pet',
+  showNewPetButton = true,
 }) => {
-    return (
-        <div className="flex items-center gap-3 mb-[37px] flex-nowrap">
-            {/* Title */}
-            <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#0D062D] font-semibold tracking-tight">
-                {title}
-            </h2>
+  return (
+    <div className="flex items-center gap-3 mb-[37px] flex-nowrap">
+      {/* Title */}
+      <h2 className="font-['Be Vietnam Pro',_sans-serif] text-[40px] text-[#0D062D] font-semibold tracking-tight">
+        {title}
+      </h2>
 
-            {/* + New Pet pill */}
-            {showNewPetButton && (
-                <Link
-                    href="/shelter/pets/create"
-                    className="flex items-center gap-1.5 bg-[#FFF4EA] hover:bg-[#FFEBD6] text-[#FFBA7F] text-sm font-semibold px-4 py-2 rounded-full transition-colors shrink-0 whitespace-nowrap"
-                >
-                    <FiPlus size={14} /> Thêm thú cưng
-                </Link>
-            )}
+      {/* + New Pet pill */}
+      {showNewPetButton && (
+        <Link
+          href="/shelter/pets/create"
+          className="flex items-center gap-1.5 bg-[#FFF4EA] hover:bg-[#FFEBD6] text-[#FFBA7F] text-sm font-semibold px-4 py-2 rounded-full transition-colors shrink-0 whitespace-nowrap"
+        >
+          <FiPlus size={14} /> Thêm thú cưng
+        </Link>
+      )}
+      <PetSheetSyncMenu />
+      {/* Spacer đẩy bell/search/filter về bên phải */}
+      <div className="flex-1" />
 
-            {/* Spacer đẩy bell/search/filter về bên phải */}
-            <div className="flex-1" />
+      {/* --- ĐÃ ĐỒNG BỘ STYLE NÚT CHUÔNG TỪ APPLICATION KANBAN HEADER --- */}
+      <button
+        type="button"
+        aria-label="Thông báo"
+        className="relative p-2 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+      >
+        <Bell size={20} strokeWidth={1.8} />
+        <span className="absolute top-[7px] right-[7px] w-2 h-2 bg-[#F46767] border-[1.5px] border-white rounded-full"></span>
+      </button>
+      {/* ---------------------------------------------------------------- */}
 
-            {/* --- ĐÃ ĐỒNG BỘ STYLE NÚT CHUÔNG TỪ APPLICATION KANBAN HEADER --- */}
-            <button
-                type="button"
-                aria-label="Thông báo"
-                className="relative p-2 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
-            >
-                <Bell size={20} strokeWidth={1.8} />
-                <span className="absolute top-[7px] right-[7px] w-2 h-2 bg-[#F46767] border-[1.5px] border-white rounded-full"></span>
-            </button>
-            {/* ---------------------------------------------------------------- */}
+      {/* Search */}
+      <div className="relative flex-1 min-w-[220px]">
+        <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+        <input
+          value={searchInput}
+          onChange={(e) => onSearchInputChange(e.target.value)}
+          placeholder="Tìm kiếm bằng tên, giống hoặc ID..."
+          className="w-full border border-[#858585] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#858585] focus:border-[#E89B5A] focus:ring-2 focus:ring-[#E89B5A]/20 focus:outline-none transition-colors"
+        />
+      </div>
 
-            {/* Search */}
-            <div className="relative flex-1 min-w-[220px]">
-                    <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-                    <input
-                      value={searchInput}
-                      onChange={(e) => onSearchInputChange(e.target.value)}
-                      placeholder="Tìm kiếm bằng tên, giống hoặc ID..."
-                      className="w-full border border-[#858585] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#858585] focus:border-[#E89B5A] focus:ring-2 focus:ring-[#E89B5A]/20 focus:outline-none transition-colors"
-                    />
-                  </div>
-            
-                  {/* All Statuses */}
-                  <div className="relative shrink-0">
-                    <select
-                      value={filter.status}
-                      onChange={(e) => onFilterChange({ status: e.target.value as PetStatus | 'ALL' })}
-                      className="appearance-none bg-white border border-[#858585] rounded-full pl-4 pr-9 py-2.5 text-sm text-[#858585] font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer"
-                    >
-                      <option value="ALL">Toàn bộ trạng thái</option>
-                      {(Object.keys(PET_STATUS_LABEL) as PetStatus[]).map((s) => (
-                        <option key={s} value={s}>{PET_STATUS_LABEL[s]}</option>
-                      ))}
-                    </select>
-                    <FiChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                  </div>
-            
-                  {/* All Species */}
-                  <div className="relative shrink-0">
-                    <select
-                      value={filter.species}
-                      onChange={(e) => onFilterChange({ species: e.target.value as PetSpecies | 'ALL' })}
-                      className="appearance-none bg-white border border-[#858585] rounded-full pl-4 pr-9 py-2.5 text-sm text-[#858585] font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer"
-                    >
-                      <option value="ALL">Toàn bộ loài</option>
-                      {(Object.keys(PET_SPECIES_LABEL) as PetSpecies[]).map((s) => (
-                        <option key={s} value={s}>{PET_SPECIES_LABEL[s]}</option>
-                      ))}
-                    </select>
-                    <FiChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                  </div>
-        </div>
-    );
+      {/* All Statuses */}
+      <div className="relative shrink-0">
+        <select
+          value={filter.status}
+          onChange={(e) => onFilterChange({ status: e.target.value as PetStatus | 'ALL' })}
+          className="appearance-none bg-white border border-[#858585] rounded-full pl-4 pr-9 py-2.5 text-sm text-[#858585] font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer"
+        >
+          <option value="ALL">Toàn bộ trạng thái</option>
+          {(Object.keys(PET_STATUS_LABEL) as PetStatus[]).map((s) => (
+            <option key={s} value={s}>{PET_STATUS_LABEL[s]}</option>
+          ))}
+        </select>
+        <FiChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+      </div>
+
+      {/* All Species */}
+      <div className="relative shrink-0">
+        <select
+          value={filter.species}
+          onChange={(e) => onFilterChange({ species: e.target.value as PetSpecies | 'ALL' })}
+          className="appearance-none bg-white border border-[#858585] rounded-full pl-4 pr-9 py-2.5 text-sm text-[#858585] font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer"
+        >
+          <option value="ALL">Toàn bộ loài</option>
+          {(Object.keys(PET_SPECIES_LABEL) as PetSpecies[]).map((s) => (
+            <option key={s} value={s}>{PET_SPECIES_LABEL[s]}</option>
+          ))}
+        </select>
+        <FiChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+      </div>
+    </div>
+  );
 };
 
 export default PetPageHeader;
