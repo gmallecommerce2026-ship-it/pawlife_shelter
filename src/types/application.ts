@@ -244,6 +244,13 @@ export interface AppointmentSummary {
   meetLink?: string | null;
   members?: unknown;
 }
+export interface RelatedApplication {
+  id: string;
+  status: ApplicationStatus;
+  petId: string;
+  petName: string;
+  interview: { at: string; status: string; staff: string[] } | null;
+}
 export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;
@@ -266,6 +273,7 @@ export interface AdoptionApplication {
   notes?: ApplicationNote[];
   pet?: AdoptionApplicantPetSummary;
   user?: AdoptionApplicantUser;
+  relatedApplications?: RelatedApplication[];
   documents?: ApplicationDocumentSummary[];
   appointment?: AppointmentSummary | null; 
   createdAt: string;

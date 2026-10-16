@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { apiClient } from '@/lib/api/ApiClient';
-
+import { RelatedApplicationsNotice } from './RelatedApplications';
 export interface InterviewMember {
   id: string;
   name: string;
@@ -362,6 +362,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 sm:px-7 py-6 space-y-6">
+          <RelatedApplicationsNotice application={application} className="" />
           {/* Adopter & Pet summary */}
           <div className="border border-gray-200 rounded-[16px] p-4 shadow-sm bg-[#FAFAFA] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">

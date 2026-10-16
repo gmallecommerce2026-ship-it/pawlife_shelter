@@ -26,7 +26,14 @@ import { motion } from 'framer-motion';
 import { useApplicationActions } from '@/stores/useApplicationStore';
 import { ApplicantFlagModal } from './ApplicantFlag';
 import { getApplicantFlagLabel } from '@/constants/applicantFlag';
-
+import {
+  RelatedApplicationsBadge,
+  getApplicantId,
+  getApplicantColor,
+  getRelated,
+  setHoveredApplicant,
+  useIsApplicantHighlighted,
+} from './RelatedApplications';
 const formatSubmittedAt = (iso: string) => {
   try {
     return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
@@ -206,6 +213,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       )}
+      <RelatedApplicationsBadge application={application} />
       {/* 2. Thông tin liên hệ — gộp gọn, font/icon nhỏ hơn, margin giảm */}
       <div className="flex flex-col gap-1.5 mb-2.5">
         <div className="flex items-center gap-2 w-full">
@@ -343,16 +351,23 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
     id: application.id,
   });
 
+  const applicantId = getApplicantId(application);
+  const hasRelated = !!applicantId && getRelated(application).length > 0;
+  const highlighted = useIsApplicantHighlighted(hasRelated ? applicantId : undefined);
+
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
     forcedColorAdjust: 'none' as const,
     touchAction: 'none',
+    ...(highlighted && applicantId ? { boxShadow: `0 0 0 2px ${getApplicantColor(applicantId)}` } : {}),
   };
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} tabIndex={-1}
       onClick={() => onCardClick(application)}
+      onMouseEnter={hasRelated ? () => setHoveredApplicant(applicantId!) : undefined}
+      onMouseLeave={hasRelated ? () => setHoveredApplicant(null) : undefined}
       className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <motion.div

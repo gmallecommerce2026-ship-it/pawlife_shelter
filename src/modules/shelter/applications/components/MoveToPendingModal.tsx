@@ -29,6 +29,7 @@ import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
 import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
+import { RelatedApplicationsNotice } from './RelatedApplications';
 const matchKeyword = (
   val: string,
   rules: { keywords: string[]; result: string }[],
@@ -432,6 +433,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             </div>
           </div>
           <ApplicantFlagBanner flag={application.applicantFlag} />
+          <RelatedApplicationsNotice application={application} />
           {/* Tải PDF */}
           <div className="border border-gray-200 rounded-[16px] p-3.5 px-4 flex items-center justify-between bg-white hover:bg-gray-50/50 transition-colors mb-6 shadow-xs">
             <div className="flex items-center gap-3 min-w-0">

@@ -29,6 +29,7 @@ import { PartyPopper } from 'lucide-react';
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
+import { RelatedApplicationsNotice } from './RelatedApplications';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
   key: doc.key,
@@ -565,7 +566,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
         {/* Thân Modal cuộn */}
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-7 pb-6 space-y-6">
-
+          <RelatedApplicationsNotice application={application} className="" />
           {/* Header Thông tin Người nhận nuôi & Pet Card */}
           <div className="flex gap-4 items-start">
             <img
