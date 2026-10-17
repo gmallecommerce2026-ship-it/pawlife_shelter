@@ -27,6 +27,7 @@ import { Socket } from 'socket.io-client';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { formatPetAge } from '@/utils/petAge';
 import PetIdBadge from './PetIdBadge';
+import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
 // ============================================================================
@@ -548,6 +549,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         </button>
 
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
+          <RelatedApplicationsNotice application={application} className="mb-4" />
           {/* 1. Header & Thông tin người đăng ký */}
           <div className="flex gap-4 mb-5 items-start">
             <img
@@ -559,9 +561,12 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               alt={application.fullName || application.user?.name || 'Applicant'}
             />
             <div className="flex flex-col flex-1 pt-0.5">
-              <h2 className="text-[17px] font-bold text-gray-900 leading-tight mb-2">
-                {application.fullName || application.user?.name || 'Julia Nguyen'}
-              </h2>
+              <div className="flex items-center gap-1.5 mb-2 min-w-0">
+                <h2 className="text-[17px] font-bold text-gray-900 leading-tight truncate">
+                  {application.fullName || application.user?.name || 'Người đăng ký'}
+                </h2>
+                <RelatedApplicationsWarnIcon application={application} size={16} />
+              </div>
               <div className="flex items-center gap-2 text-gray-500 mb-1">
                 <Phone size={13} className="text-gray-400 shrink-0" />
                 <span className="text-[12.5px]">{application.phone || '09876543210'}</span>

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { apiClient } from '@/lib/api/ApiClient';
-import { RelatedApplicationsNotice } from './RelatedApplications';
+import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
 import PetIdBadge from './PetIdBadge';
 export interface InterviewMember {
   id: string;
@@ -373,8 +373,9 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                 alt="Adopter"
               />
               <div>
-                <span className="font-bold text-[14px] text-gray-900 block">
+                <span className="font-bold text-[14px] text-gray-900 flex items-center gap-1.5">
                   {application.fullName || application.user?.name}
+                  <RelatedApplicationsWarnIcon application={application} size={14} />
                 </span>
                 <span className="text-[11px] text-gray-500">
                   {application.phone || 'Chưa có SĐT'}

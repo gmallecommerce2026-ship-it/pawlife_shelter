@@ -29,7 +29,7 @@ import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
 import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
-import { RelatedApplicationsNotice } from './RelatedApplications';
+import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
 import PetIdBadge from './PetIdBadge';
 const matchKeyword = (
   val: string,
@@ -386,9 +386,12 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
               />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-start">
-              <h2 className="text-[18px] font-bold text-gray-900 leading-tight mb-2 truncate">
-                {applicantFullName}
-              </h2>
+              <div className="flex items-center gap-1.5 mb-2 min-w-0">
+                <h2 className="text-[18px] font-bold text-gray-900 leading-tight truncate">
+                  {applicantFullName}
+                </h2>
+                <RelatedApplicationsWarnIcon application={application} size={16} />
+              </div>
               <div className="flex items-center gap-2 text-gray-500 mb-1.5">
                 <Phone size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
                 <span className="text-[13px] text-gray-500 font-normal truncate">

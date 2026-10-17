@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useRef, useState, useSyncExternalStore } from 'react';
+import { Users, AlertTriangle, ChevronDown } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { Users, AlertTriangle } from 'lucide-react';
 import { AdoptionApplication, RelatedApplication, KANBAN_COLUMNS } from '@/types/application';
 
 const PALETTE = ['#5982E6', '#E8590C', '#2F9E44', '#9C36B5', '#D6336C', '#0C8599', '#F08C00', '#6741D9'];
@@ -110,28 +110,62 @@ export const RelatedApplicationsBadge: React.FC<{ application: AdoptionApplicati
     </div>
   );
 };
+// ---- Icon cảnh báo nhỏ đặt cạnh tên người đăng ký ----
+export const RelatedApplicationsWarnIcon: React.FC<{
+  application: AdoptionApplication;
+  size?: number;
+  className?: string;
+}> = ({ application, size = 15, className = '' }) => {
+  const related = getRelated(application);
+  if (related.length === 0) return null;
+  return (
+    <span
+      title={`Người này đang có ${related.length} đơn khác tại trạm`}
+      className={`inline-flex shrink-0 text-[#B45309] ${className}`}
+    >
+      <AlertTriangle size={size} strokeWidth={2} />
+    </span>
+  );
+};
 
 // ---- Banner cảnh báo: nhúng vào các modal (đặt lịch phỏng vấn, duyệt đơn...) ----
 export const RelatedApplicationsNotice: React.FC<{ application: AdoptionApplication; className?: string }> = ({
   application,
   className = 'mb-3',
 }) => {
+  const [open, setOpen] = useState(true);
   const related = getRelated(application);
   if (related.length === 0) return null;
   const hasInterview = related.some((r) => r.interview && r.interview.status !== 'COMPLETED');
 
   return (
-    <div className={`rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-3 ${className}`}>
-      <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#B45309] mb-1">
-        <AlertTriangle size={14} strokeWidth={2} />
-        Người này đang có {related.length} đơn khác tại trạm
-      </div>
-      <RelatedRows related={related} />
-      <p className="text-[11px] text-[#92400E] mt-1.5">
-        {hasInterview
-          ? 'Đã có lịch phỏng vấn cho đơn khác — hãy phân công cùng nhân sự đó, tránh 2 người cùng phỏng vấn một ứng viên.'
-          : 'Nên phân công một nhân sự phỏng vấn chung cho tất cả các đơn của người này.'}
-      </p>
+    <div className={`rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2.5 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 text-left cursor-pointer"
+      >
+        <span className="flex items-center gap-1.5 text-[12px] font-bold text-[#B45309]">
+          <AlertTriangle size={14} strokeWidth={2} className="shrink-0" />
+          Người này đang có {related.length} đơn khác tại trạm
+        </span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={`shrink-0 text-[#B45309] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="mt-1.5">
+          <RelatedRows related={related} />
+          <p className="text-[11px] text-[#92400E] mt-1.5">
+            {hasInterview
+              ? 'Đã có lịch phỏng vấn cho đơn khác — hãy phân công cùng nhân sự đó, tránh 2 người cùng phỏng vấn một ứng viên.'
+              : 'Nên phân công một nhân sự phỏng vấn chung cho tất cả các đơn của người này.'}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

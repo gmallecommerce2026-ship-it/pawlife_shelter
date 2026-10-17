@@ -29,7 +29,7 @@ import { PartyPopper } from 'lucide-react';
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
-import { RelatedApplicationsNotice } from './RelatedApplications';
+import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
 import PetIdBadge from './PetIdBadge';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
@@ -577,9 +577,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
             />
 
             <div className="flex-1 min-w-0">
-              <h2 className="text-[19px] font-bold text-gray-900 leading-tight mb-2">
-                {applicantName}
-              </h2>
+              <div className="flex items-center gap-1.5 mb-2 min-w-0">
+                <h2 className="text-[19px] font-bold text-gray-900 leading-tight truncate">
+                  {applicantName}
+                </h2>
+                <RelatedApplicationsWarnIcon application={application} size={16} />
+              </div>
 
               <div className="flex items-center gap-2 text-gray-500 text-[13px] mb-1.5">
                 <Phone size={13} className="text-gray-400 shrink-0" />
