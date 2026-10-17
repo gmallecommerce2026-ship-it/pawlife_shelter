@@ -133,7 +133,7 @@ export const RelatedApplicationsNotice: React.FC<{ application: AdoptionApplicat
   application,
   className = 'mb-3',
 }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const related = getRelated(application);
   if (related.length === 0) return null;
   const hasInterview = related.some((r) => r.interview && r.interview.status !== 'COMPLETED');
