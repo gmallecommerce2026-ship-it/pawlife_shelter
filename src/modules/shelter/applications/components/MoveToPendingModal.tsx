@@ -30,6 +30,7 @@ import { formatPetAge } from '@/utils/petAge';
 import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
 import { RelatedApplicationsNotice } from './RelatedApplications';
+import PetIdBadge from './PetIdBadge';
 const matchKeyword = (
   val: string,
   rules: { keywords: string[]; result: string }[],
@@ -404,7 +405,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
                 <span className="text-[13px] text-gray-500 font-normal">Đang xin nhận nuôi</span>
               </div>
-              <div className="flex items-center gap-2.5 mt-0.5">
+              <div className="flex items-center gap-2.5 mt-0.5 w-full">
                 <img
                   src={
                     application.pet?.avatarUrl ||
@@ -429,6 +430,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                     {petAgeFormatted} • {petBreedFormatted}
                   </span>
                 </div>
+                <PetIdBadge pet={application.pet} className="ml-auto" />   {/* ← thêm */}
               </div>
             </div>
           </div>

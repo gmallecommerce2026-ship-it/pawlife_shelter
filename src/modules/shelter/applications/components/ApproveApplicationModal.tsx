@@ -30,6 +30,7 @@ import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
 import { RelatedApplicationsNotice } from './RelatedApplications';
+import PetIdBadge from './PetIdBadge';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
   key: doc.key,
@@ -626,6 +627,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   <span className="text-[11px] text-gray-500 truncate">
                     {getPetInfoLabel(application.pet)}
                   </span>
+                  <PetIdBadge pet={application.pet} className="ml-auto pr-1.5" />   {/* ← thêm */}
                 </div>
               </div>
             </div>

@@ -24,6 +24,9 @@ import { useSocket } from '@/contexts/SocketContext';
 import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { Socket } from 'socket.io-client';
+import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
+import { formatPetAge } from '@/utils/petAge';
+import PetIdBadge from './PetIdBadge';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
 // ============================================================================
@@ -252,7 +255,8 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [isAddDocPickerOpen, setIsAddDocPickerOpen] = useState(false);
   const [reviewingDocKey, setReviewingDocKey] = useState<string | null>(null);
   const isMale = application.pet?.gender !== 'FEMALE';
-
+  const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'Giống lai';
+  const petAgeFormatted = formatPetAge(application.pet?.dob);
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -595,7 +599,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="font-bold text-[14px] text-gray-900">
-                  {application.pet?.name || 'Luna'}
+                  {application.pet?.name || 'Bé'}
                 </span>
                 {isMale ? (
                   <Mars size={14} strokeWidth={2.5} className="text-[#3DB2FF]" />
@@ -603,8 +607,9 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                   <Venus size={14} strokeWidth={2.5} className="text-[#FF6B93]" />
                 )}
               </div>
-              <span className="text-[12px] text-gray-400">2 years · Golden British</span>
+              <span className="text-[12px] text-gray-400">{petAgeFormatted} • {petBreedFormatted}</span>
             </div>
+            <PetIdBadge pet={application.pet} className="ml-auto pr-1.5" />
           </div>
 
           {/* 2. Gắn thẻ (Tags) */}

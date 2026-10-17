@@ -20,6 +20,7 @@ import {
 import { AdoptionApplication } from '@/types/application';
 import { apiClient } from '@/lib/api/ApiClient';
 import { RelatedApplicationsNotice } from './RelatedApplications';
+import PetIdBadge from './PetIdBadge';
 export interface InterviewMember {
   id: string;
   name: string;
@@ -384,6 +385,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
             <ArrowRight size={16} className="text-gray-300 shrink-0" />
 
             <div className="flex items-center gap-3">
+              <PetIdBadge pet={application.pet} className="pr-3 mr-0.5 border-r border-gray-200" />   {/* ← thêm */}
               <div className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <span className="font-bold text-[14px] text-gray-900">{application.pet?.name}</span>
