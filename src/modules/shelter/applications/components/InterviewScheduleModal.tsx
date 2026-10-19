@@ -22,6 +22,7 @@ import { apiClient } from '@/lib/api/ApiClient';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
+  getPetIdLabel,
 } from './RelatedApplications';
 export interface InterviewMember {
   id: string;
@@ -386,7 +387,9 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                     {application.phone || 'Chưa có SĐT'}
                   </span>
                 </div>
-                <PetIdRow pet={application.pet} className="text-[11px] mt-0.5 gap-1.5" />
+                <span className="text-[11.5px] text-gray-400 mt-0.5 leading-snug break-all">
+                  {getPetIdLabel(application.pet, ``)}
+                </span>
               </div>
 
             </div>

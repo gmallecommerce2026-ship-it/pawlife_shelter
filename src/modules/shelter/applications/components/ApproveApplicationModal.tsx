@@ -32,6 +32,7 @@ import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
+  getPetIdLabel,
 } from './RelatedApplications';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
@@ -597,7 +598,9 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                 <Mail size={13} className="text-gray-400 shrink-0" />
                 <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
               </div>
-              <PetIdRow pet={application.pet} className="text-[13px] mb-2" />
+              <span className="text-[11.5px] text-gray-400 mt-0.5 leading-snug break-all">
+                {getPetIdLabel(application.pet, ``)}
+              </span>
 
               {/* Target Pet Pill Card */}
               <div className="border border-gray-200 rounded-[14px] p-2 flex items-center gap-3 bg-white shadow-sm w-full">

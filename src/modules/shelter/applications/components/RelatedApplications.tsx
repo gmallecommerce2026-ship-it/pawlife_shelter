@@ -183,7 +183,10 @@ export const PetIdRow: React.FC<{ pet?: any; className?: string }> = ({
     </div>
   );
 };
-
+export const getPetIdLabel = (pet?: any, fallback = ''): string => {
+  const code = getPetCode(pet);
+  return code ? `ID: ${code}` : fallback;
+};
 // ---- Nút mũi tên mở/thu gọn (thay PetIdBadge) ----
 const iconBtn =
   'p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer';
@@ -241,13 +244,7 @@ const RelatedPetCard: React.FC<{ r: RelatedApplication }> = ({ r }) => {
   const pet = r.pet;
   const name = pet?.name ?? r.petName;
   const img = pet?.images?.[0]?.url;
-  const code = getPetCode(pet);
-  const sub = [
-    pet?.dob ? formatPetAge(pet.dob) : '',
-    pet?.breed ? formatBreed(pet.breed as MaybeBilingual) : '',
-  ]
-    .filter(Boolean)
-    .join(' • ');
+  const idLabel = getPetIdLabel(pet);
 
   return (
     <div className="border border-gray-200/80 rounded-[14px] p-2.5 flex items-center gap-3 bg-white">
@@ -257,7 +254,7 @@ const RelatedPetCard: React.FC<{ r: RelatedApplication }> = ({ r }) => {
         <div className="w-11 h-11 rounded-[10px] bg-gray-100 shrink-0" />
       )}
       <div className="flex flex-col min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span className="font-bold text-[13.5px] text-gray-900 truncate">{name}</span>
           {pet?.gender &&
             (pet.gender === 'FEMALE' ? (
@@ -265,11 +262,10 @@ const RelatedPetCard: React.FC<{ r: RelatedApplication }> = ({ r }) => {
             ) : (
               <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF] shrink-0" />
             ))}
+          <span className="ml-auto shrink-0 text-[11px] text-gray-500">{statusLabel(r.status)}</span>
         </div>
-        {/* {sub && <span className="text-[11.5px] text-gray-400 truncate">{sub}</span>} */}
-        {code && <span className="text-[11px] text-gray-400 truncate">ID: {code}</span>}
+        {idLabel && <span className="text-[11.5px] text-gray-400 break-all">{idLabel}</span>}
       </div>
-      <span className="text-[11px] text-gray-500 shrink-0">{statusLabel(r.status)}</span>
     </div>
   );
 };
