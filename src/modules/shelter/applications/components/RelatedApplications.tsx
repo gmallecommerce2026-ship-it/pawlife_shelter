@@ -244,7 +244,7 @@ const RelatedPetCard: React.FC<{ r: RelatedApplication }> = ({ r }) => {
               <Mars size={13} strokeWidth={2.5} className="text-[#3DB2FF] shrink-0" />
             ))}
         </div>
-        {sub && <span className="text-[11.5px] text-gray-400 truncate">{sub}</span>}
+        {/* {sub && <span className="text-[11.5px] text-gray-400 truncate">{sub}</span>} */}
         {code && <span className="text-[11px] text-gray-400 truncate">ID: {code}</span>}
       </div>
       <span className="text-[11px] text-gray-500 shrink-0">{statusLabel(r.status)}</span>
