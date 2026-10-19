@@ -247,6 +247,16 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const applicantFirstName = applicantFullName.split(' ')[0] || 'Người đăng ký';
   const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'Giống lai';
   const petAgeFormatted = formatPetAge(application.pet?.dob);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      await downloadApplicationPdf(application);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
@@ -479,6 +489,14 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 )}
               </div>
             </div>
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              title="Tải đơn PDF"
+              className="absolute top-5 right-12 text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50"
+            >
+              <Download size={18} />
+            </button>
             <div className="flex flex-wrap gap-2">
               {tags.length === 0 ? (
                 <span className="text-[12px] text-gray-400 italic">Chưa có thẻ nào</span>
