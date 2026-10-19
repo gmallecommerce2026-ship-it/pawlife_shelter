@@ -76,7 +76,6 @@ export const RelatedApplicationsBadge: React.FC<{ application: AdoptionApplicati
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   if (related.length === 0 || !id) return null;
-  const color = getApplicantColor(id);
 
   const open = () => {
     const r = ref.current?.getBoundingClientRect();
@@ -86,18 +85,14 @@ export const RelatedApplicationsBadge: React.FC<{ application: AdoptionApplicati
   return (
     <div
       ref={ref}
-      className="mb-2.5 w-fit max-w-full"
+      className="inline-flex shrink-0"
       onMouseEnter={open}
       onMouseLeave={() => setPos(null)}
       onPointerDown={() => setPos(null)}
     >
-      <div
-        className="flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-semibold"
-        style={{ color, backgroundColor: `${color}15`, borderColor: `${color}40` }}
-      >
-        <Users size={12} strokeWidth={2} className="shrink-0" />
-        <span className="truncate">Còn {related.length} đơn khác của người này</span>
-      </div>
+      <span className="px-2 py-[1px] rounded-full border border-gray-200 bg-gray-100 text-[10.5px] font-semibold leading-tight text-gray-500 whitespace-nowrap">
+        +{related.length} đơn khác
+      </span>
       {pos &&
         createPortal(
           <div

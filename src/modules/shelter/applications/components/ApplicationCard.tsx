@@ -197,9 +197,12 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
               <span className="w-[6px] h-[6px] bg-[#FF6B6B] rounded-full shrink-0" />
             )}
           </div>
-          <span className="font-sans text-[12px] leading-tight text-[#888888] mt-0.5 truncate">
-            Nhận nuôi <span className="font-semibold text-[#111111]">{application.pet?.name || "Luna"}</span>
-          </span>
+          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+            <span className="font-sans text-[12px] leading-tight text-[#888888] truncate">
+              Nhận nuôi <span className="font-semibold text-[#111111]">{application.pet?.name || "Luna"}</span>
+            </span>
+            <RelatedApplicationsBadge application={application} />
+          </div>
         </div>
       </div>
       {flag && (
@@ -213,8 +216,6 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       )}
-      <RelatedApplicationsBadge application={application} />
-      {/* 2. Thông tin liên hệ — gộp gọn, font/icon nhỏ hơn, margin giảm */}
       <div className="flex flex-col gap-1.5 mb-2.5">
         <div className="flex items-center gap-2 w-full">
           <Phone size={12} className="text-[#888888] shrink-0" strokeWidth={2} />
