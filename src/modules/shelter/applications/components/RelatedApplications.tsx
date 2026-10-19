@@ -9,6 +9,8 @@ import { formatPetAge } from '@/utils/petAge';
 import { getPetCode } from './PetIdBadge';
 import { Download, ArrowLeftRight } from 'lucide-react'; // gộp vào import lucide-react hiện có
 import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
+import { DownloadPdfButton } from './DownloadPdfButton';
+
 const PALETTE = ['#5982E6', '#E8590C', '#2F9E44', '#9C36B5', '#D6336C', '#0C8599', '#F08C00', '#6741D9'];
 const INACTIVE = ['CLOSED', 'ADOPTION_COMPLETED'];
 
@@ -202,14 +204,11 @@ export const PetCardActions: React.FC<{
 
   return (
     <div className={`ml-auto shrink-0 flex items-center gap-0.5 ${className}`}>
-      <button
-        type="button"
-        onClick={() => downloadApplicationPdf(application)}
-        title="Tải đơn nhận nuôi (PDF)"
+      <DownloadPdfButton
+        application={application}
         className={`${iconBtn} hover:!text-[#E89B5A]`}
-      >
-        <Download size={16} strokeWidth={2} />
-      </button>
+        iconSize={14}
+      />
       {canReplace && (
         <button
           type="button"
