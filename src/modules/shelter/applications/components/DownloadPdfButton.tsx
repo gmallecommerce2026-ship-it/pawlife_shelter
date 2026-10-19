@@ -1,56 +1,79 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Loader2, FileDown, X } from 'lucide-react';
+import { Download, Loader2, X } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
-import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
+import {
+  downloadApplicationPdf,
+  loadPdfAssets,
+  type PdfAssets,
+} from '@/utils/exportApplicationPdf';
+import { ApplicationPdfTemplate, PDF_WIDTH } from '@/components/pdf/ApplicationPdfTemplate';
 
-const txt = (v: any): string => {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'string' || typeof v === 'number') return String(v);
-  if (typeof v === 'object') return v.vi ?? v.en ?? '';
-  return String(v);
-};
-
-interface DownloadPdfButtonProps {
+interface Props {
   application: AdoptionApplication;
-  /** class của nút, mặc định giống các icon-button khác */
   className?: string;
   iconSize?: number;
 }
 
-export const DownloadPdfButton: React.FC<DownloadPdfButtonProps> = ({
+export const DownloadPdfButton: React.FC<Props> = ({
   application,
   className = 'p-1.5 rounded-lg text-gray-400 hover:text-[#E89B5A] hover:bg-orange-50 transition-colors disabled:opacity-50',
   iconSize = 16,
 }) => {
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [assets, setAssets] = useState<PdfAssets | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const applicantName =
-    txt(application.fullName) || txt((application as any).user?.name) || 'người đăng ký';
-  const petName = txt(application.pet?.name) || 'bé';
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [pageH, setPageH] = useState(0);
 
-  const openConfirm = (e: React.MouseEvent) => {
+  // Thu nhỏ bản xem trước cho vừa khung
+  useLayoutEffect(() => {
+    if (!assets) return;
+    const calc = () => {
+      const w = scrollRef.current?.clientWidth ?? PDF_WIDTH;
+      setScale(Math.min(1, (w - 32) / PDF_WIDTH));
+      setPageH(pageRef.current?.offsetHeight ?? 0);
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    if (scrollRef.current) ro.observe(scrollRef.current);
+    if (pageRef.current) ro.observe(pageRef.current);
+    return () => ro.disconnect();
+  }, [assets]);
+
+  const openPreview = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isDownloading) return;
-    setError(null);
-    setIsConfirmOpen(true);
+    if (isPreparing) return;
+    try {
+      setIsPreparing(true);
+      setError(null);
+      setAssets(await loadPdfAssets(application));
+    } catch (err) {
+      console.error(err);
+      alert('Không thể tải bản xem trước. Vui lòng thử lại.');
+    } finally {
+      setIsPreparing(false);
+    }
   };
 
-  const closeConfirm = () => {
+  const close = () => {
     if (isDownloading) return;
-    setIsConfirmOpen(false);
+    setAssets(null);
   };
 
-  const handleConfirm = async () => {
+  const confirm = async () => {
+    if (!assets) return;
     try {
       setIsDownloading(true);
       setError(null);
-      await downloadApplicationPdf(application);
-      setIsConfirmOpen(false);
+      await downloadApplicationPdf(application, assets);
+      setAssets(null);
     } catch (err) {
       console.error('Lỗi xuất PDF:', err);
       setError('Không thể xuất PDF. Vui lòng thử lại.');
@@ -63,81 +86,81 @@ export const DownloadPdfButton: React.FC<DownloadPdfButtonProps> = ({
     <>
       <button
         type="button"
-        onClick={openConfirm}
-        disabled={isDownloading}
-        title="Tải đơn nhận nuôi (PDF)"
+        onClick={openPreview}
+        disabled={isPreparing}
+        title="Xem trước & tải đơn nhận nuôi (PDF)"
         className={className}
       >
-        {isDownloading ? (
-          <Loader2 size={iconSize} className="animate-spin" />
-        ) : (
-          <Download size={iconSize} />
-        )}
+        {isPreparing ? <Loader2 size={iconSize} className="animate-spin" /> : <Download size={iconSize} />}
       </button>
 
-      {isConfirmOpen &&
+      {assets &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-6"
             onClick={(e) => {
               e.stopPropagation();
-              closeConfirm();
+              close();
             }}
           >
             <div
-              className="relative bg-white w-full max-w-[380px] rounded-[20px] shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150"
+              className="bg-white w-full max-w-[880px] max-h-[94vh] rounded-[20px] shadow-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={closeConfirm}
-                disabled={isDownloading}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              >
-                <X size={18} />
-              </button>
-
-              <div className="w-11 h-11 rounded-full bg-[#FDEBDD] flex items-center justify-center mb-3">
-                <FileDown size={20} className="text-[#E89B5A]" />
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
+                <div>
+                  <h3 className="text-[16px] font-bold text-gray-900">Xem trước đơn nhận nuôi</h3>
+                  <p className="text-[12px] text-gray-500">Kiểm tra nội dung trước khi tải file PDF.</p>
+                </div>
+                <button onClick={close} disabled={isDownloading} className="text-gray-400 hover:text-gray-600 p-1">
+                  <X size={20} />
+                </button>
               </div>
 
-              <h3 className="text-[16px] font-bold text-gray-900 mb-1.5">Tải đơn nhận nuôi?</h3>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-4">
-                Đơn của <strong className="text-gray-900">{applicantName}</strong> cho bé{' '}
-                <strong className="text-gray-900">{petName}</strong> sẽ được xuất thành file PDF.
-                Quá trình này có thể mất vài giây.
-              </p>
+              <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#EDEDED] py-4">
+                <div style={{ width: PDF_WIDTH * scale, height: pageH * scale, margin: '0 auto' }}>
+                  <div
+                    ref={pageRef}
+                    style={{ width: PDF_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+                    className="shadow-lg"
+                  >
+                    <ApplicationPdfTemplate
+                      application={application}
+                      tr={assets.tr}
+                      petImage={assets.petImage}
+                      avatarImage={assets.avatarImage}
+                    />
+                  </div>
+                </div>
+              </div>
 
-              {error && (
-                <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={closeConfirm}
-                  disabled={isDownloading}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] font-semibold rounded-[10px] disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={isDownloading}
-                  className="px-4 py-2 bg-[#E89B5A] hover:bg-[#D68B4E] text-white text-[13px] font-bold rounded-[10px] flex items-center gap-1.5 disabled:opacity-70"
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Đang tạo PDF...
-                    </>
-                  ) : (
-                    'Tải xuống'
-                  )}
-                </button>
+              <div className="px-5 py-3.5 border-t border-gray-100 shrink-0 flex items-center justify-between gap-3">
+                <p className="text-[12px] text-red-600 min-h-[16px]">{error}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={close}
+                    disabled={isDownloading}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] font-semibold rounded-[10px] disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={confirm}
+                    disabled={isDownloading}
+                    className="px-5 py-2 bg-[#E89B5A] hover:bg-[#D68B4E] text-white text-[13px] font-bold rounded-[10px] flex items-center gap-1.5 disabled:opacity-70"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Đang tạo PDF...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={14} /> Tải xuống
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>,

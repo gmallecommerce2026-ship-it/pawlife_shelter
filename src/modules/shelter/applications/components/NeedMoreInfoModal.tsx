@@ -32,135 +32,11 @@ import {
   getPetIdLabel,
   PetIdInline,
 } from './RelatedApplications';
+import ApplicationDetailBody from './ApplicationDetailBody';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
 // ============================================================================
-const translateHousing = (val?: string | null): string => {
-  if (!val) return 'Chung cư (cho phép nuôi thú cưng)';
-  const map: Record<string, string> = {
-    'apartment': 'Chung cư',
-    'apartment (pets allowed)': 'Chung cư (cho phép nuôi thú cưng)',
-    'house': 'Nhà riêng / Nhà đất',
-    'townhouse': 'Nhà phố',
-    'villa': 'Biệt thự',
-    'rented room': 'Phòng trọ',
-    'rental house': 'Nhà thuê (cho phép nuôi thú cưng)',
-    'dormitory': 'Ký túc xá',
-  };
-  return map[val.trim().toLowerCase()] || val;
-};
 
-const translateChildren = (val?: string | null): string => {
-  if (!val) return 'Không có trẻ nhỏ';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'no': 'Không có trẻ nhỏ',
-    'no children': 'Không có trẻ nhỏ',
-    'none': 'Không có trẻ nhỏ',
-    'yes': 'Có trẻ nhỏ trong nhà',
-    'under 5': 'Có trẻ dưới 5 tuổi',
-    'under 5 years old': 'Có trẻ dưới 5 tuổi',
-    '5-12 years old': 'Có trẻ từ 5 - 12 tuổi',
-    'above 12': 'Có trẻ trên 12 tuổi',
-  };
-  return map[clean] || val;
-};
-
-const translateCage = (val?: string | null): string => {
-  if (!val) return 'Không xích nhốt';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'no': 'Không xích nhốt',
-    'no cage': 'Không xích nhốt',
-    'free roaming': 'Tự do trong nhà (không xích nhốt)',
-    'indoor free': 'Thả tự do trong nhà',
-    'caged': 'Nuôi nhốt chuồng',
-    'caged at night': 'Nhốt chuồng vào ban đêm',
-    'leashed': 'Có xích khi cần thiết',
-  };
-  return map[clean] || val;
-};
-
-const translatePetExperience = (val?: string | null): string => {
-  if (!val) return 'Đã có kinh nghiệm';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'experienced': 'Đã có kinh nghiệm nuôi',
-    'had pets before': 'Đã từng nuôi trước đây',
-    'first time': 'Lần đầu nuôi thú cưng',
-    'first time owner': 'Lần đầu nuôi thú cưng',
-    'no experience': 'Chưa có kinh nghiệm',
-    'currently have pets': 'Hiện đang có thú cưng ở nhà',
-  };
-  return map[clean] || val;
-};
-
-const translateEmploymentStatus = (val?: string | null): string => {
-  if (!val) return 'Đang đi làm / Thu nhập ổn định';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'employed': 'Đang đi làm',
-    'employed / stable income': 'Đang đi làm / Thu nhập ổn định',
-    'full-time': 'Toàn thời gian (Full-time)',
-    'part-time': 'Bán thời gian (Part-time)',
-    'self-employed': 'Kinh doanh tự do',
-    'freelancer': 'Làm việc tự do (Freelancer)',
-    'student': 'Học sinh / Sinh viên',
-    'unemployed': 'Đang tìm việc',
-    'retired': 'Đã nghỉ hưu',
-  };
-  return map[clean] || val;
-};
-
-const translatePetHistory = (val?: string | null): string => {
-  if (!val) return 'Đã từng chăm sóc chu đáo trước đây.';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'carefully cared for': 'Đã từng chăm sóc chu đáo trước đây.',
-    'good care': 'Chăm sóc tốt, đầy đủ tiêm phòng.',
-    'fully vaccinated': 'Được tiêm phòng và chăm sóc định kỳ đầy đủ.',
-  };
-  return map[clean] || val;
-};
-
-const translateAdoptionReason = (val?: string | null): string => {
-  if (!val) return 'Mong muốn mang lại cho bé một mái ấm trọn đời';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'because i want to give them a forever home': 'Mong muốn mang lại cho bé một mái ấm trọn đời',
-    'love animals': 'Yêu thương động vật và muốn đồng hành cùng bé',
-    'looking for a companion': 'Tìm kiếm một người bạn thú cưng đồng hành',
-  };
-  return map[clean] || val;
-};
-
-const checkCommitmentValue = (commitments: any, key: string, label: string): boolean => {
-  if (!commitments) return false;
-  if (typeof commitments === 'object' && !Array.isArray(commitments)) {
-    const raw = commitments[key] ?? commitments[label];
-    return isCommitmentAgreed(raw);
-  }
-  if (Array.isArray(commitments)) {
-    return commitments.includes(key) || commitments.includes(label);
-  }
-  return false;
-};
-
-const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="mb-3 bg-white border border-gray-200 rounded-[10px] overflow-hidden">
-    <div className="px-3.5 py-2 border-b border-gray-100 bg-[#FAFAFA]">
-      <h4 className="font-bold text-[11.5px] text-gray-800 uppercase tracking-wider">{title}</h4>
-    </div>
-    <div className="px-3.5 py-2.5">{children}</div>
-  </div>
-);
-
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
-  <div className="flex flex-col">
-    <span className="text-[11px] text-gray-400 mb-0.5">{label}</span>
-    <span className="text-[12.5px] text-gray-800 font-medium leading-snug">{value || '-'}</span>
-  </div>
-);
 type RequiredDocRow = RequiredDocument & {
   id?: string;
   requested: boolean;
@@ -696,51 +572,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               )}
             </div>
 
-            {isAppDetailsOpen && (
-              <div className="flex flex-col gap-2.5 mt-3 animate-in fade-in duration-200">
-                {/* Section A: Điều kiện sinh sống */}
-                <SectionCard title="A - Điều kiện sinh sống">
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
-                    <Field label="Khu vực / Địa chỉ" value={application.location || 'Chưa cập nhật'} />
-                    <Field label="Loại nhà ở" value={translateHousing(application.housing)} />
-                    <Field label="Trẻ em trong nhà" value={translateChildren(application.children)} />
-                    <Field label="Kế hoạch chuồng / xích" value={translateCage(application.cage)} />
-                  </div>
-                </SectionCard>
-
-                {/* Section B: Kinh nghiệm & Việc làm */}
-                <SectionCard title="B - Kinh nghiệm & Việc làm">
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
-                    <Field label="Từng nuôi thú cưng" value={translatePetExperience(application.petExperience)} />
-                    <Field label="Tình trạng việc làm" value={translateEmploymentStatus(application.employmentStatus)} />
-                    <div className="col-span-2">
-                      <Field label="Lịch sử chăm sóc" value={translatePetHistory(application.prevPetHistory)} />
-                    </div>
-                  </div>
-                </SectionCard>
-
-                {/* Section C: 6 cam kết song song */}
-                <SectionCard title="C - Cam kết nhận nuôi">
-                  <div className="mb-2.5">
-                    <Field label="Lý do nhận nuôi" value={translateAdoptionReason(application.adoptionReason)} />
-                  </div>
-                  <div className="w-full h-px bg-gray-200 mb-3" />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 items-start">
-                    {COMMITMENTS_CONFIG.map((item) => {
-                      const isCommitted = checkCommitmentValue(application.commitments, item.key, item.label);
-                      return (
-                        <CommitmentItem
-                          key={item.key}
-                          label={item.label}
-                          isCommitted={isCommitted}
-                        />
-                      );
-                    })}
-                  </div>
-                </SectionCard>
-              </div>
-            )}
+            {isAppDetailsOpen && <ApplicationDetailBody application={application} />}
           </div>
 
           {/* 4. Section: Bổ sung tài liệu */}

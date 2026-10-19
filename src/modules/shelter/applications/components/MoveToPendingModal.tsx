@@ -30,96 +30,15 @@ import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
-  PetIdRow, PetCardActions, OtherPetsDropdown,
+  PetCardActions, OtherPetsDropdown,
   getPetIdLabel,
   PetIdInline,
 } from './RelatedApplications';
-const matchKeyword = (
-  val: string,
-  rules: { keywords: string[]; result: string }[],
-  fallback: string
-): string => {
-  const clean = val.trim().toLowerCase();
-  for (const rule of rules) {
-    if (rule.keywords.some((kw) => clean.includes(kw))) {
-      return rule.result;
-    }
-  }
-  return fallback; // không khớp -> trả về nguyên văn gốc để biết mà bổ sung thêm rule
-};
+import ApplicationDetailBody from './ApplicationDetailBody';
 
 // ============================================================================
 // 1. CÁC HÀM TIỆN ÍCH DỊCH THUẬT SANG TIẾNG VIỆT
 // ============================================================================
-const translateHousing = (val?: string | null): string => {
-  if (!val) return 'Chưa cập nhật';
-  return matchKeyword(val, [
-    { keywords: ['garden', 'yard'], result: 'Nhà riêng có sân vườn' },
-    { keywords: ['townhouse'], result: 'Nhà phố' },
-    { keywords: ['villa'], result: 'Biệt thự' },
-    { keywords: ['dorm'], result: 'Ký túc xá' },
-    { keywords: ['rent'], result: 'Nhà thuê' },
-    { keywords: ['apartment', 'chung cư'], result: 'Chung cư' },
-    { keywords: ['house', 'nhà riêng'], result: 'Nhà riêng / Nhà đất' },
-  ], val);
-};
-
-const translatePetExperience = (val?: string | null): string => {
-  if (!val) return 'Chưa cập nhật';
-  return matchKeyword(val, [
-    { keywords: ['first time'], result: 'Lần đầu nuôi thú cưng' },
-    { keywords: ['currently have', 'hiện đang có'], result: 'Hiện đang có thú cưng ở nhà' },
-    { keywords: ['no experience', 'never', 'chưa có'], result: 'Chưa có kinh nghiệm' },
-    { keywords: ['used to have', 'had pets before', 'yes', 'từng nuôi'], result: 'Đã từng nuôi trước đây' },
-  ], val);
-};
-
-const translateEmploymentStatus = (val?: string | null): string => {
-  if (!val) return 'Chưa cập nhật';
-  return matchKeyword(val, [
-    { keywords: ['full-time', 'full time'], result: 'Toàn thời gian (Full-time)' },
-    { keywords: ['part-time', 'part time'], result: 'Bán thời gian (Part-time)' },
-    { keywords: ['self-employed', 'freelance'], result: 'Làm việc tự do / Kinh doanh tự do' },
-    { keywords: ['student'], result: 'Học sinh / Sinh viên' },
-    { keywords: ['unemployed', 'looking for'], result: 'Đang tìm việc' },
-    { keywords: ['retired'], result: 'Đã nghỉ hưu' },
-    { keywords: ['employed', 'đang đi làm'], result: 'Đang đi làm' },
-  ], val);
-};
-
-const translateYesNo = (val?: string | null): string => {
-  if (!val) return 'Chưa cập nhật';
-  const clean = val.trim().toLowerCase();
-  if (['có', 'yes', 'true'].includes(clean)) return 'Có';
-  if (['không', 'no', 'false'].includes(clean)) return 'Không';
-  return val; // đã Việt hóa sẵn hoặc giá trị lạ -> trả nguyên
-};
-
-// children, cage đang là dạng Yes/No (Có/Không) chứ không phải nhóm tuổi như map cũ giả định
-const translateChildren = (val?: string | null): string => translateYesNo(val);
-const translateCage = (val?: string | null): string => translateYesNo(val);
-
-const translatePetHistory = (val?: string | null): string => {
-  if (!val) return 'Đã từng chăm sóc chu đáo trước đây.';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'carefully cared for': 'Đã từng chăm sóc chu đáo trước đây.',
-    'good care': 'Chăm sóc tốt, đầy đủ tiêm phòng.',
-    'fully vaccinated': 'Được tiêm phòng và chăm sóc định kỳ đầy đủ.',
-  };
-  return map[clean] || val;
-};
-
-const translateAdoptionReason = (val?: string | null): string => {
-  if (!val) return 'Mong muốn mang lại cho bé một mái ấm trọn đời';
-  const clean = val.trim().toLowerCase();
-  const map: Record<string, string> = {
-    'because i want to give them a forever home': 'Mong muốn mang lại cho bé một mái ấm trọn đời',
-    'love animals': 'Yêu thương động vật và muốn đồng hành cùng bé',
-    'looking for a companion': 'Tìm kiếm một người bạn thú cưng đồng hành',
-  };
-  return map[clean] || val;
-};
 
 export const isCommitmentAgreed = (val: unknown): boolean => {
   if (val === true || val === 1) return true;
@@ -127,21 +46,6 @@ export const isCommitmentAgreed = (val: unknown): boolean => {
     const clean = val.trim().toLowerCase();
     return ['có', 'co', 'yes', 'true', 'đồng ý', 'dong y', '1'].includes(clean);
   }
-  return false;
-};
-
-const checkCommitmentValue = (commitments: any, key: string, label: string): boolean => {
-  if (!commitments) return false;
-
-  if (typeof commitments === 'object' && !Array.isArray(commitments)) {
-    const raw = commitments[key] ?? commitments[label];
-    return isCommitmentAgreed(raw);
-  }
-
-  if (Array.isArray(commitments)) {
-    return commitments.includes(key) || commitments.includes(label);
-  }
-
   return false;
 };
 
@@ -170,21 +74,6 @@ const normalizeTags = (rawTags: any[]): ApplicationTag[] => {
 // ============================================================================
 // 2. SUB-COMPONENTS
 // ============================================================================
-const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="mb-3 bg-white border border-gray-200 rounded-[10px] overflow-hidden">
-    <div className="px-3.5 py-2 border-b border-gray-100 bg-[#FAFAFA]">
-      <h4 className="font-bold text-[11.5px] text-gray-800 uppercase tracking-wider">{title}</h4>
-    </div>
-    <div className="px-3.5 py-2.5">{children}</div>
-  </div>
-);
-
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
-  <div className="flex flex-col">
-    <span className="text-[11px] text-gray-400 mb-0.5">{label}</span>
-    <span className="text-[12.5px] text-gray-800 font-medium leading-snug">{value || '-'}</span>
-  </div>
-);
 
 interface CommitmentItemProps {
   label: string;
@@ -523,51 +412,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 strokeWidth={2}
               />
             </div>
-            {isAppOpen && (
-              <div className="flex flex-col gap-2.5 mt-3 animate-in fade-in duration-200">
-                {/* Section A: Điều kiện sinh sống */}
-                <SectionCard title="A - Điều kiện sinh sống">
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
-                    <Field label="Khu vực / Địa chỉ" value={application.location || 'Chưa cập nhật'} />
-                    <Field label="Loại nhà ở" value={translateHousing(application.housing)} />
-                    <Field label="Trẻ em trong nhà" value={translateChildren(application.children)} />
-                    <Field label="Kế hoạch chuồng / xích" value={translateCage(application.cage)} />
-                  </div>
-                </SectionCard>
-
-                {/* Section B: Kinh nghiệm & Việc làm */}
-                <SectionCard title="B - Kinh nghiệm & Việc làm">
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
-                    <Field label="Từng nuôi thú cưng" value={translatePetExperience(application.petExperience)} />
-                    <Field label="Tình trạng việc làm" value={translateEmploymentStatus(application.employmentStatus)} />
-                    <div className="col-span-2">
-                      <Field label="Lịch sử chăm sóc" value={translatePetHistory(application.prevPetHistory)} />
-                    </div>
-                  </div>
-                </SectionCard>
-
-                {/* Section C: 6 cam kết song song */}
-                <SectionCard title="C - Cam kết nhận nuôi">
-                  <div className="mb-2.5">
-                    <Field label="Lý do nhận nuôi" value={translateAdoptionReason(application.adoptionReason)} />
-                  </div>
-                  <div className="w-full h-px bg-gray-200 mb-3" />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 items-start">
-                    {COMMITMENTS_CONFIG.map((item) => {
-                      const isCommitted = checkCommitmentValue(application.commitments, item.key, item.label);
-                      return (
-                        <CommitmentItem
-                          key={item.key}
-                          label={item.label}
-                          isCommitted={isCommitted}
-                        />
-                      );
-                    })}
-                  </div>
-                </SectionCard>
-              </div>
-            )}
+            {isAppOpen && <ApplicationDetailBody application={application} />}
           </div>
 
           {/* Ghi chú */}
