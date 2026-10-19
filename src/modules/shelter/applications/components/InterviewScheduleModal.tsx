@@ -23,6 +23,7 @@ import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
   getPetIdLabel,
+  PetIdInline,
 } from './RelatedApplications';
 export interface InterviewMember {
   id: string;
@@ -387,7 +388,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                     {application.phone || 'Chưa có SĐT'}
                   </span>
                 </div>
-               
+
               </div>
 
             </div>
@@ -410,7 +411,11 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                     <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
                   )}
                 </div>
-                <span className="text-[11px] text-gray-500">{getPetInfoLabel(application.pet)}</span>
+                <PetIdInline
+                  pet={application.pet}
+                  fallback={``}
+                  className="text-[11.5px] text-gray-400 mt-0.5 leading-snug"
+                />
               </div>
               <img
                 src={

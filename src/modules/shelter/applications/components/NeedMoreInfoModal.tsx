@@ -30,6 +30,7 @@ import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
   getPetIdLabel,
+  PetIdInline,
 } from './RelatedApplications';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
@@ -583,7 +584,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                   {application.zalo || application.user?.email || 'adopter@pawlife.vn'}
                 </span>
               </div>
-             
+
             </div>
           </div>
 
@@ -609,7 +610,11 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                   <Venus size={14} strokeWidth={2.5} className="text-[#FF6B93]" />
                 )}
               </div>
-              <span className="text-[12px] text-gray-400">{petAgeFormatted} • {petBreedFormatted}</span>
+              <PetIdInline
+                pet={application.pet}
+                fallback={`${petAgeFormatted} • ${petBreedFormatted}`}
+                className="text-[11.5px] text-gray-400 mt-0.5 leading-snug"
+              />
             </div>
             <PetCardActions
               application={application}

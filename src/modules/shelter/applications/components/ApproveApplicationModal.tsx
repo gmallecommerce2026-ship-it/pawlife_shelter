@@ -33,6 +33,7 @@ import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
   getPetIdLabel,
+  PetIdInline,
 } from './RelatedApplications';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
@@ -598,7 +599,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                 <Mail size={13} className="text-gray-400 shrink-0" />
                 <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
               </div>
-            
+
               {/* Target Pet Pill Card */}
               <div className="border border-gray-200 rounded-[14px] p-2 flex items-center gap-3 bg-white shadow-sm w-full">
                 <img
@@ -621,9 +622,11 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                       <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
                     )}
                   </div>
-                  <span className="text-[11px] text-gray-500 truncate">
-                    {getPetInfoLabel(application.pet)}
-                  </span>
+                  <PetIdInline
+                    pet={application.pet}
+                    fallback={``}
+                    className="text-[11.5px] text-gray-400 mt-0.5 leading-snug"
+                  />
                 </div>
                 <PetCardActions
                   application={application}

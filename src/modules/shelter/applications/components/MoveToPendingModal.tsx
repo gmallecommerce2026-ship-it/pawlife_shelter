@@ -33,6 +33,7 @@ import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
   PetIdRow, PetCardActions, OtherPetsDropdown,
   getPetIdLabel,
+  PetIdInline,
 } from './RelatedApplications';
 const matchKeyword = (
   val: string,
@@ -409,7 +410,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                   {application.user?.email || application.zalo || 'Chưa cập nhật'}
                 </span>
               </div>
-           
+
               <div className="flex items-center gap-2 text-gray-500 mb-2">
                 <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
                 <span className="text-[13px] text-gray-500 font-normal">Đang xin nhận nuôi</span>
@@ -435,9 +436,11 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                       <Venus size={13} strokeWidth={2.5} className="text-[#FF6B93]" />
                     )}
                   </div>
-                  <span className="text-[11.5px] text-gray-400 mt-0.5 truncate leading-none">
-                    {petAgeFormatted} • {petBreedFormatted}
-                  </span>
+                  <PetIdInline
+                    pet={application.pet}
+                    fallback={`${petAgeFormatted} • ${petBreedFormatted}`}
+                    className="text-[11.5px] text-gray-400 mt-0.5 leading-snug"
+                  />
                 </div>
                 <PetCardActions
                   application={application}
