@@ -4,11 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { AdoptionApplication } from '@/types/application';
 import { ApplicationPdfTemplate, PDF_WIDTH } from '@/components/pdf/ApplicationPdfTemplate';
 
-// Chuyển ảnh remote -> data URL để html2canvas không bị tainted canvas
+// Tải ảnh qua proxy của Next (tránh lỗi CORS của R2) rồi đổi thành data URL
 const toDataUrl = async (url?: string | null): Promise<string | undefined> => {
   if (!url) return undefined;
   try {
-    const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+    const isExternal = /^https?:\/\//i.test(url) && !url.startsWith(window.location.origin);
+    const src = isExternal ? `/api/image-proxy?url=${encodeURIComponent(url)}` : url;
+    const res = await fetch(src, { cache: 'reload' });
+    if (!res.ok) return undefined;
     const blob = await res.blob();
     return await new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -17,7 +20,7 @@ const toDataUrl = async (url?: string | null): Promise<string | undefined> => {
       r.readAsDataURL(blob);
     });
   } catch {
-    return undefined; // nếu CORS chặn thì bỏ ảnh, PDF vẫn xuất được
+    return undefined;
   }
 };
 
@@ -48,7 +51,9 @@ export const downloadApplicationPdf = async (application: AdoptionApplication, f
     await (document as any).fonts?.ready;
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    const el = host.firstElementChild as HTMLElement;
+    const el = host.firstElementChild as HTMLElement | null;
+    if (!el) throw new Error('Không render được template PDF');
+
     const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
@@ -57,14 +62,20 @@ export const downloadApplicationPdf = async (application: AdoptionApplication, f
       windowWidth: PDF_WIDTH,
     });
 
-    // 1 trang dài đúng bằng nội dung, giống hệt ảnh mẫu
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const pdf = new jsPDF({ orientation: w > h ? 'l' : 'p', unit: 'px', format: [w, h], hotfixes: ['px_scaling'] });
     pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, w, h);
-    pdf.save(fileName || `don-nhan-nuoi-${a.pet?.name || a.id}.pdf`);
+    pdf.save(fileName || `don-nhan-nuoi-${txtName(a)}.pdf`);
   } finally {
     root.unmount();
     host.remove();
   }
+};
+
+// Tên file an toàn (pet.name có thể là object {vi, en})
+const txtName = (a: any): string => {
+  const n = a.pet?.name;
+  const s = typeof n === 'object' && n ? (n.vi ?? n.en ?? '') : n;
+  return String(s || a.id || 'application').replace(/[^\p{L}\p{N}_-]+/gu, '-');
 };

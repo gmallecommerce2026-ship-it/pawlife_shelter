@@ -13,6 +13,14 @@ import {
 
 export const PDF_WIDTH = 794;
 
+// Chuyển mọi giá trị (string | number | {vi, en}) thành chuỗi an toàn để render
+const txt = (v: any): string => {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  if (typeof v === 'object') return v.vi ?? v.en ?? '';
+  return String(v);
+};
+
 const STATUS_LABEL: Record<string, string> = {
   SUBMITTED: 'Mới nộp',
   PENDING: 'Đang xét duyệt',
@@ -56,7 +64,6 @@ const Divider = () => <div className="h-px bg-gray-100 my-6 ml-12" />;
 
 interface Props {
   application: AdoptionApplication;
-  /** data-URL của ảnh (để html2canvas không bị lỗi CORS) */
   petImage?: string;
   avatarImage?: string;
 }
@@ -64,17 +71,25 @@ interface Props {
 export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage, avatarImage }) => {
   const a = application as any;
   const pet = a.pet ?? {};
-  const name = a.fullName || a.user?.name || 'Người đăng ký';
-  const email = a.user?.email || a.zalo || '';
+
+  const name = txt(a.fullName) || txt(a.user?.name) || 'Người đăng ký';
+  const email = txt(a.user?.email) || txt(a.zalo);
+  const phone = txt(a.phone);
+  const location = txt(a.location);
+  const petName = txt(pet.name) || 'Bé';
   const isMale = pet.gender !== 'FEMALE';
-  const speciesLabel = pet.species === 'DOG' ? 'Chó' : pet.species === 'CAT' ? 'Mèo' : pet.speciesLabel || '';
+  const speciesLabel =
+    pet.species === 'DOG' ? 'Chó' : pet.species === 'CAT' ? 'Mèo' : txt(pet.speciesLabel);
   const age = formatPetAge(pet.dob) || '-';
-  const breed = formatBreed(pet.breed as MaybeBilingual) || 'Giống lai';
+  const breed = txt(formatBreed(pet.breed as MaybeBilingual)) || 'Giống lai';
   const status = STATUS_LABEL[a.status] ?? 'Đang xét duyệt';
-  const color = pet.color || pet.coatColor || '-';
-  const weight = pet.weight ? `${pet.weight} kg` : '-';
-  const shelterId = pet.petCode || pet.shelterPetId || pet.code || pet.id?.slice(0, 8)?.toUpperCase() || '-';
-  const message = a.message || a.note || a.applicantMessage || a.additionalInfo;
+  const color = txt(pet.color) || txt(pet.coatColor) || '-';
+  const weight = pet.weight ? `${txt(pet.weight)} kg` : '-';
+  const shelterId =
+    txt(pet.petCode) || txt(pet.shelterPetId) || txt(pet.code) ||
+    (pet.id ? String(pet.id).slice(0, 8).toUpperCase() : '-');
+  const message =
+    txt(a.message) || txt(a.note) || txt(a.applicantMessage) || txt(a.additionalInfo);
 
   return (
     <div
@@ -125,14 +140,14 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
             <div className="bg-white border border-gray-100 rounded-[18px] p-3 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
               <div className="relative mb-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={petImage} alt={pet.name} className="w-full h-[250px] object-cover rounded-[12px] bg-gray-100" />
+                <img src={petImage} alt={petName} className="w-full h-[250px] object-cover rounded-[12px] bg-gray-100" />
                 <div className="absolute top-2.5 right-2.5 bg-[#FFF3E8] text-[#E89B5A] text-[10.5px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#F7D9C0]">
                   <Heart size={10} fill="currentColor" /> {status} <ChevronDown size={10} />
                 </div>
               </div>
 
               <div className="flex items-baseline gap-2 mb-3 px-1">
-                <span className="text-[24px] font-extrabold text-[#14142B] leading-none">{pet.name || 'Bé'}</span>
+                <span className="text-[24px] font-extrabold text-[#14142B] leading-none">{petName}</span>
                 <span className={`text-[15px] ${isMale ? 'text-[#3DB2FF]' : 'text-[#FF6B93]'}`}>{isMale ? '♂' : '♀'}</span>
                 {speciesLabel && <span className="text-gray-400 text-[12px]">({speciesLabel})</span>}
               </div>
@@ -188,11 +203,11 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
               </div>
               <div className="space-y-2.5 text-[11.5px] text-gray-700">
                 {[
-                  { i: <Phone size={13} />, t: a.phone },
-                  { i: <MapPin size={13} />, t: a.location },
-                  { i: <Home size={13} />, t: translateHousing(a.housing) },
-                  { i: <PawPrint size={13} />, t: translatePetHistory(a.prevPetHistory) },
-                  { i: <Heart size={13} />, t: translatePetExperience(a.petExperience) },
+                  { i: <Phone size={13} />, t: phone },
+                  { i: <MapPin size={13} />, t: location },
+                  { i: <Home size={13} />, t: translateHousing(txt(a.housing)) },
+                  { i: <PawPrint size={13} />, t: translatePetHistory(txt(a.prevPetHistory)) },
+                  { i: <Heart size={13} />, t: translatePetExperience(txt(a.petExperience)) },
                 ].map((r, i) => (
                   <div key={i} className="flex items-start gap-2.5">
                     <span className="text-gray-400 mt-[1px] shrink-0">{r.i}</span>
@@ -207,7 +222,7 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
                 <Heart size={13} /> Cùng tạo nên một mái ấm
               </h4>
               <p className="text-[10.5px] text-gray-600 leading-relaxed">
-                Cảm ơn bạn vì đã quan tâm đến {pet.name || 'bé'}. Chúng tôi sẽ liên hệ sớm nhất khi đơn được duyệt.
+                Cảm ơn bạn vì đã quan tâm đến {petName}. Chúng tôi sẽ liên hệ sớm nhất khi đơn được duyệt.
               </p>
             </div>
           </div>
@@ -217,7 +232,7 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
             <SectionTitle icon={<User size={17} fill="currentColor" />}>A. Thông tin liên hệ</SectionTitle>
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
               <F label="Họ và tên" value={name} />
-              <F label="Số điện thoại" value={a.phone} />
+              <F label="Số điện thoại" value={phone} />
               <F label="Email / Zalo" value={email} />
               <F label="Đối tượng nhận nuôi" value="Bản thân tự nuôi" />
             </div>
@@ -225,24 +240,24 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
 
             <SectionTitle icon={<Home size={17} fill="currentColor" />}>B. Điều kiện sinh sống</SectionTitle>
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
-              <F label="Khu vực sinh sống" value={a.location} />
-              <F label="Loại nhà ở" value={translateHousing(a.housing)} />
-              <F label="Trẻ em trong nhà" value={translateYesNo(a.children)} />
-              <F label="Kế hoạch chuồng / xích" value={translateYesNo(a.cage)} />
+              <F label="Khu vực sinh sống" value={location} />
+              <F label="Loại nhà ở" value={translateHousing(txt(a.housing))} />
+              <F label="Trẻ em trong nhà" value={translateYesNo(txt(a.children))} />
+              <F label="Kế hoạch chuồng / xích" value={translateYesNo(txt(a.cage))} />
             </div>
             <Divider />
 
             <SectionTitle icon={<Heart size={17} fill="currentColor" />}>C. Kinh nghiệm &amp; Cá nhân</SectionTitle>
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
-              <F label="Đã từng nuôi thú cưng" value={translatePetExperience(a.petExperience)} />
-              <F label="Tình trạng việc làm" value={translateEmploymentStatus(a.employmentStatus)} />
-              <F span label="Lịch sử chăm sóc trước đây" value={translatePetHistory(a.prevPetHistory)} />
+              <F label="Đã từng nuôi thú cưng" value={translatePetExperience(txt(a.petExperience))} />
+              <F label="Tình trạng việc làm" value={translateEmploymentStatus(txt(a.employmentStatus))} />
+              <F span label="Lịch sử chăm sóc trước đây" value={translatePetHistory(txt(a.prevPetHistory))} />
             </div>
             <Divider />
 
             <SectionTitle icon={<ShieldCheck size={17} fill="currentColor" />}>E. Cam kết nhận nuôi</SectionTitle>
             <div className="pl-12">
-              <F label="Lý do nhận nuôi" value={translateAdoptionReason(a.adoptionReason)} />
+              <F label="Lý do nhận nuôi" value={translateAdoptionReason(txt(a.adoptionReason))} />
               <div className="h-px bg-gray-100 my-4" />
               <div className="grid grid-cols-2 gap-y-3 gap-x-4">
                 {COMMITMENTS_CONFIG.map((c) => {
@@ -254,7 +269,7 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
                       ) : (
                         <X size={14} strokeWidth={3} className="text-rose-500 shrink-0 mt-[1px]" />
                       )}
-                      <span>{c.label}</span>
+                      <span>{txt(c.label)}</span>
                     </div>
                   );
                 })}
