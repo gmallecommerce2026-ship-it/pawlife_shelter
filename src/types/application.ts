@@ -187,7 +187,24 @@ export interface AdoptionApplicantUser {
   phone?: string | null;
   avatarUrl?: string | null;
 }
-
+export interface AdoptionApplicantPetSummary {
+  id: string;
+  name: string;
+  breed?: LocalizedText;
+  species?: LocalizedText;
+  gender?: string | null;
+  dob?: string | null;
+  images?: { url: string }[];
+  avatarUrl?: string | null;
+  status?: string | null;
+  // 🆕 dùng cho PDF
+  color?: LocalizedText;
+  weight?: number | null;
+  size?: 'SMALL' | 'MEDIUM' | 'LARGE' | null;
+  idSetByShelter?: string | null;
+  shelterInternalId?: string | null;
+  microchipNumber?: string | null;
+}
 export interface AdoptionApplicantPetSummary {
   id: string;
   name: string;

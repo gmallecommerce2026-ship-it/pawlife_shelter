@@ -1,10 +1,25 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { AdoptionApplication } from '@/types/application';
-import { ApplicationPdfTemplate, PDF_WIDTH } from '@/components/pdf/ApplicationPdfTemplate';
+import { AdoptionApplication, localizedText } from '@/types/application';
+import {
+  translateAdoptFor,
+  translateHousing,
+  translateChildren,
+  translateCage,
+  translatePetExperience,
+  translateEmploymentStatus,
+  translatePetHistory,
+  translateAdoptionReason,
+} from '@/utils/translateApplication';
+import { translateManyToVi } from '@/utils/translateText';
+import {
+  ApplicationPdfTemplate,
+  PDF_WIDTH,
+  type PdfTranslated,
+} from '@/components/pdf/ApplicationPdfTemplate';
 
-// Tải ảnh qua proxy của Next (tránh lỗi CORS của R2) rồi đổi thành data URL
+// Tải ảnh qua proxy của Next (tránh CORS của R2) rồi đổi thành data URL
 const toDataUrl = async (url?: string | null): Promise<string | undefined> => {
   if (!url) return undefined;
   try {
@@ -24,16 +39,47 @@ const toDataUrl = async (url?: string | null): Promise<string | undefined> => {
   }
 };
 
+const buildTranslated = async (application: AdoptionApplication): Promise<PdfTranslated> => {
+  // Bước 1: dịch tĩnh theo rule
+  const raw: PdfTranslated = {
+    adoptFor: translateAdoptFor(application.adoptFor),
+    housing: translateHousing(application.housing),
+    children: translateChildren(application.children),
+    cage: translateCage(application.cage),
+    petExperience: translatePetExperience(application.petExperience),
+    prevPetHistory: translatePetHistory(application.prevPetHistory),
+    employmentStatus: translateEmploymentStatus(application.employmentStatus),
+    adoptionReason: translateAdoptionReason(application.adoptionReason),
+    petBreed: localizedText(application.pet?.breed) || 'Giống lai',
+  };
+
+  // Bước 2: "vét" nốt phần còn tiếng Anh qua API dịch; lỗi thì giữ bước 1
+  try {
+    const translated = await translateManyToVi({ ...raw });
+    return { ...raw, ...(translated as Partial<PdfTranslated>) };
+  } catch (err) {
+    console.warn('Dịch tự động thất bại, dùng bản dịch tĩnh:', err);
+    return raw;
+  }
+};
+
+const safeFileName = (application: AdoptionApplication) => {
+  const first = (application.fullName || application.user?.name || 'Nguoi_nhan_nuoi')
+    .trim()
+    .split(/\s+/)[0];
+  return `${first} - Don_nhan_nuoi.pdf`;
+};
+
 export const downloadApplicationPdf = async (application: AdoptionApplication, fileName?: string) => {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import('html2canvas-pro'),
     import('jspdf'),
   ]);
 
-  const a = application as any;
-  const [petImage, avatarImage] = await Promise.all([
-    toDataUrl(a.pet?.avatarUrl || a.pet?.images?.[0]?.url),
-    toDataUrl(a.user?.avatarUrl),
+  const [tr, petImage, avatarImage] = await Promise.all([
+    buildTranslated(application),
+    toDataUrl(application.pet?.avatarUrl || application.pet?.images?.[0]?.url),
+    toDataUrl(application.user?.avatarUrl),
   ]);
 
   const host = document.createElement('div');
@@ -44,7 +90,12 @@ export const downloadApplicationPdf = async (application: AdoptionApplication, f
   try {
     flushSync(() =>
       root.render(
-        <ApplicationPdfTemplate application={application} petImage={petImage} avatarImage={avatarImage} />,
+        <ApplicationPdfTemplate
+          application={application}
+          tr={tr}
+          petImage={petImage}
+          avatarImage={avatarImage}
+        />,
       ),
     );
 
@@ -66,16 +117,9 @@ export const downloadApplicationPdf = async (application: AdoptionApplication, f
     const h = el.offsetHeight;
     const pdf = new jsPDF({ orientation: w > h ? 'l' : 'p', unit: 'px', format: [w, h], hotfixes: ['px_scaling'] });
     pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, w, h);
-    pdf.save(fileName || `don-nhan-nuoi-${txtName(a)}.pdf`);
+    pdf.save(fileName || safeFileName(application));
   } finally {
     root.unmount();
     host.remove();
   }
-};
-
-// Tên file an toàn (pet.name có thể là object {vi, en})
-const txtName = (a: any): string => {
-  const n = a.pet?.name;
-  const s = typeof n === 'object' && n ? (n.vi ?? n.en ?? '') : n;
-  return String(s || a.id || 'application').replace(/[^\p{L}\p{N}_-]+/gu, '-');
 };

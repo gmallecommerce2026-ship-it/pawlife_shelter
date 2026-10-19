@@ -3,17 +3,29 @@ import {
   ChevronLeft, Calendar, Check, X, MapPin, Home, Heart, Phone, Cat, PawPrint,
   User, ShieldCheck, Info, Send, ChevronDown, Weight, Hash,
 } from 'lucide-react';
-import { AdoptionApplication, COMMITMENTS_CONFIG } from '@/types/application';
-import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
-import { formatPetAge } from '@/utils/petAge';
 import {
-  translateHousing, translatePetExperience, translateEmploymentStatus,
-  translateYesNo, translatePetHistory, translateAdoptionReason, checkCommitmentValue,
-} from '@/utils/applicationTranslators';
+  AdoptionApplication,
+  COMMITMENTS_CONFIG,
+  APPLICATION_STATUS_LABEL,
+  localizedText,
+  getPetAgeLabel,
+} from '@/types/application';
 
 export const PDF_WIDTH = 794;
 
-// Chuyển mọi giá trị (string | number | {vi, en}) thành chuỗi an toàn để render
+/** Các chuỗi đã dịch sang tiếng Việt (tính ở exportApplicationPdf) */
+export interface PdfTranslated {
+  adoptFor: string;
+  housing: string;
+  children: string;
+  cage: string;
+  petExperience: string;
+  prevPetHistory: string;
+  employmentStatus: string;
+  adoptionReason: string;
+  petBreed: string;
+}
+
 const txt = (v: any): string => {
   if (v === null || v === undefined) return '';
   if (typeof v === 'string' || typeof v === 'number') return String(v);
@@ -21,15 +33,25 @@ const txt = (v: any): string => {
   return String(v);
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  SUBMITTED: 'Mới nộp',
-  PENDING: 'Đang xét duyệt',
-  NEED_MORE_INFO: 'Cần bổ sung',
-  INTERVIEW_SCHEDULED: 'Hẹn phỏng vấn',
-  APPROVED: 'Đã duyệt',
-  ADOPTION_COMPLETED: 'Đã nhận nuôi',
-  CLOSED: 'Đã đóng',
+const isCommitmentAgreed = (val: unknown): boolean => {
+  if (val === true || val === 1) return true;
+  if (typeof val === 'string') {
+    return ['có', 'co', 'yes', 'true', 'đồng ý', 'dong y', '1'].includes(val.trim().toLowerCase());
+  }
+  return false;
 };
+
+const readCommitment = (raw: any, key: string, label: string): boolean => {
+  let c = raw;
+  if (typeof c === 'string') {
+    try { c = JSON.parse(c); } catch { return false; }
+  }
+  if (!c) return false;
+  if (Array.isArray(c)) return c.includes(key) || c.includes(label);
+  return isCommitmentAgreed(c[key] ?? c[label]);
+};
+
+const SIZE_LABEL: Record<string, string> = { SMALL: 'Nhỏ', MEDIUM: 'Vừa', LARGE: 'Lớn' };
 
 const fmtDate = (d?: string | Date | null) => {
   if (!d) return '--/--/----';
@@ -42,7 +64,7 @@ const fmtDate = (d?: string | Date | null) => {
 const initials = (name: string) => {
   const w = name.trim().split(/\s+/).filter(Boolean);
   if (!w.length) return '?';
-  if (w.length === 1) return (w[0][0] + (w[0].length > 1 ? w[0][w[0].length - 1] : '')).toUpperCase();
+  if (w.length === 1) return w[0][0].toUpperCase();
   return (w[0][0] + w[w.length - 1][0]).toUpperCase();
 };
 
@@ -64,32 +86,30 @@ const Divider = () => <div className="h-px bg-gray-100 my-6 ml-12" />;
 
 interface Props {
   application: AdoptionApplication;
+  tr: PdfTranslated;
   petImage?: string;
   avatarImage?: string;
 }
 
-export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage, avatarImage }) => {
-  const a = application as any;
-  const pet = a.pet ?? {};
+export const ApplicationPdfTemplate: React.FC<Props> = ({ application, tr, petImage, avatarImage }) => {
+  const a = application;
+  const pet = (a.pet ?? {}) as NonNullable<AdoptionApplication['pet']>;
 
   const name = txt(a.fullName) || txt(a.user?.name) || 'Người đăng ký';
-  const email = txt(a.user?.email) || txt(a.zalo);
-  const phone = txt(a.phone);
-  const location = txt(a.location);
+  const phone = txt(a.phone) || 'Chưa cập nhật';
+  const contact = [txt(a.user?.email), txt(a.zalo)].filter(Boolean).join(' / ') || 'Chưa cập nhật';
+  const location = txt(a.location) || 'Chưa cập nhật';
+
   const petName = txt(pet.name) || 'Bé';
-  const isMale = pet.gender !== 'FEMALE';
-  const speciesLabel =
-    pet.species === 'DOG' ? 'Chó' : pet.species === 'CAT' ? 'Mèo' : txt(pet.speciesLabel);
-  const age = formatPetAge(pet.dob) || '-';
-  const breed = txt(formatBreed(pet.breed as MaybeBilingual)) || 'Giống lai';
-  const status = STATUS_LABEL[a.status] ?? 'Đang xét duyệt';
-  const color = txt(pet.color) || txt(pet.coatColor) || '-';
-  const weight = pet.weight ? `${txt(pet.weight)} kg` : '-';
-  const shelterId =
-    txt(pet.petCode) || txt(pet.shelterPetId) || txt(pet.code) ||
-    (pet.id ? String(pet.id).slice(0, 8).toUpperCase() : '-');
-  const message =
-    txt(a.message) || txt(a.note) || txt(a.applicantMessage) || txt(a.additionalInfo);
+  const gender = pet.gender === 'MALE' ? 'Đực' : pet.gender === 'FEMALE' ? 'Cái' : 'Chưa rõ';
+  const genderSymbol = pet.gender === 'MALE' ? '♂' : pet.gender === 'FEMALE' ? '♀' : '';
+  const genderColor = pet.gender === 'MALE' ? 'text-[#3DB2FF]' : 'text-[#FF6B93]';
+  const species = localizedText(pet.species, 'vi');
+  const age = getPetAgeLabel(pet.dob);
+  const color = localizedText(pet.color, 'vi') || '-';
+  const sizeValue = pet.weight ? `${pet.weight} kg` : pet.size ? SIZE_LABEL[pet.size] : '-';
+  const shelterId = pet.idSetByShelter || pet.shelterInternalId || pet.microchipNumber || '-';
+  const status = APPLICATION_STATUS_LABEL[a.status] ?? 'Đang xem xét';
 
   return (
     <div
@@ -129,7 +149,7 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
             <div className="w-px h-4 bg-[#F0C9A8]" />
             <div className="flex items-center gap-1.5">
               <Calendar size={13} className="text-[#E89B5A]" />
-              <span className="text-[11px] text-gray-500">Cập nhật: <b className="font-semibold text-gray-700">{fmtDate(a.updatedAt)}</b></span>
+              <span className="text-[11px] text-gray-500">Cập nhật: <b className="font-semibold text-gray-700">{fmtDate(a.updatedAt || a.createdAt)}</b></span>
             </div>
           </div>
         </div>
@@ -148,27 +168,27 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
 
               <div className="flex items-baseline gap-2 mb-3 px-1">
                 <span className="text-[24px] font-extrabold text-[#14142B] leading-none">{petName}</span>
-                <span className={`text-[15px] ${isMale ? 'text-[#3DB2FF]' : 'text-[#FF6B93]'}`}>{isMale ? '♂' : '♀'}</span>
-                {speciesLabel && <span className="text-gray-400 text-[12px]">({speciesLabel})</span>}
+                {genderSymbol && <span className={`text-[15px] ${genderColor}`}>{genderSymbol}</span>}
+                {species && <span className="text-gray-400 text-[12px]">({species})</span>}
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {[
-                  { bg: '#E6F0FF', ic: <Cat size={15} className="text-[#4F75E2]" />, l: 'Giới tính', v: isMale ? 'Đực' : 'Cái' },
+                  { bg: '#E6F0FF', ic: <Cat size={15} className="text-[#4F75E2]" />, l: 'Giới tính', v: gender },
                   { bg: '#FFF7D6', ic: <Calendar size={15} className="text-[#E5A124]" />, l: 'Tuổi', v: age },
-                  { bg: '#FFE6EC', ic: <Weight size={15} className="text-[#FF6B93]" />, l: 'Kích cỡ', v: weight },
+                  { bg: '#FFE6EC', ic: <Weight size={15} className="text-[#FF6B93]" />, l: 'Kích cỡ', v: sizeValue },
                 ].map((t) => (
                   <div key={t.l} className="rounded-[10px] py-2.5 px-1 text-center" style={{ background: t.bg }}>
                     <div className="flex justify-center mb-1">{t.ic}</div>
                     <div className="text-[9.5px] text-gray-400">{t.l}</div>
-                    <div className="font-bold text-[12px] text-gray-800">{t.v}</div>
+                    <div className="font-bold text-[11px] text-gray-800 leading-tight">{t.v}</div>
                   </div>
                 ))}
               </div>
 
               <div className="border border-gray-100 rounded-[12px] px-3 py-1 text-[11.5px]">
                 {[
-                  { i: <PawPrint size={13} />, l: 'Giống', v: breed },
+                  { i: <PawPrint size={13} />, l: 'Giống', v: tr.petBreed },
                   { i: <Info size={13} />, l: 'Màu sắc', v: color },
                   { i: <Calendar size={13} />, l: 'Tuổi', v: age },
                   { i: <Hash size={13} />, l: 'Shelter ID', v: shelterId },
@@ -197,17 +217,16 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
                 )}
                 <div className="min-w-0">
                   <div className="font-bold text-[13px] text-gray-900">{name}</div>
-                  <div className="text-gray-400 text-[10.5px] mb-1">{email}</div>
-                  <span className="bg-[#DDF5E6] text-[#10B981] text-[9.5px] px-2 py-0.5 rounded-full font-semibold">Đã xác thực</span>
+                  <div className="text-gray-400 text-[10.5px] break-all">{contact}</div>
                 </div>
               </div>
               <div className="space-y-2.5 text-[11.5px] text-gray-700">
                 {[
                   { i: <Phone size={13} />, t: phone },
                   { i: <MapPin size={13} />, t: location },
-                  { i: <Home size={13} />, t: translateHousing(txt(a.housing)) },
-                  { i: <PawPrint size={13} />, t: translatePetHistory(txt(a.prevPetHistory)) },
-                  { i: <Heart size={13} />, t: translatePetExperience(txt(a.petExperience)) },
+                  { i: <Home size={13} />, t: tr.housing },
+                  { i: <PawPrint size={13} />, t: tr.prevPetHistory },
+                  { i: <Heart size={13} />, t: tr.petExperience },
                 ].map((r, i) => (
                   <div key={i} className="flex items-start gap-2.5">
                     <span className="text-gray-400 mt-[1px] shrink-0">{r.i}</span>
@@ -233,35 +252,35 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
               <F label="Họ và tên" value={name} />
               <F label="Số điện thoại" value={phone} />
-              <F label="Email / Zalo" value={email} />
-              <F label="Đối tượng nhận nuôi" value="Bản thân tự nuôi" />
+              <F label="Email / Zalo" value={contact} />
+              <F label="Đối tượng nhận nuôi" value={tr.adoptFor} />
             </div>
             <Divider />
 
             <SectionTitle icon={<Home size={17} fill="currentColor" />}>B. Điều kiện sinh sống</SectionTitle>
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
               <F label="Khu vực sinh sống" value={location} />
-              <F label="Loại nhà ở" value={translateHousing(txt(a.housing))} />
-              <F label="Trẻ em trong nhà" value={translateYesNo(txt(a.children))} />
-              <F label="Kế hoạch chuồng / xích" value={translateYesNo(txt(a.cage))} />
+              <F label="Loại nhà ở" value={tr.housing} />
+              <F label="Trẻ em trong nhà" value={tr.children} />
+              <F label="Kế hoạch chuồng / xích" value={tr.cage} />
             </div>
             <Divider />
 
             <SectionTitle icon={<Heart size={17} fill="currentColor" />}>C. Kinh nghiệm &amp; Cá nhân</SectionTitle>
             <div className="grid grid-cols-2 gap-y-5 gap-x-4 pl-12">
-              <F label="Đã từng nuôi thú cưng" value={translatePetExperience(txt(a.petExperience))} />
-              <F label="Tình trạng việc làm" value={translateEmploymentStatus(txt(a.employmentStatus))} />
-              <F span label="Lịch sử chăm sóc trước đây" value={translatePetHistory(txt(a.prevPetHistory))} />
+              <F label="Đã từng nuôi thú cưng" value={tr.petExperience} />
+              <F label="Tình trạng việc làm" value={tr.employmentStatus} />
+              <F span label="Lịch sử chăm sóc trước đây" value={tr.prevPetHistory} />
             </div>
             <Divider />
 
             <SectionTitle icon={<ShieldCheck size={17} fill="currentColor" />}>E. Cam kết nhận nuôi</SectionTitle>
             <div className="pl-12">
-              <F label="Lý do nhận nuôi" value={translateAdoptionReason(txt(a.adoptionReason))} />
+              <F label="Lý do nhận nuôi" value={tr.adoptionReason} />
               <div className="h-px bg-gray-100 my-4" />
               <div className="grid grid-cols-2 gap-y-3 gap-x-4">
                 {COMMITMENTS_CONFIG.map((c) => {
-                  const ok = checkCommitmentValue(a.commitments, c.key, c.label);
+                  const ok = readCommitment(a.commitments, c.key, c.label);
                   return (
                     <div key={c.key} className="flex items-start gap-2 text-[11.5px] text-gray-700 leading-snug">
                       {ok ? (
@@ -269,25 +288,16 @@ export const ApplicationPdfTemplate: React.FC<Props> = ({ application, petImage,
                       ) : (
                         <X size={14} strokeWidth={3} className="text-rose-500 shrink-0 mt-[1px]" />
                       )}
-                      <span>{txt(c.label)}</span>
+                      <span>{c.label}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {message && (
-              <div className="mt-6 bg-[#FFF3E8] border border-[#F7D9C0] rounded-[12px] p-4">
-                <div className="flex items-center gap-1.5 text-[#D9822F] font-bold text-[11.5px] mb-1.5">
-                  <PawPrint size={13} fill="currentColor" /> Lời nhắn từ người nhận nuôi
-                </div>
-                <p className="text-gray-600 text-[10.5px] leading-relaxed">{message}</p>
-              </div>
-            )}
-
-            <div className="mt-5 bg-[#F3A571] text-white rounded-[12px] py-3.5 flex flex-col items-center gap-0.5">
+            <div className="mt-6 bg-[#F3A571] text-white rounded-[12px] py-3.5 flex flex-col items-center gap-0.5">
               <div className="flex items-center gap-2 font-bold text-[12px]">
-                <Send size={14} /> Đơn {status.toLowerCase()}
+                <Send size={14} /> Trạng thái: {status}
               </div>
               <span className="text-[9.5px] opacity-90">Chúng tôi sẽ liên hệ với bạn sớm nhất.</span>
             </div>
