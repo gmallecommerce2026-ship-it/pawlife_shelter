@@ -29,8 +29,10 @@ import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { formatPetAge } from '@/utils/petAge';
 import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
-import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
-import PetIdBadge from './PetIdBadge';
+import {
+  RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
+  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+} from './RelatedApplications';
 const matchKeyword = (
   val: string,
   rules: { keywords: string[]; result: string }[],
@@ -233,7 +235,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
-
+  const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
   const isMale = application.pet?.gender !== 'FEMALE';
   const isAlreadyPending = application.status === 'PENDING';
   const petName = application.pet?.name || 'Bé';
@@ -404,6 +406,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                   {application.user?.email || application.zalo || 'Chưa cập nhật'}
                 </span>
               </div>
+              <PetIdRow pet={application.pet} className="text-[13px] mb-1.5" />
               <div className="flex items-center gap-2 text-gray-500 mb-2">
                 <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
                 <span className="text-[13px] text-gray-500 font-normal">Đang xin nhận nuôi</span>
@@ -433,8 +436,10 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                     {petAgeFormatted} • {petBreedFormatted}
                   </span>
                 </div>
-                <PetIdBadge pet={application.pet} className="ml-auto" />   {/* ← thêm */}
-              </div>
+                <OtherPetsToggle application={application} open={isOtherPetsOpen}
+                  onToggle={() => setIsOtherPetsOpen((v) => !v)} />
+              </div>  
+              <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
             </div>
           </div>
           <ApplicantFlagBanner flag={application.applicantFlag} />

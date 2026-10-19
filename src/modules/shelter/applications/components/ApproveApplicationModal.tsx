@@ -29,8 +29,10 @@ import { PartyPopper } from 'lucide-react';
 import { DocumentReviewModal } from './DocumentReviewModal';
 import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
-import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
-import PetIdBadge from './PetIdBadge';
+import {
+  RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
+  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+} from './RelatedApplications';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
   key: doc.key,
@@ -282,7 +284,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   onCompleteAdoption,
 }) => {
   const existingAppointment = (application as any)?.appointment;
-
+  const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isInterviewOpen, setIsInterviewOpen] = useState(true);
@@ -593,7 +595,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                 <Mail size={13} className="text-gray-400 shrink-0" />
                 <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
               </div>
-
+              <PetIdRow pet={application.pet} className="text-[13px] mb-2" />
               <button
                 type="button"
                 onClick={() => downloadApplicationPdf(application)}
@@ -630,9 +632,11 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   <span className="text-[11px] text-gray-500 truncate">
                     {getPetInfoLabel(application.pet)}
                   </span>
-                  <PetIdBadge pet={application.pet} className="ml-auto pr-1.5" />   {/* ← thêm */}
                 </div>
+                <OtherPetsToggle application={application} open={isOtherPetsOpen}
+                  onToggle={() => setIsOtherPetsOpen((v) => !v)} />
               </div>
+              <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
             </div>
           </div>
 

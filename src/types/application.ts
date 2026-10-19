@@ -244,13 +244,26 @@ export interface AppointmentSummary {
   meetLink?: string | null;
   members?: unknown;
 }
+export interface RelatedPetSummary {
+  id: string;
+  name: string;
+  gender?: string | null;
+  dob?: string | null;
+  breed?: LocalizedText;
+  shelterInternalId?: string | null;
+  microchipNumber?: string | null;
+  images?: { url: string }[];
+}
+
 export interface RelatedApplication {
   id: string;
   status: ApplicationStatus;
   petId: string;
   petName: string;
+  pet?: RelatedPetSummary | null;   // 👈 mới
   interview: { at: string; status: string; staff: string[] } | null;
 }
+
 export interface AdoptionApplication {
   id: string;
   status: ApplicationStatus;

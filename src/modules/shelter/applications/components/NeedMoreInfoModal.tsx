@@ -26,8 +26,10 @@ import { downloadApplicationPdf } from '@/utils/exportApplicationPdf';
 import { Socket } from 'socket.io-client';
 import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { formatPetAge } from '@/utils/petAge';
-import PetIdBadge from './PetIdBadge';
-import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
+import {
+  RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
+  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+} from './RelatedApplications';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
 // ============================================================================
@@ -204,6 +206,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(true);
+  const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -577,6 +580,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                   {application.zalo || application.user?.email || 'adopter@pawlife.vn'}
                 </span>
               </div>
+              <PetIdRow pet={application.pet} className="text-[12.5px] mb-2" />
               <button
                 type="button"
                 onClick={() => downloadApplicationPdf(application)}
@@ -614,8 +618,10 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               </div>
               <span className="text-[12px] text-gray-400">{petAgeFormatted} • {petBreedFormatted}</span>
             </div>
-            <PetIdBadge pet={application.pet} className="ml-auto pr-1.5" />
+            <OtherPetsToggle application={application} open={isOtherPetsOpen}
+              onToggle={() => setIsOtherPetsOpen((v) => !v)} />
           </div>
+          <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
 
           {/* 2. Gắn thẻ (Tags) */}
           <div className="mb-5">

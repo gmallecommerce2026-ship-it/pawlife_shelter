@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { apiClient } from '@/lib/api/ApiClient';
-import { RelatedApplicationsNotice, RelatedApplicationsWarnIcon } from './RelatedApplications';
-import PetIdBadge from './PetIdBadge';
+import {
+  RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
+  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+} from './RelatedApplications';
 export interface InterviewMember {
   id: string;
   name: string;
@@ -107,7 +109,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
   onRefresh,
 }) => {
   const existingAppointment = (application as any)?.appointment;
-
+  const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
   const defaultTitle =
     existingAppointment?.title ||
     `Hẹn phỏng vấn nhận nuôi ${application.pet?.name || ''}`.trim();
@@ -373,20 +375,26 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                 alt="Adopter"
               />
               <div>
-                <span className="font-bold text-[14px] text-gray-900 flex items-center gap-1.5">
-                  {application.fullName || application.user?.name}
-                  <RelatedApplicationsWarnIcon application={application} size={14} />
-                </span>
-                <span className="text-[11px] text-gray-500">
-                  {application.phone || 'Chưa có SĐT'}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[14px] text-gray-900 flex items-center gap-1.5">
+                    {application.fullName || application.user?.name}
+                    <RelatedApplicationsWarnIcon application={application} size={14} />
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    {application.phone || 'Chưa có SĐT'}
+                  </span>
+                </div>
+                <PetIdRow pet={application.pet} className="text-[11px] mt-0.5 gap-1.5" />
               </div>
+
             </div>
 
             <ArrowRight size={16} className="text-gray-300 shrink-0" />
 
             <div className="flex items-center gap-3">
-              <PetIdBadge pet={application.pet} className="pr-3 mr-0.5 border-r border-gray-200" />   {/* ← thêm */}
+              <OtherPetsToggle application={application} open={isOtherPetsOpen}
+                onToggle={() => setIsOtherPetsOpen((v) => !v)}
+                className="mr-0.5 !ml-0" />
               <div className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <span className="font-bold text-[14px] text-gray-900">{application.pet?.name}</span>
@@ -409,7 +417,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
               />
             </div>
           </div>
-
+          <OtherPetsDropdown application={application} open={isOtherPetsOpen} className="-mt-3" />
           {/* Form Content */}
           <div className="border border-gray-200 rounded-[16px] p-5 shadow-sm bg-white space-y-4">
             <div>
