@@ -34,6 +34,7 @@ import {
   setHoveredApplicant,
   useIsApplicantHighlighted,
 } from './RelatedApplications';
+import { ApplicationHoverCard, isHoverInfoStatus } from './ApplicationHoverCard';
 const formatSubmittedAt = (iso: string) => {
   try {
     return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
@@ -355,7 +356,29 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   const applicantId = getApplicantId(application);
   const hasRelated = !!applicantId && getRelated(application).length > 0;
   const highlighted = useIsApplicantHighlighted(hasRelated ? applicantId : undefined);
+  const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showHoverInfo = isHoverInfoStatus(application.status);
 
+  const clearHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+    setHoverRect(null);
+  };
+
+  // Đang kéo thẻ thì không hiện popup
+  useEffect(() => {
+    if (isDragging) clearHover();
+  }, [isDragging]);
+
+  // Cuộn thì ẩn, tránh popup lệch khỏi thẻ
+  useEffect(() => {
+    if (!hoverRect) return;
+    window.addEventListener('scroll', clearHover, true);
+    return () => window.removeEventListener('scroll', clearHover, true);
+  }, [hoverRect]);
+
+  useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); }, []);
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -367,8 +390,17 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} tabIndex={-1}
       onClick={() => onCardClick(application)}
-      onMouseEnter={hasRelated ? () => setHoveredApplicant(applicantId!) : undefined}
-      onMouseLeave={hasRelated ? () => setHoveredApplicant(null) : undefined}
+      onMouseEnter={(e) => {
+        if (hasRelated) setHoveredApplicant(applicantId!);
+        if (showHoverInfo && !isDragging) {
+          const el = e.currentTarget;
+          hoverTimer.current = setTimeout(() => setHoverRect(el.getBoundingClientRect()), 200);
+        }
+      }}
+      onMouseLeave={() => {
+        if (hasRelated) setHoveredApplicant(null);
+        clearHover();
+      }}
       className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <motion.div
@@ -386,6 +418,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
           onOpenDocuments={onOpenDocuments}
         />
       </motion.div>
+      {hoverRect && !isDragging && <ApplicationHoverCard application={application} rect={hoverRect} />}
     </div>
   );
 };
