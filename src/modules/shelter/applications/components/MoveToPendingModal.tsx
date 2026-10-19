@@ -409,10 +409,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                   {application.user?.email || application.zalo || 'Chưa cập nhật'}
                 </span>
               </div>
-              {/* <PetIdRow pet={application.pet} className="text-[13px] mb-1.5" /> */}
-              <span className="text-[11.5px] text-gray-400 mt-0.5 leading-snug break-all">
-                {getPetIdLabel(application.pet, ``)}
-              </span>
+           
               <div className="flex items-center gap-2 text-gray-500 mb-2">
                 <FileText size={13} className="text-gray-400 shrink-0" strokeWidth={1.8} />
                 <span className="text-[13px] text-gray-500 font-normal">Đang xin nhận nuôi</span>

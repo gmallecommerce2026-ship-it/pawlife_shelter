@@ -169,18 +169,18 @@ export const RelatedApplicationsNotice: React.FC<{ application: AdoptionApplicat
   );
 };
 
-// ---- ID thú cưng: giao diện giống dòng email ----
-export const PetIdRow: React.FC<{ pet?: any; className?: string }> = ({
+export const PetIdInline: React.FC<{ pet?: any; fallback?: string; className?: string }> = ({
   pet,
-  className = 'text-[13px] mb-1.5',
+  fallback = '',
+  className = '',
 }) => {
   const code = getPetCode(pet);
-  if (!code) return null;
+  if (!code) return fallback ? <span className={className}>{fallback}</span> : null;
   return (
-    <div className={`flex items-center gap-2 text-gray-500 ${className}`}>
-      <Hash size={13} className="text-gray-400 shrink-0" strokeWidth={2} />
-      <span className="truncate">ID: {code}</span>
-    </div>
+    <span className={`flex items-start gap-1 ${className}`} title={`ID: ${code}`}>
+      <Hash size={11} strokeWidth={2} className="mt-[2px] shrink-0" />
+      <span className="break-all">ID: {code}</span>
+    </span>
   );
 };
 export const getPetIdLabel = (pet?: any, fallback = ''): string => {
@@ -264,7 +264,7 @@ const RelatedPetCard: React.FC<{ r: RelatedApplication }> = ({ r }) => {
             ))}
           <span className="ml-auto shrink-0 text-[11px] text-gray-500">{statusLabel(r.status)}</span>
         </div>
-        {idLabel && <span className="text-[11.5px] text-gray-400 break-all">{idLabel}</span>}
+        <PetIdInline pet={pet} className="text-[11.5px] text-gray-400" />
       </div>
     </div>
   );

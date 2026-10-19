@@ -583,10 +583,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                   {application.zalo || application.user?.email || 'adopter@pawlife.vn'}
                 </span>
               </div>
-              {/* <PetIdRow pet={application.pet} className="text-[12.5px] mb-2" /> */}
-              <span className="text-[11.5px] text-gray-400 mt-0.5 leading-snug break-all">
-                {getPetIdLabel(application.pet, ``)}
-              </span>
+             
             </div>
           </div>
 

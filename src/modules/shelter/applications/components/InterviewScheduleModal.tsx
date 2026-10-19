@@ -387,9 +387,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                     {application.phone || 'Chưa có SĐT'}
                   </span>
                 </div>
-                <span className="text-[11.5px] text-gray-400 mt-0.5 leading-snug break-all">
-                  {getPetIdLabel(application.pet, ``)}
-                </span>
+               
               </div>
 
             </div>
