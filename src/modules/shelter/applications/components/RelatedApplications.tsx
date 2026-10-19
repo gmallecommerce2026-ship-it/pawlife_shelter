@@ -178,7 +178,6 @@ export const PetIdInline: React.FC<{ pet?: any; fallback?: string; className?: s
   if (!code) return fallback ? <span className={className}>{fallback}</span> : null;
   return (
     <span className={`flex items-start gap-1 ${className}`} title={`ID: ${code}`}>
-      <Hash size={11} strokeWidth={2} className="mt-[2px] shrink-0" />
       <span className="break-all">ID: {code}</span>
     </span>
   );
