@@ -50,6 +50,17 @@ export const applicationService = {
     const res = await apiClient.delete(`/applications/${applicationId}/notes/${noteId}`);
     return unwrapItem(res);
   },
+  getReplacementPets: async (applicationId: string, search?: string) => {
+    const res = await apiClient.get(`/applications/${applicationId}/replacement-pets`, {
+      params: { search },
+    });
+    return unwrapList(res);
+  },
+
+  replacePet: async (applicationId: string, petId: string) => {
+    const res = await apiClient.patch(`/applications/${applicationId}/replace-pet`, { petId });
+    return unwrapItem(res);
+  },
   // Gán Tag cho đơn
   addTag: async (applicationId: string, payload: { tagId?: string; name?: string }) => {
     const res = await apiClient.post(`/applications/${applicationId}/tags`, payload);

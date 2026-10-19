@@ -28,7 +28,7 @@ import { formatBreed, MaybeBilingual } from '@/utils/bilingualField';
 import { formatPetAge } from '@/utils/petAge';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
-  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+  PetIdRow, PetCardActions, OtherPetsDropdown,
 } from './RelatedApplications';
 // ============================================================================
 // HÀM DỊCH THUẬT — copy nguyên từ MoveToPendingModal để đồng bộ hiển thị
@@ -193,6 +193,7 @@ interface NeedMoreInfoModalProps {
   onClose: () => void;
   onMoveToInterview: () => void;
   onRefresh?: () => void;
+  onReplacePet?: (application: AdoptionApplication) => void;
 }
 
 export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
@@ -202,6 +203,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
   onClose,
   onMoveToInterview,
   onRefresh,
+  onReplacePet
 }) => {
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(true);
@@ -581,16 +583,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                 </span>
               </div>
               <PetIdRow pet={application.pet} className="text-[12.5px] mb-2" />
-              <button
-                type="button"
-                onClick={() => downloadApplicationPdf(application)}
-                className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors text-[12.5px] cursor-pointer text-left"
-              >
-                <Download size={13} className="text-gray-400 shrink-0" />
-                <span>
-                  Download <span className="font-semibold underline">{(application.fullName || application.user?.name || 'Julia').split(' ')[0]} - Application.pdf</span>
-                </span>
-              </button>
             </div>
           </div>
 
@@ -618,8 +610,12 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
               </div>
               <span className="text-[12px] text-gray-400">{petAgeFormatted} • {petBreedFormatted}</span>
             </div>
-            <OtherPetsToggle application={application} open={isOtherPetsOpen}
-              onToggle={() => setIsOtherPetsOpen((v) => !v)} />
+            <PetCardActions
+              application={application}
+              open={isOtherPetsOpen}
+              onToggle={() => setIsOtherPetsOpen((v) => !v)}
+              onReplacePet={onReplacePet}
+            />
           </div>
           <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
 

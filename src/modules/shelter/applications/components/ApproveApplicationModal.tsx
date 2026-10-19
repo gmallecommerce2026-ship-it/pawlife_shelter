@@ -31,7 +31,7 @@ import { RequestedDocument } from './RequestDocumentsModal';
 import { DOCUMENT_TYPE_OPTIONS } from '@/constants/adoptionDocuments';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
-  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+  PetIdRow, PetCardActions, OtherPetsDropdown,
 } from './RelatedApplications';
 const mapBackendDoc = (doc: any): ApplicationDocumentItem => ({
   id: doc.id,
@@ -205,6 +205,7 @@ interface ApproveApplicationModalProps {
   onScheduleInterview: (applicationId: string, data: any) => Promise<any>;
   onRefresh?: () => void;
   onCompleteAdoption?: (applicationId: string) => Promise<void>;
+  onReplacePet?: (application: AdoptionApplication) => void;
 }
 
 const createEmptyMember = (): InterviewMember => ({
@@ -282,6 +283,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   onScheduleInterview,
   onRefresh,
   onCompleteAdoption,
+  onReplacePet,
 }) => {
   const existingAppointment = (application as any)?.appointment;
   const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
@@ -596,16 +598,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                 <span className="truncate">{application.zalo || application.user?.email || 'adopter@pawlife.vn'}</span>
               </div>
               <PetIdRow pet={application.pet} className="text-[13px] mb-2" />
-              <button
-                type="button"
-                onClick={() => downloadApplicationPdf(application)}
-                className="flex items-center gap-1.5 text-gray-700 hover:text-[#E59858] text-[13px] transition-colors mb-3 cursor-pointer"
-              >
-                <Download size={13} className="text-gray-500 shrink-0" />
-                <span>
-                  Tải về <span className="font-bold underline">{firstName} - Đơn nhận nuôi.pdf</span>
-                </span>
-              </button>
 
               {/* Target Pet Pill Card */}
               <div className="border border-gray-200 rounded-[14px] p-2 flex items-center gap-3 bg-white shadow-sm w-full">
@@ -633,8 +625,12 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                     {getPetInfoLabel(application.pet)}
                   </span>
                 </div>
-                <OtherPetsToggle application={application} open={isOtherPetsOpen}
-                  onToggle={() => setIsOtherPetsOpen((v) => !v)} />
+                <PetCardActions
+                  application={application}
+                  open={isOtherPetsOpen}
+                  onToggle={() => setIsOtherPetsOpen((v) => !v)}
+                  onReplacePet={onReplacePet}
+                />
               </div>
               <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
             </div>

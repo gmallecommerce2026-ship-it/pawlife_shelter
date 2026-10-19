@@ -21,7 +21,7 @@ import { AdoptionApplication } from '@/types/application';
 import { apiClient } from '@/lib/api/ApiClient';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
-  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+  PetIdRow, PetCardActions, OtherPetsDropdown,
 } from './RelatedApplications';
 export interface InterviewMember {
   id: string;
@@ -47,6 +47,7 @@ interface InterviewScheduleModalProps {
   onClose: () => void;
   onSubmit: (data: InterviewSubmitPayload) => Promise<any>;
   onRefresh?: () => void;
+  onReplacePet?: (application: AdoptionApplication) => void;
 }
 
 const REMINDER_MINUTES_BEFORE = 10;
@@ -107,6 +108,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
   onClose,
   onSubmit,
   onRefresh,
+  onReplacePet,
 }) => {
   const existingAppointment = (application as any)?.appointment;
   const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
@@ -392,9 +394,12 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
             <ArrowRight size={16} className="text-gray-300 shrink-0" />
 
             <div className="flex items-center gap-3">
-              <OtherPetsToggle application={application} open={isOtherPetsOpen}
+              <PetCardActions
+                application={application}
+                open={isOtherPetsOpen}
                 onToggle={() => setIsOtherPetsOpen((v) => !v)}
-                className="mr-0.5 !ml-0" />
+                onReplacePet={onReplacePet}
+              />
               <div className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <span className="font-bold text-[14px] text-gray-900">{application.pet?.name}</span>

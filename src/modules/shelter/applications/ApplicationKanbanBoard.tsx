@@ -18,6 +18,7 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { ReplacePetModal } from './components/ReplacePetModal';
 import { KANBAN_COLUMNS, ApplicationStatus, AdoptionApplication } from '@/types/application';
 import {
   useApplicationList,
@@ -72,7 +73,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const { me } = useShelterTeam();
   const { fetchMe } = useShelterTeamActions();
   const isAdmin = useIsShelterAdmin();
-
+  const [replacePetApp, setReplacePetApp] = useState<AdoptionApplication | null>(null);
   useEffect(() => {
     if (!me) fetchMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,7 +235,17 @@ export const ApplicationKanbanBoard: React.FC = () => {
       }
     }
   }, [items, interviewApp]);
+  useEffect(() => {
+    if (!pendingApp) return;
+    const fresh = items.find((a) => a.id === pendingApp.id);
+    if (fresh && fresh !== pendingApp) setPendingApp(fresh);
+  }, [items, pendingApp]);
 
+  useEffect(() => {
+    if (!needInfoApp) return;
+    const fresh = items.find((a) => a.id === needInfoApp.id);
+    if (fresh && fresh !== needInfoApp) setNeedInfoApp(fresh);
+  }, [items, needInfoApp]);
   const handleDragStart = (event: DragStartEvent) => {
     isDraggingRef.current = true;
     const app = localItems.find((a) => a.id === event.active.id);
@@ -598,6 +609,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
             await fetchApplications();
             setPendingApp(null);
           }}
+          onReplacePet={setReplacePetApp}
         />
       )}
       {quickViewApp && (
@@ -618,6 +630,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setInterviewApp(null);
             return res;
           }}
+          onReplacePet={setReplacePetApp}
         />
       )}
       {approveApp && (
@@ -636,6 +649,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
             await fetchApplications();
             setApproveApp(null);
           }}
+          onReplacePet={setReplacePetApp}
         />
       )}
       {requestDocsApp && (
@@ -661,9 +675,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
             setNeedInfoApp(null);
             setPendingRequiredDocs([]);
           }}
+          onReplacePet={setReplacePetApp}
         />
       )}
-
+      {replacePetApp && (
+        <ReplacePetModal
+          application={replacePetApp}
+          onClose={() => setReplacePetApp(null)}
+          onDone={fetchApplications}
+        />
+      )}
       <style jsx>{`
         .custom-board-scroll {
           scrollbar-width: thin;

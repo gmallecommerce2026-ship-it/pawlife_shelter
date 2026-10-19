@@ -31,7 +31,7 @@ import { NoteItem, resolveNoteRole, unwrapNote } from './NoteItem';
 import { ApplicantFlagBanner } from './ApplicantFlag';
 import {
   RelatedApplicationsNotice, RelatedApplicationsWarnIcon,
-  PetIdRow, OtherPetsToggle, OtherPetsDropdown,
+  PetIdRow, PetCardActions, OtherPetsDropdown,
 } from './RelatedApplications';
 const matchKeyword = (
   val: string,
@@ -220,6 +220,7 @@ interface MoveToPendingModalProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
   onRefresh?: () => void;
+  onReplacePet?: (application: AdoptionApplication) => void;
 }
 
 export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
@@ -227,6 +228,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   onClose,
   onSubmit,
   onRefresh,
+  onReplacePet,
 }) => {
   const [isAppOpen, setIsAppOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -436,45 +438,18 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                     {petAgeFormatted} • {petBreedFormatted}
                   </span>
                 </div>
-                <OtherPetsToggle application={application} open={isOtherPetsOpen}
-                  onToggle={() => setIsOtherPetsOpen((v) => !v)} />
-              </div>  
+                <PetCardActions
+                  application={application}
+                  open={isOtherPetsOpen}
+                  onToggle={() => setIsOtherPetsOpen((v) => !v)}
+                  onReplacePet={onReplacePet}
+                />
+              </div>
               <OtherPetsDropdown application={application} open={isOtherPetsOpen} />
             </div>
           </div>
           <ApplicantFlagBanner flag={application.applicantFlag} />
           <RelatedApplicationsNotice application={application} />
-          {/* Tải PDF */}
-          <div className="border border-gray-200 rounded-[16px] p-3.5 px-4 flex items-center justify-between bg-white hover:bg-gray-50/50 transition-colors mb-6 shadow-xs">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-[10px] bg-[#FFF8F3] border border-[#FFE8D6] flex items-center justify-center shrink-0">
-                <FileText size={18} className="text-[#F3A571]" strokeWidth={1.8} />
-              </div>
-              <span className="text-[13.5px] font-semibold text-gray-900 truncate">
-                {applicantFirstName} - Don_nhan_nuoi.pdf
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                console.log('=== RAW DATA KHI BẤM DOWNLOAD PDF ===', {
-                  housing: application.housing,
-                  children: application.children,
-                  cage: application.cage,
-                  petExperience: application.petExperience,
-                  employmentStatus: application.employmentStatus,
-                  prevPetHistory: application.prevPetHistory,
-                  adoptionReason: application.adoptionReason,
-                  adoptFor: application.adoptFor,
-                });
-                downloadApplicationPdf(application);
-              }}
-              title="Tải đơn nhận nuôi (PDF)"
-              className="text-gray-400 hover:text-[#E89B5A] transition-colors p-1 cursor-pointer"
-            >
-              <Download size={17} strokeWidth={2} />
-            </button>
-          </div>
 
           {/* Tags */}
           <div className="mb-6">
