@@ -7,7 +7,7 @@ import { PetCard } from './components/PetCard';
 import { PetPageHeader } from './components/PetPageHeader';
 import { Pet, PetViewMode } from '@/types/pet';
 import PetTable from '@/components/PetTable';
-import { Link } from 'lucide-react';
+import Link from 'next/link';
 
 export const PetListPage = () => {
   const router = useRouter();

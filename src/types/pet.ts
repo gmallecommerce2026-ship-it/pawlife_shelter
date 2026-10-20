@@ -1,7 +1,7 @@
 export type PetSpecies = 'DOG' | 'CAT';
 export type PetGender = 'MALE' | 'FEMALE';
 import { PET_STATUS_CONFIG } from '@/constants/petStatus';
-export type PetStatus = 'AVAILABLE' | 'PENDING' | 'REJECTED' | 'HEALTH_ISSUE' | 'ADOPTED';
+export type PetStatus = 'AVAILABLE' | 'FOSTERING' | 'PENDING' | 'REJECTED' | 'HEALTH_ISSUE' | 'ADOPTED';
 
 export interface Pet {
   id: string;
