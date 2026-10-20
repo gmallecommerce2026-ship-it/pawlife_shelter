@@ -65,7 +65,6 @@ export const PetStatusDropdown: React.FC<PetStatusDropdownProps> = ({
           'Đang lưu...'
         ) : (
           <>
-            {isFostering && <HeartHandshake size={14} className="shrink-0" />}
             {meta.label}
           </>
         )}
