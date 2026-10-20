@@ -53,6 +53,7 @@ import {
   localizeHistoryTitle,
   formatAgeFromDob,
 } from '@/utils/pawHistoryLocalize';
+import { PetImageManager } from '@/modules/shelter/pets/components/PetImageManager';
 export interface Bilingual {
   vi: string;
   en: string;
@@ -181,6 +182,20 @@ async function uploadMedicalFile(file: File): Promise<string> {
     body: file,
   });
   if (!res.ok) throw new Error('Upload hồ sơ y tế thất bại');
+  return data.fileUrl;
+}
+async function uploadPetImage(file: File): Promise<string> {
+  const { data } = await axiosClient.post('/storage/presigned-url', {
+    fileName: file.name,
+    fileType: file.type || 'image/jpeg',
+    folder: 'pet-images',
+  });
+  const res = await fetch(data.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!res.ok) throw new Error('Upload ảnh pet thất bại');
   return data.fileUrl;
 }
 const SPECIES_LABEL: Record<PetSpecies, string> = { DOG: 'Chó', CAT: 'Mèo' };
@@ -352,7 +367,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const [isSpayedNeutered, setIsSpayedNeutered] = useState(true);
 
   const [images, setImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const blobFileMap = useRef<Map<string, File>>(new Map());
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -521,10 +536,27 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    setImageFiles((prev) => [...prev, ...files]);
-    const previews = files.map((f) => URL.createObjectURL(f));
+    const previews = files.map((f) => {
+      const url = URL.createObjectURL(f);
+      blobFileMap.current.set(url, f);
+      return url;
+    });
     setCurrentImageIndex(images.length);
     setImages((prev) => [...prev, ...previews]);
+    e.target.value = ''; // cho phép chọn lại cùng 1 file
+  };
+
+  // Dùng cho PetImageManager (xóa / đặt ảnh chính)
+  const handleImagesChange = (next: string[]) => {
+    // dọn blob của ảnh đã bị xóa
+    images.forEach((u) => {
+      if (u.startsWith('blob:') && !next.includes(u)) {
+        blobFileMap.current.delete(u);
+        URL.revokeObjectURL(u);
+      }
+    });
+    setImages(next);
+    setCurrentImageIndex(0); // preview nhảy về ảnh chính
   };
   const refetchApplications = async () => {
     if (!initialPet?.id) return;
@@ -724,13 +756,38 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
     };
 
     // images pet: loại bỏ blob preview, chỉ giữ URL thật đã upload/tồn tại
-    const cleanImages = sanitizeImageArray(images);
+    let finalImages: string[] = [];
+    try {
+      finalImages = await Promise.all(
+        images.map(async (url) => {
+          if (!url.startsWith('blob:')) return url;
+          const file = blobFileMap.current.get(url);
+          if (!file) return null;
+          return uploadPetImage(file);
+        }),
+      ).then((arr) => arr.filter((x): x is string => Boolean(x)));
+    } catch (err) {
+      console.error('[PetForm] Upload ảnh pet thất bại:', err);
+      alert('Tải ảnh lên thất bại. Vui lòng thử lại.');
+      return;
+    }
+
+    if (finalImages.length === 0) {
+      alert('Pet cần có ít nhất 1 ảnh.');
+      return;
+    }
 
     let success = false;
     if (mode === 'create') {
-      success = await createPet(payload, imageFiles);
+      // create: giữ API cũ (gửi File), nhưng sắp theo đúng thứ tự đang hiển thị
+      const orderedFiles = images
+        .filter((u) => u.startsWith('blob:'))
+        .map((u) => blobFileMap.current.get(u))
+        .filter((f): f is File => Boolean(f));
+      success = await createPet(payload, orderedFiles);
     } else if (initialPet) {
-      success = await updatePet(initialPet.id, payload, imageFiles, cleanImages);  // ← dùng cleanImages
+      // edit: ảnh đã upload hết, gửi mảng URL đúng thứ tự, không gửi file nữa
+      success = await updatePet(initialPet.id, payload, [], finalImages);
     }
 
     if (success) {
@@ -859,6 +916,29 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             </div>
 
             <div className="p-5 flex flex-col gap-4">
+              {images.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-[#8E8E93]">
+                      Ảnh ({images.length}) · ảnh đầu tiên là ảnh hiển thị trên app
+                    </span>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[11px] font-semibold text-[#E89B5A] hover:underline"
+                      >
+                        + Thêm ảnh
+                      </button>
+                    )}
+                  </div>
+                  <PetImageManager
+                    images={images}
+                    onChange={handleImagesChange}
+                    disabled={!isEditing || isSubmitting}
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Tên</label>
