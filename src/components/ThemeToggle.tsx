@@ -15,7 +15,7 @@ export const ThemeToggle = () => {
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="fixed bottom-4 right-4 z-[100] p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-700 hover:scale-105 transition-transform"
+      className="hidden md:flex fixed bottom-6 right-6 z-[100] p-3 rounded-full bg-white border border-gray-200 shadow-lg text-gray-700 hover:scale-105 transition-transform"
       title="Đổi giao diện sáng/tối"
     >
       {isDark ? <Sun size={18} /> : <Moon size={18} />}
