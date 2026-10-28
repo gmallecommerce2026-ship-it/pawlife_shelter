@@ -315,7 +315,7 @@ export const ShelterProfileForm = () => {
       {/* HEADER */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-[28px] font-bold text-[#1E1B4B] mb-1">Quản Lý Trạm</h2>
+          <h2 className="text-[24px] md:text-[28px] font-bold text-[#1E1B4B] mb-1">Quản Lý Trạm</h2>
           <p className="text-[13px] text-gray-500">Thông tin này sẽ hiển thị công khai cho người nhận nuôi trên PawLife.</p>
         </div>
         <button className="p-2 text-gray-400 hover:text-[#E89B5A] transition-colors relative">
@@ -328,13 +328,13 @@ export const ShelterProfileForm = () => {
       <div className="bg-gray-100 p-1.5 rounded-full flex w-full mb-8">
         <button
           onClick={() => setActiveTab('info')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 font-semibold text-[13px] md:text-[14px] leading-tight px-2 py-2.5 rounded-full transition-all ${activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Thông tin trạm cứu hộ
         </button>
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex-1 font-semibold text-[14px] py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 font-semibold text-[13px] md:text-[14px] leading-tight px-2 py-2.5 rounded-full transition-all ${activeTab === 'members' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Tài khoản & thành viên
         </button>
@@ -344,7 +344,7 @@ export const ShelterProfileForm = () => {
       {activeTab === 'info' && (
         <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-in fade-in duration-300">
           <div
-            className="relative w-full h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group cursor-pointer"
+            className="relative w-full h-[130px] md:h-[180px] bg-gradient-to-r from-[#FCAE7C] to-[#F97B89] group cursor-pointer"
             onClick={() => isEditing && coverInputRef.current?.click()}
           >
             {coverPreview && <Image src={coverPreview} alt="Cover" fill className="object-cover" />}
@@ -358,10 +358,10 @@ export const ShelterProfileForm = () => {
             <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
           </div>
 
-          <div className="px-8 pb-8">
-            <div className="flex justify-between items-end -mt-[50px] mb-6 relative z-10">
+          <div className="px-5 md:px-8 pb-6 md:pb-8">
+            <div className="flex justify-between items-end -mt-[44px] md:-mt-[50px] mb-6 relative z-10">
               <div
-                className="relative w-[110px] h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden cursor-pointer"
+                className="relative w-[88px] h-[88px] md:w-[110px] md:h-[110px] rounded-full border-[5px] border-white bg-[#D9D9D9] group overflow-hidden cursor-pointer"
                 onClick={() => isEditing && fileInputRef.current?.click()}
               >
                 {logoPreview && <Image src={logoPreview} alt="Logo" fill className="object-cover" />}
@@ -404,7 +404,7 @@ export const ShelterProfileForm = () => {
 
             <div className="flex flex-col gap-6">
               <div>
-                <h1 className="text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Tên Trạm Cứu Hộ'}</h1>
+                <h1 className="text-[22px] md:text-[24px] font-bold text-[#1E1B4B] mb-1">{values.name || 'Tên Trạm Cứu Hộ'}</h1>
                 <p className="text-[14px] text-gray-400">{shelterTypeLabel}</p>
               </div>
 
@@ -592,8 +592,8 @@ export const ShelterProfileForm = () => {
       {/* TAB 2: TÀI KHOẢN & THÀNH VIÊN */}
       {activeTab === 'members' && (
         <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-          <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-sm">
-            <div className="flex justify-between items-start mb-6">
+          <div className="bg-white border border-gray-200 rounded-[20px] p-5 md:p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
               <div className="flex items-center gap-5">
 
                 {/* ẢNH AVATAR CÁ NHÂN CÓ THỂ THAY ĐỔI */}
@@ -632,21 +632,21 @@ export const ShelterProfileForm = () => {
                     setNewPwd('');
                     setPwdTarget({ id: me?.id || '', name: displayName, type: 'me' });
                   }}
-                  className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium text-[14px] px-4 py-2.5 rounded-[8px] transition-colors flex items-center gap-2"
+                  className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium text-[14px] px-4 py-2.5 rounded-[8px] transition-colors flex items-center gap-2 flex-1 md:flex-none justify-center"
                 >
                   <Key size={16} /> Đổi mật khẩu
                 </button>
                 <button
                   onClick={handleSaveMe}
                   disabled={isSavingMe || (!meName.trim() && !avatarFile) || (meName.trim() === (displayName || '') && !avatarFile)}
-                  className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#F3A571] hover:bg-[#E89B5A] text-white font-medium text-[14px] px-6 py-2.5 rounded-[8px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none"
                 >
                   {isSavingMe ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <label className="text-[12px] text-gray-400 mb-1.5 block">Tên đầy đủ</label>
                 <input
@@ -680,7 +680,7 @@ export const ShelterProfileForm = () => {
             </div>
 
             <div className="bg-white border border-gray-200 rounded-[20px] overflow-hidden">
-              <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA]">
+              <div className="hidden md:grid grid-cols-[2fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA]">
                 <span className="text-[13px] font-medium text-gray-500">Tên</span>
                 <span className="text-[13px] font-medium text-gray-500">Email</span>
                 <span className="text-[13px] font-medium text-gray-500">Quyền hạn</span>
@@ -697,7 +697,7 @@ export const ShelterProfileForm = () => {
                     const canEditRole = isCurrentUserAdmin && !isSelf;
 
                     return (
-                      <div key={member.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div key={member.id} className="flex flex-col gap-2.5 md:grid md:grid-cols-[2fr_2fr_1.5fr_1fr] md:items-center px-4 md:px-6 py-4 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <img
                             src={member.avatarUrl || 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=100'}
@@ -730,7 +730,7 @@ export const ShelterProfileForm = () => {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="text-[14px] font-bold text-gray-900 truncate max-w-[120px]">
+                              <span className="text-[14px] font-bold text-gray-900 truncate max-w-[220px] md:max-w-[120px]">
                                 {member.name || 'Chưa đặt tên'}
                                 {isSelf && <span className="text-gray-400 font-normal"> (Bạn)</span>}
                               </span>
@@ -750,7 +750,7 @@ export const ShelterProfileForm = () => {
                           )}
                         </div>
 
-                        <span className="text-[14px] text-gray-500 truncate pr-2">{member.email}</span>
+                        <span className="text-[14px] text-gray-500 truncate pr-2 pl-11 md:pl-0">{member.email}</span>
 
                         <div>
                           {canEditRole ? (
@@ -780,7 +780,7 @@ export const ShelterProfileForm = () => {
                           )}
                         </div>
 
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center justify-start md:justify-end gap-3 pl-11 md:pl-0">
                           {isCurrentUserAdmin && !isSelf && (
                             <>
                               {/* BỔ SUNG: Nút đổi mật khẩu cho thành viên (Chỉ Admin) */}
@@ -791,7 +791,7 @@ export const ShelterProfileForm = () => {
                                   setNewPwd('');
                                   setPwdTarget({ id: member.id, name: member.name || member.email, type: 'member' });
                                 }}
-                                className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                                className="p-2.5 md:p-1.5 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors"
                                 title="Đổi mật khẩu"
                               >
                                 <Key size={16} />
@@ -800,7 +800,7 @@ export const ShelterProfileForm = () => {
                                 onClick={() => {
                                   if (window.confirm(`Xoá ${member.name || member.email} khỏi trạm?`)) removeMember(member.id);
                                 }}
-                                className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                className="p-2.5 md:p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                                 title="Xóa thành viên"
                               >
                                 <Trash2 size={16} />
@@ -813,7 +813,7 @@ export const ShelterProfileForm = () => {
                   })}
 
                   {invitations.map((inv) => (
-                    <div key={inv.id} className="grid grid-cols-[2fr_2fr_1.5fr_1fr] items-center px-6 py-4 bg-[#FFFBF5]">
+                    <div key={inv.id} className="flex flex-col gap-2.5 md:grid md:grid-cols-[2fr_2fr_1.5fr_1fr] md:items-center px-4 md:px-6 py-4 bg-[#FFFBF5]">
                       <div className="flex items-center gap-3">
                         <span className="text-[14px] font-bold text-gray-400 italic">Đang chờ chấp nhận</span>
                       </div>
@@ -838,8 +838,8 @@ export const ShelterProfileForm = () => {
               <h3 className="text-[20px] font-bold text-gray-900">Quyền Hạn</h3>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-[20px] overflow-hidden shadow-sm">
-              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] items-center">
+            <div className="bg-white border border-gray-200 rounded-[20px] overflow-x-auto shadow-sm">
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] min-w-[640px] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] items-center">
                 <span className="text-[13px] font-medium text-gray-500">Quyền hạn</span>
                 <span className="text-[13px] font-bold text-[#A855F7] text-center">Admin</span>
                 <span className="text-[13px] font-bold text-[#EC4899] text-center">Bác sĩ thú y</span>
@@ -849,7 +849,7 @@ export const ShelterProfileForm = () => {
 
               <div className="flex flex-col divide-y divide-gray-100">
                 {PERMISSIONS_DATA.map((item, index) => (
-                  <div key={index} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                  <div key={index} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] min-w-[640px] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors">
                     <span className="text-[14px] text-gray-600 font-medium">{item.name}</span>
                     <div className="flex justify-center">
                       {item.admin && <Check size={20} strokeWidth={2.5} className="text-[#22C55E]" />}
@@ -875,10 +875,10 @@ export const ShelterProfileForm = () => {
 
       {/* MODAL ĐỔI MẬT KHẨU */}
       {pwdTarget && (
-        <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setPwdTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 z-[110] flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm" onClick={() => setPwdTarget(null)}>
           <form
             onSubmit={handleSubmitPassword}
-            className="bg-white w-full max-w-[420px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white w-full sm:max-w-[420px] rounded-t-[28px] sm:rounded-[20px] shadow-2xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] relative animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -924,7 +924,7 @@ export const ShelterProfileForm = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-start md:justify-end gap-3 pl-11 md:pl-0">
               <button
                 type="button"
                 onClick={() => setPwdTarget(null)}

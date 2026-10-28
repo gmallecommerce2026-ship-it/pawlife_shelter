@@ -64,9 +64,9 @@ export const PetListPage = () => {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
+            <div key={i} className="h-48 sm:h-64 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (
@@ -77,7 +77,7 @@ export const PetListPage = () => {
           </Link>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {items.map((pet) => (
             <PetCard
               key={pet.id}
@@ -94,14 +94,14 @@ export const PetListPage = () => {
       )}
 
       {!isLoading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
+        <div className="no-scrollbar -mx-4 mt-6 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:mt-8 sm:justify-center">
           {Array.from({ length: totalPages }).map((_, i) => {
             const page = i + 1;
             return (
               <button
                 key={page}
                 onClick={() => setFilter({ page })}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${page === filter.page
+                className={`h-11 w-11 shrink-0 sm:h-9 sm:w-9 rounded-lg text-sm font-medium transition-colors ${page === filter.page
                   ? 'bg-[#E89B5A] text-white'
                   : 'bg-white border border-gray-200 text-gray-600 hover:border-[#E89B5A]'
                   }`}

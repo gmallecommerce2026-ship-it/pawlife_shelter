@@ -69,12 +69,12 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
   };
 
   const HoverActions = (
-    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+    <div className="absolute top-2 right-2 flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 z-10">
       <button
         type="button"
         onClick={stop(() => onEdit?.(pet))}
         title="Sửa pet"
-        className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-[#E89B5A] hover:bg-white"
+        className="w-9 h-9 md:w-8 md:h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-[#E89B5A] hover:bg-white"
       >
         <FiEdit2 size={14} />
       </button>
@@ -82,7 +82,7 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
         type="button"
         onClick={stop(() => onDelete?.(pet))}
         title="Xoá pet"
-        className="w-8 h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-red-500 hover:bg-white"
+        className="w-9 h-9 md:w-8 md:h-8 rounded-full bg-white/95 shadow-sm flex items-center justify-center text-red-500 hover:bg-white"
       >
         <FiTrash2 size={14} />
       </button>
@@ -122,12 +122,12 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
           </div>
         </div>
 
-        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
+        <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 shrink-0">
           <button
             type="button"
             onClick={stop(() => onEdit?.(pet))}
             title="Sửa pet"
-            className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-[#E89B5A] hover:bg-[#E89B5A]/10"
+            className="w-10 h-10 md:w-9 md:h-9 rounded-full bg-gray-50 flex items-center justify-center text-[#E89B5A] hover:bg-[#E89B5A]/10"
           >
             <FiEdit2 size={15} />
           </button>
@@ -135,7 +135,7 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
             type="button"
             onClick={stop(() => onDelete?.(pet))}
             title="Xoá pet"
-            className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-red-500 hover:bg-red-50"
+            className="w-10 h-10 md:w-9 md:h-9 rounded-full bg-gray-50 flex items-center justify-center text-red-500 hover:bg-red-50"
           >
             <FiTrash2 size={15} />
           </button>
@@ -152,7 +152,7 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
   // ---------------------------------------------------------------------------
   return (
     <div onClick={() => onView?.(pet)} className="group cursor-pointer">
-      <div className="relative aspect-square rounded-[24px] overflow-hidden bg-gray-100 border border-gray-100">
+      <div className="relative aspect-square rounded-[20px] md:rounded-[24px] overflow-hidden bg-gray-100 border border-gray-100">
         {imageUrl ? (
           <Image src={imageUrl} alt={pet.name} fill className="object-cover" />
         ) : (
@@ -166,7 +166,7 @@ export const PetCard: React.FC<PetCardProps> = ({ pet, viewMode, onView, onEdit,
         </div>
 
         {/* Overlay tối nhẹ khi hover để 2 nút trắng nổi bật hơn trên ảnh */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-150" />
+        <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/15 transition-colors duration-150" />
         {HoverActions}
       </div>
 

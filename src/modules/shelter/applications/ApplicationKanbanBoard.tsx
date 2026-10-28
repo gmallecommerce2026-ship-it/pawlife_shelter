@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   pointerWithin,
   rectIntersection,
   useSensor,
@@ -47,6 +48,8 @@ import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
+import { ResponsiveModal } from '@/components/ResponsiveModal';
+
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
 const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
@@ -64,6 +67,132 @@ const dropAnimation: DropAnimation = {
     styles: { active: { opacity: '0.4' } },
   }),
 };
+
+const CLOSE_REASONS = [
+  'Không phù hợp',
+  'Đã có người nhận nuôi',
+  'Người đăng ký hủy đơn',
+  'Hết thời hạn phản hồi',
+];
+
+/** Khoảng đệm trái của vùng cuộn ngang trên mobile (px) — phải khớp class `px-4` bên dưới */
+const BOARD_PAD_LEFT = 16;
+
+/* =============================================================================
+   Dialog đóng hồ sơ — bottom sheet trên mobile, dialog giữa màn hình ≥ sm
+   ============================================================================= */
+interface CloseApplicationDialogProps {
+  application: AdoptionApplication;
+  reason: string;
+  isCustom: boolean;
+  isClosing: boolean;
+  onReasonChange: (v: string) => void;
+  onCustomChange: (v: boolean) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
+  application,
+  reason,
+  isCustom,
+  isClosing,
+  onReasonChange,
+  onCustomChange,
+  onCancel,
+  onConfirm,
+}) => (
+  <ResponsiveModal onClose={onCancel} maxWidth="sm:max-w-[420px]">
+    <div className="px-5 pb-5 pt-2 sm:p-5">
+      <h3 className="mb-1.5 text-[20px] font-bold tracking-tight text-gray-900 sm:text-[16px]">
+        Đóng hồ sơ nhận nuôi?
+      </h3>
+      <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:text-[13px]">
+        Bạn có chắc chắn muốn đóng đơn của{' '}
+        <strong className="text-gray-900">{application.fullName || application.user?.name}</strong>{' '}
+        cho bé <strong className="text-gray-900">{application.pet?.name}</strong>?
+      </p>
+
+      <p className="mb-2 text-[13px] font-medium text-gray-500 sm:text-[11px]">Lý do đóng</p>
+      <div role="radiogroup" className="mb-2 flex flex-col rounded-2xl bg-gray-50 p-1">
+        {CLOSE_REASONS.map((r) => {
+          const checked = !isCustom && reason === r;
+          return (
+            <label
+              key={r}
+              className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${
+                checked ? 'bg-white shadow-sm' : ''
+              }`}
+            >
+              <input
+                type="radio"
+                name="close-reason"
+                className="h-5 w-5 accent-[#E89B5A] sm:h-4 sm:w-4"
+                checked={checked}
+                onChange={() => {
+                  onCustomChange(false);
+                  onReasonChange(r);
+                }}
+              />
+              {r}
+            </label>
+          );
+        })}
+        <label
+          className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${
+            isCustom ? 'bg-white shadow-sm' : ''
+          }`}
+        >
+          <input
+            type="radio"
+            name="close-reason"
+            className="h-5 w-5 accent-[#E89B5A] sm:h-4 sm:w-4"
+            checked={isCustom}
+            onChange={() => {
+              onCustomChange(true);
+              onReasonChange('');
+            }}
+          />
+          Khác (nhập lý do)
+        </label>
+      </div>
+
+      {isCustom && (
+        <textarea
+          rows={2}
+          value={reason}
+          onChange={(e) => onReasonChange(e.target.value)}
+          placeholder="Nhập lý do..."
+          className="mb-2 w-full resize-none rounded-xl border border-gray-200 p-3 text-[16px] outline-none focus:border-red-400 sm:rounded-[8px] sm:p-2 sm:text-[12px]"
+          autoFocus
+        />
+      )}
+
+      <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isClosing}
+          className="h-12 rounded-xl bg-gray-100 text-[16px] font-semibold text-gray-700 transition-colors active:bg-gray-200 sm:h-auto sm:rounded-md sm:px-3.5 sm:py-1.5 sm:text-[12px] sm:hover:bg-gray-200"
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={isClosing || !reason.trim()}
+          className="h-12 rounded-xl bg-red-600 text-[16px] font-bold text-white transition-colors active:bg-red-700 disabled:opacity-60 sm:h-auto sm:rounded-md sm:px-4 sm:py-1.5 sm:text-[12px] sm:hover:bg-red-700"
+        >
+          {isClosing ? 'Đang đóng...' : 'Xác nhận đóng'}
+        </button>
+      </div>
+    </div>
+  </ResponsiveModal>
+);
+
+/* =============================================================================
+   BOARD
+   ============================================================================= */
 export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { filter } = useApplicationFilter();
@@ -95,24 +224,23 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [deleteAppTarget, setDeleteAppTarget] = useState<AdoptionApplication | null>(null);
   const [closeReason, setCloseReason] = useState('');
   const [isClosingApp, setIsClosingApp] = useState(false);
-  const CLOSE_REASONS = [
-    'Không phù hợp',
-    'Đã có người nhận nuôi',
-    'Người đăng ký hủy đơn',
-    'Hết thời hạn phản hồi',
-  ];
-
   const [isCustomCloseReason, setIsCustomCloseReason] = useState(false);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
   const [isScrollable, setIsScrollable] = useState(false);
+  const [activeColIdx, setActiveColIdx] = useState(0);
   const user = getUserFromToken();
   const socket = useWebsocket(undefined, user?.shelterId);
+
   useEffect(() => {
     if (closeAppTarget) {
       setIsCustomCloseReason(false);
       setCloseReason(CLOSE_REASONS[0]);
     }
   }, [closeAppTarget]);
+
   // Lắng nghe realtime để tự reload lại danh sách đơn trên Kanban
   useEffect(() => {
     if (!socket) return;
@@ -137,17 +265,18 @@ export const ApplicationKanbanBoard: React.FC = () => {
       socket.off('application_deleted', handleRealtimeUpdate);
     };
   }, [socket, fetchApplications]);
+
   const formattedItems = useMemo(() => {
     return localItems.map((app: any) => ({
       ...app,
       tags: app.tags
         ? app.tags.map((t: any) => {
-          const base = t && typeof t === 'object' && t.tag
-            ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
-            : t;
-          const syncedColor = getTagColor(base?.name) || base?.color;
-          return { ...base, color: syncedColor };
-        })
+            const base = t && typeof t === 'object' && t.tag
+              ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
+              : t;
+            const syncedColor = getTagColor(base?.name) || base?.color;
+            return { ...base, color: syncedColor };
+          })
         : [],
     }));
   }, [localItems, getTagColor]);
@@ -181,8 +310,11 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
   const REQUIRES_CONFIRM: ApplicationStatus[] = ['CLOSED'];
 
+  // Chuột: kéo là chạy (8px). Cảm ứng: PHẢI nhấn giữ ~220ms mới kéo thẻ,
+  // nên vuốt nhanh vẫn cuộn bảng / cuộn cột bình thường.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } })
   );
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -218,6 +350,45 @@ export const ApplicationKanbanBoard: React.FC = () => {
     };
   }, [columns]);
 
+  // ---- Mobile: theo dõi cột đang hiển thị + chip chuyển cột ----
+  const handleBoardScroll = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const kids = Array.from(el.children) as HTMLElement[];
+      let best = 0;
+      let bestDist = Infinity;
+      kids.forEach((k, i) => {
+        const d = Math.abs(k.offsetLeft - BOARD_PAD_LEFT - el.scrollLeft);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      });
+      setActiveColIdx(best);
+    });
+  }, []);
+
+  const scrollToColumn = (index: number) => {
+    const el = scrollContainerRef.current;
+    const kid = el?.children[index] as HTMLElement | undefined;
+    if (!el || !kid) return;
+    el.scrollTo({ left: Math.max(0, kid.offsetLeft - BOARD_PAD_LEFT), behavior: 'smooth' });
+  };
+
+  // Giữ chip đang chọn luôn nằm giữa thanh chip
+  useEffect(() => {
+    const chip = chipsRef.current?.children[activeColIdx] as HTMLElement | undefined;
+    const bar = chipsRef.current;
+    if (!chip || !bar) return;
+    bar.scrollTo({
+      left: chip.offsetLeft - (bar.clientWidth - chip.clientWidth) / 2,
+      behavior: 'smooth',
+    });
+  }, [activeColIdx]);
+
   useEffect(() => {
     if (approveApp) {
       const fresh = items.find((a) => a.id === approveApp.id);
@@ -246,8 +417,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const fresh = items.find((a) => a.id === needInfoApp.id);
     if (fresh && fresh !== needInfoApp) setNeedInfoApp(fresh);
   }, [items, needInfoApp]);
+
   const handleDragStart = (event: DragStartEvent) => {
     isDraggingRef.current = true;
+    // Rung nhẹ khi "nhấc" thẻ lên (Android; iOS Safari bỏ qua)
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(8);
+    }
     const app = localItems.find((a) => a.id === event.active.id);
     setActiveApp(app ?? null);
   };
@@ -320,7 +496,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
         finalStatus = overIsColumn
           ? (overId as ApplicationStatus)
           : (overItem ? mergeAdoptionIntoApproved(overItem.status) : undefined);
-
       }
     }
 
@@ -353,6 +528,14 @@ export const ApplicationKanbanBoard: React.FC = () => {
     moveApplication(activeId, finalStatus);
   };
 
+  // Kéo bị huỷ (thả ra ngoài / hệ thống ngắt) → trả state về như cũ
+  const handleDragCancel = () => {
+    isDraggingRef.current = false;
+    setActiveApp(null);
+    setOverColumn(null);
+    setLocalItems(items);
+  };
+
   const handleCardClick = (app: AdoptionApplication) => {
     if (justDraggedRef.current) return;
     markViewed(app.id);
@@ -362,7 +545,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
 
     if (app.status === 'SUBMITTED' || app.status === 'PENDING') {
-      setPendingApp(app); // Gọi chung modal MoveToPendingModal (modal xem đơn ban đầu)
+      setPendingApp(app);
       return;
     }
 
@@ -414,25 +597,62 @@ export const ApplicationKanbanBoard: React.FC = () => {
   };
 
   return (
-    // Toàn bộ màn hình chiếm đúng 100dvh trừ phần top bar của Shelter Layout
-    <div className="flex flex-col w-full h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4.5rem)] overflow-hidden gap-2 pb-1">
+    // `h-app-screen` định nghĩa trong globals.mobile.css (đã trừ top bar + tab bar + safe-area)
+    <div className="flex flex-col w-full h-app-screen overflow-hidden gap-2 pb-1">
 
-      {/* 1. Header & Filter Bar thu gọn tối đa khoảng trống dọc */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0 w-full px-1">
-        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[18px] sm:text-[22px] lg:text-[24px] text-[#0D062D] font-bold tracking-tight">
+      {/* 1. Header — mobile: large title kiểu iOS, filter bar xuống dòng riêng */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between flex-shrink-0 w-full px-1">
+        <h1 className="font-['Be_Vietnam_Pro',_sans-serif] text-[28px] leading-[1.1] sm:text-[22px] lg:text-[24px] text-[#0D062D] font-bold tracking-tight">
           Đăng ký nhận nuôi
         </h1>
         <ApplicationFilterBar />
       </div>
 
-      {/* 2. Vùng chứa Kanban Board: Chiếm 100% không gian dọc còn lại */}
+      {/* 1b. Mobile: chip chuyển nhanh giữa các cột */}
+      {!isLoading && (
+        <div className="md:hidden flex-shrink-0">
+          <div
+            ref={chipsRef}
+            role="tablist"
+            aria-label="Các cột trạng thái"
+            className="no-scrollbar relative flex gap-2 overflow-x-auto px-1 py-0.5"
+          >
+            {columns.map((col, i) => {
+              const active = i === activeColIdx;
+              return (
+                <button
+                  key={col.status}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => scrollToColumn(i)}
+                  className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-all duration-200 active:scale-95 ${
+                    active ? 'bg-[#0D062D] text-white shadow-sm' : 'bg-black/[0.05] text-[#6B6B70]'
+                  }`}
+                >
+                  {col.label}
+                  <span
+                    className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-[18px] ${
+                      active ? 'bg-white/20 text-white' : 'bg-black/[0.06] text-[#6B6B70]'
+                    }`}
+                  >
+                    {col.applications.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Vùng chứa Kanban Board */}
       <div className="flex-1 min-h-0 w-full relative">
         {isLoading && localItems.length === 0 ? (
-          <div className="flex gap-2.5 sm:gap-3 w-full h-full overflow-x-auto pb-1">
+          <div className="flex gap-3 w-full h-full overflow-x-auto px-4 md:px-0 pb-1">
             {KANBAN_COLUMNS.map((col) => (
               <div
                 key={col.status}
-                className="w-[270px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full rounded-[14px] bg-gray-100/70 animate-pulse border border-gray-200"
+                className="w-[calc(100vw-3.5rem)] max-w-[340px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full rounded-[18px] bg-gray-100/70 animate-pulse border border-gray-200"
               />
             ))}
           </div>
@@ -444,15 +664,19 @@ export const ApplicationKanbanBoard: React.FC = () => {
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
           >
             <div
               ref={scrollContainerRef}
-              className="flex gap-2.5 sm:gap-3.5 overflow-x-auto items-stretch h-full w-full pb-1 scroll-smooth custom-board-scroll"
+              onScroll={handleBoardScroll}
+              className={`relative flex gap-3 sm:gap-3.5 overflow-x-auto items-stretch h-full w-full px-4 md:px-0 pb-1 scroll-smooth custom-board-scroll overscroll-x-contain ${
+                activeApp ? '' : 'snap-x snap-mandatory'
+              } md:snap-none`}
             >
               {columns.map((col) => (
                 <div
                   key={col.status}
-                  className="w-[270px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full flex flex-col"
+                  className="w-[calc(100vw-3.5rem)] max-w-[340px] sm:w-[290px] lg:w-[310px] flex-shrink-0 h-full flex flex-col snap-start"
                 >
                   <ApplicationColumn
                     status={col.status}
@@ -469,11 +693,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
                   />
                 </div>
               ))}
+              {/* Đệm cuối để cột cuối cùng cũng căn được về mép trái khi snap */}
+              <div className="w-1 shrink-0 md:hidden" aria-hidden />
             </div>
 
             <DragOverlay dropAnimation={dropAnimation}>
               {activeApp ? (
-                <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[270px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none">
+                <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[calc(100vw-4.5rem)] max-w-[300px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none">
                   <ApplicationCardContent
                     application={activeApp}
                     onOpenProfile={() => { }}
@@ -488,9 +714,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Hint Scroll */}
+      {/* 3. Hint Scroll — chỉ desktop (mobile đã có chip + vuốt ngang) */}
       {!isLoading && isScrollable && (
-        <div className="flex justify-end w-full px-2 flex-shrink-0 -mt-1">
+        <div className="hidden md:flex justify-end w-full px-2 flex-shrink-0 -mt-1">
           <p className="text-[10px] sm:text-[11px] text-gray-400 flex items-center gap-1 italic">
             Mẹo: Giữ
             <kbd className="font-sans font-bold border border-gray-200 rounded px-1 bg-gray-50 text-[9px] not-italic text-gray-600">
@@ -503,86 +729,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
       {/* Modals */}
       {closeAppTarget && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm"
-          onClick={() => setCloseAppTarget(null)}
-        >
-          <div
-            className="bg-white w-full max-w-[420px] rounded-[18px] shadow-2xl p-5 relative animate-in fade-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-[16px] font-bold text-gray-900 mb-1.5">Đóng hồ sơ nhận nuôi?</h3>
-            <p className="text-[13px] text-gray-600 mb-3 leading-relaxed">
-              Bạn có chắc chắn muốn đóng đơn của{' '}
-              <strong className="text-gray-900">{closeAppTarget.fullName || closeAppTarget.user?.name}</strong>{' '}
-              cho bé <strong className="text-gray-900">{closeAppTarget.pet?.name}</strong>?
-            </p>
-            <div className="mb-4">
-              <div className="mb-4">
-                <label className="text-[11px] font-medium text-gray-500 mb-2 block">Lý do đóng:</label>
-
-                <div className="flex flex-col gap-1.5 mb-2">
-                  {CLOSE_REASONS.map((reason) => (
-                    <label key={reason} className="flex items-center gap-2 text-[12px] text-gray-700 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="close-reason"
-                        checked={!isCustomCloseReason && closeReason === reason}
-                        onChange={() => {
-                          setIsCustomCloseReason(false);
-                          setCloseReason(reason);
-                        }}
-                      />
-                      {reason}
-                    </label>
-                  ))}
-
-                  <label className="flex items-center gap-2 text-[12px] text-gray-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="close-reason"
-                      checked={isCustomCloseReason}
-                      onChange={() => {
-                        setIsCustomCloseReason(true);
-                        setCloseReason('');
-                      }}
-                    />
-                    Khác (nhập lý do)
-                  </label>
-                </div>
-
-                {isCustomCloseReason && (
-                  <textarea
-                    rows={2}
-                    value={closeReason}
-                    onChange={(e) => setCloseReason(e.target.value)}
-                    placeholder="Nhập lý do..."
-                    className="w-full border border-gray-200 rounded-[8px] p-2 text-[12px] outline-none focus:border-red-400"
-                    autoFocus
-                  />
-                )}
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCloseAppTarget(null)}
-                disabled={isClosingApp}
-                className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-semibold rounded-md"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmClose}
-                disabled={isClosingApp || !closeReason.trim()}
-                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold rounded-md disabled:opacity-60"
-              >
-                {isClosingApp ? 'Đang đóng...' : 'Xác nhận'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CloseApplicationDialog
+          application={closeAppTarget}
+          reason={closeReason}
+          isCustom={isCustomCloseReason}
+          isClosing={isClosingApp}
+          onReasonChange={setCloseReason}
+          onCustomChange={setIsCustomCloseReason}
+          onCancel={() => setCloseAppTarget(null)}
+          onConfirm={handleConfirmClose}
+        />
       )}
       {deleteAppTarget && (
         <DeleteApplicationModal
@@ -696,6 +852,15 @@ export const ApplicationKanbanBoard: React.FC = () => {
         .custom-board-scroll::-webkit-scrollbar-thumb {
           background-color: #E89B5A;
           border-radius: 10px;
+        }
+        /* Mobile: ẩn thanh cuộn ngang (đã có chip + peek cột kế bên) */
+        @media (max-width: 767px) {
+          .custom-board-scroll {
+            scrollbar-width: none;
+          }
+          .custom-board-scroll::-webkit-scrollbar {
+            display: none;
+          }
         }
       `}</style>
     </div>

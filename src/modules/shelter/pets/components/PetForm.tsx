@@ -833,12 +833,12 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
   };
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto flex flex-col font-sans pb-20">
-      <div className="flex flex-col lg:flex-row gap-7 items-start px-2 py-1">
+    <div className="w-full max-w-[1280px] mx-auto flex flex-col font-sans pb-44 md:pb-20">
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-7 items-start px-0 md:px-2 py-1">
 
         {/* ================= CỘT TRÁI: ÁNH + THÔNG TIN CƠ BẢN ================= */}
         <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0 flex flex-col gap-5 p-1">
-          <div className="flex items-center gap-3">
+          <div className="ml-auto md:ml-0 flex items-center gap-4 md:gap-3">
             <button
               type="button"
               onClick={() => router.push('/shelter/pets')}
@@ -846,14 +846,14 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             >
               <ChevronLeft size={26} />
             </button>
-            <h1 className="text-3xl font-bold text-[#0D062D] truncate">{name || 'Thêm Pet'}</h1>
-            <span className="text-lg text-[#8E8E93] truncate">({breed || 'Giống loài'})</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#0D062D] truncate">{name || 'Thêm Pet'}</h1>
+            <span className="hidden sm:inline text-lg text-[#8E8E93] truncate">({breed || 'Giống loài'})</span>
           </div>
 
           <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col bg-white">
             {/* Main Pet Image / Slider */}
             <div
-              className="relative w-full h-[300px] xl:h-[340px] bg-gray-100 group cursor-pointer overflow-hidden"
+              className="relative w-full h-[260px] sm:h-[320px] xl:h-[340px] bg-gray-100 group cursor-pointer overflow-hidden"
               onClick={() => isEditing && fileInputRef.current?.click()}
             >
               {images.length > 0 ? (
@@ -939,7 +939,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
                   <label className="text-[11px] text-[#8E8E93] block mb-1">Tên</label>
                   <input
@@ -1087,11 +1087,11 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         {/* ================= CỘT PHẢI: ACTIONS + TABS + NỘI DUNG ================= */}
         <div className="flex-1 min-w-0 flex flex-col gap-5 px-2 py-1">
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3">
+          <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-40 flex items-center gap-3 border-t border-black/5 bg-white/85 px-4 py-3 backdrop-blur-xl md:static md:z-auto md:justify-end md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
             <button
               type="button"
               onClick={() => setShow3DModal(true)}
-              className="h-[38px] px-4 rounded-lg border border-orange-200 text-[#E89B5A] bg-white text-sm font-semibold flex items-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
+              className="h-11 flex-1 md:h-[38px] md:flex-none px-4 rounded-lg border border-orange-200 text-[#E89B5A] bg-white text-sm font-semibold flex items-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
             >
               <SparklesIcon size={14} /> Live Preview (3D)
             </button>
@@ -1100,7 +1100,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="h-[38px] px-5 rounded-lg bg-[#E89B5A] text-white text-sm font-bold hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
+              className="h-11 flex-[1.4] md:h-[38px] md:flex-none px-5 rounded-lg bg-[#E89B5A] text-white text-sm font-bold hover:bg-[#D68B4E] transition-colors disabled:opacity-70"
             >
               {isSubmitting ? 'Đang lưu...' : mode === 'create' ? 'Tạo mới' : 'Lưu Thay Đổi'}
             </button>
@@ -1111,7 +1111,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             <button
               type="button"
               onClick={() => setActiveTab('info')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'info' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+              className={`flex-1 px-2 sm:px-6 py-2 sm:py-1.5 rounded-full text-[13px] sm:text-sm transition-colors ${activeTab === 'info' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
                 }`}
             >
               Thông tin
@@ -1119,7 +1119,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             <button
               type="button"
               onClick={() => setActiveTab('applications')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'applications' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+              className={`flex-1 px-2 sm:px-6 py-2 sm:py-1.5 rounded-full text-[13px] sm:text-sm transition-colors ${activeTab === 'applications' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
                 }`}
             >
               Đơn nhận nuôi
@@ -1127,7 +1127,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
             <button
               type="button"
               onClick={() => setActiveTab('documents')}
-              className={`flex-1 px-6 py-1.5 rounded-full text-sm transition-colors ${activeTab === 'documents' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
+              className={`flex-1 px-2 sm:px-6 py-2 sm:py-1.5 rounded-full text-[13px] sm:text-sm transition-colors ${activeTab === 'documents' ? 'bg-white text-black font-semibold shadow-sm' : 'text-gray-500 font-medium'
                 }`}
             >
               Tài liệu
@@ -1290,7 +1290,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             type="button"
                             disabled={!isEditing}
                             onClick={() => toggleRequirement(opt.key)}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-medium transition-colors ${isSelected
+                            className={`inline-flex items-center gap-2 px-3.5 py-2.5 md:py-2 rounded-full border text-[12px] md:text-[10px] font-medium transition-colors ${isSelected
                               ? 'border-[#E89B5A] bg-[#FFF8F0] text-[#E89B5A]'
                               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                               } disabled:cursor-not-allowed disabled:opacity-60`}
@@ -1743,7 +1743,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           {activeTab === 'documents' && (
             <div className="bg-white rounded-[20px] border border-gray-200 shadow-sm overflow-hidden w-full">
               {/* Table Header */}
-              <div className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] text-[13px] font-medium text-gray-500">
+              <div className="hidden md:grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] px-6 py-4 border-b border-gray-100 bg-[#FAFAFA] text-[13px] font-medium text-gray-500">
                 <span>Tên tài liệu</span>
                 <span>Ngày</span>
                 <span>Người đăng</span>
@@ -1757,9 +1757,9 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                   const firstImage = item.images?.[0] || null;
                   return (
                     <div
-                      key={item.id ?? `doc_${idx}`} className="grid grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] items-center px-6 py-4 hover:bg-gray-50/50 transition-colors"
+                      key={item.id ?? `doc_${idx}`} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[2.5fr_1fr_1.5fr_1.2fr_1.2fr] px-4 md:px-6 py-4 hover:bg-gray-50/50 transition-colors"
                     >
-                      <span className="font-bold text-gray-900 text-sm truncate">{item.recordName || item.type}</span>
+                      <span className="w-full md:w-auto font-bold text-gray-900 text-sm truncate">{item.recordName || item.type}</span>
                       <span className="text-sm text-gray-600 font-medium">
                         {item.recordDate ? new Date(item.recordDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
                       </span>
@@ -1769,32 +1769,32 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                           {style.icon} {style.label}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="ml-auto md:ml-0 flex items-center gap-4 md:gap-3">
                         <button
                           type="button"
                           title={firstImage ? 'Xem' : 'Chưa có file'}
                           disabled={!firstImage}
                           onClick={() => firstImage && window.open(firstImage, '_blank')}
-                          className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed p-1.5 -m-1.5"
                         >
-                          <Eye size={16} />
+                          <Eye size={20} />
                         </button>
                         <button
                           type="button"
                           title={firstImage ? 'Tải xuống' : 'Chưa có file'}
                           disabled={!firstImage}
                           onClick={() => firstImage && window.open(firstImage, '_blank')}
-                          className="text-gray-400 hover:text-[#3B6BE3] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="text-gray-400 hover:text-[#3B6BE3] transition-colors disabled:opacity-30 disabled:cursor-not-allowed p-1.5 -m-1.5"
                         >
-                          <Download size={16} />
+                          <Download size={20} />
                         </button>
                         <button
                           type="button"
                           title="Xóa"
                           onClick={() => handleRemoveMedical(idx)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1.5 -m-1.5"
                         >
-                          <FiTrash2 size={15} />
+                          <FiTrash2 size={20} />
                         </button>
                       </div>
                     </div>

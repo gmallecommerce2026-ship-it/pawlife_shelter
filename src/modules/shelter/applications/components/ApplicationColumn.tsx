@@ -90,7 +90,7 @@ export const ApplicationColumn: React.FC<ApplicationColumnProps> = ({
           scrollbar (thin, chỉ hiện lúc hover) xuất hiện, nó nằm gọn trong đúng
           khoảng đệm cũ, KHÔNG cộng thêm không gian, 2 bên trái/phải luôn đối
           xứng như thiết kế ban đầu dù đang cuộn hay không. */}
-      <div className="flex-1 min-h-0 overflow-y-auto kanban-scroll -mx-1.5 px-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain kanban-scroll -mx-1.5 px-1.5">
         <SortableContext
           items={applications.map((a) => a.id)}
           strategy={verticalListSortingStrategy}

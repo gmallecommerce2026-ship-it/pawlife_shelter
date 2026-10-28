@@ -164,3 +164,65 @@ html.dark canvas {
     transform: translateY(0) scale(1);
   }
 }
+
+/* =============================================================================
+   DÁN VÀO CUỐI src/app/globals.css
+   ============================================================================= */
+
+:root {
+  /* Chiều cao thanh tab dưới (mobile). Đổi 1 chỗ này là mọi layout tự khớp. */
+  --tabbar-h: 60px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+[role='button'] {
+  touch-action: manipulation; /* bỏ delay double-tap-zoom 300ms trên iOS */
+}
+
+/* Ẩn scrollbar cho chip/tab cuộn ngang */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chiều cao "vừa màn hình" cho trang kiểu app (Kanban).
+   mobile  = 100dvh - top bar (4rem) - tab bar - safe-area
+   desktop = 100dvh - top bar (4.5rem)
+   Nếu top bar của Shelter Layout cao khác, chỉnh 4rem / 4.5rem tại đây. */
+.h-app-screen {
+  height: calc(100dvh - 4rem - var(--tabbar-h) - env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .h-app-screen {
+    height: calc(100dvh - 4.5rem);
+  }
+}
+
+/* iOS Safari tự zoom khi focus vào input có font < 16px → rất khó chịu.
+   Ép 16px trên mobile, desktop giữ nguyên các cỡ chữ nhỏ hiện có. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

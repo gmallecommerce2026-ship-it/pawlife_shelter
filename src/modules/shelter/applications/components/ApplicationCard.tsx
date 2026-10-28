@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Folder,
   X,
-  File
+  File,
+  ChevronRight,
 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { useTagColorStore } from '@/stores/useTagColorStore';
@@ -35,12 +36,47 @@ import {
   useIsApplicantHighlighted,
 } from './RelatedApplications';
 import { ApplicationHoverCard, isHoverInfoStatus } from './ApplicationHoverCard';
+
 const formatSubmittedAt = (iso: string) => {
   try {
     return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
   } catch {
     return '13/02/2026';
   }
+};
+
+/** true khi viewport < 768px (khớp breakpoint `md` của Tailwind) */
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return isMobile;
+};
+
+/**
+ * React cho sự kiện nổi bọt qua Portal về cây React cha. Thẻ này đang gắn
+ * listener kéo-thả + onClick mở modal, nên mọi thứ render trong portal
+ * (menu, sheet, modal cờ) phải chặn nổi bọt, nếu không chạm vào menu sẽ
+ * kích hoạt kéo thẻ hoặc mở modal đơn.
+ */
+const stopBubbling = {
+  onClick: (e: React.SyntheticEvent) => e.stopPropagation(),
+  onPointerDown: (e: React.SyntheticEvent) => e.stopPropagation(),
+  onMouseDown: (e: React.SyntheticEvent) => e.stopPropagation(),
+  onTouchStart: (e: React.SyntheticEvent) => e.stopPropagation(),
+  onKeyDown: (e: React.SyntheticEvent) => e.stopPropagation(),
+};
+
+type MenuEntry = {
+  key: string;
+  label: string;
+  Icon: React.ElementType;
+  danger?: boolean;
 };
 
 interface ApplicationCardContentProps {
@@ -57,7 +93,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   onOpenProfile,
   onOpenDetail,
   onRemove,
-  onOpenDocuments
+  onOpenDocuments,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
@@ -67,6 +103,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const router = useRouter();
   const { getTagColor } = useTagColorStore();
   const isAdmin = useIsShelterAdmin();
+  const isMobile = useIsMobile();
   const isViewed = useViewedApplicationStore((s) => !!s.viewed[application.id]);
   const shouldShowDot = mounted && !isViewed;
   const [isFlagOpen, setIsFlagOpen] = useState(false);
@@ -74,10 +111,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const flag = application.applicantFlag;
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
-  // Thêm 2 biến điều kiện, đặt gần chỗ khai báo displayTags
   const isAdopted =
     application.status === 'ADOPTION_COMPLETED' ||
-    (application.pet as any)?.status === 'ADOPTED'; // 🆕 fallback: pet bị đổi trạng thái qua dropdown ở Pet Detail
+    (application.pet as any)?.status === 'ADOPTED'; // fallback: pet bị đổi trạng thái qua dropdown ở Pet Detail
   const isInterviewCompleted = application.appointment?.status === 'COMPLETED';
   const documents = (application as any).documents as { status: string }[] | undefined;
   const totalDocs = documents?.length ?? 0;
@@ -89,7 +125,9 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
     setMounted(true);
   }, []);
 
+  // Desktop: click ra ngoài thì đóng dropdown
   useEffect(() => {
+    if (isMobile) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (
@@ -101,111 +139,215 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
     };
     if (isMenuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isMobile]);
 
+  // Desktop: cuộn thì đóng dropdown (vị trí fixed sẽ lệch khỏi thẻ)
   useEffect(() => {
+    if (isMobile) return;
     const handleScroll = () => { if (isMenuOpen) setIsMenuOpen(false); };
     window.addEventListener('scroll', handleScroll, true);
     return () => window.removeEventListener('scroll', handleScroll, true);
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isMobile]);
+
+  // Mobile: khoá cuộn nền khi sheet đang mở
+  useEffect(() => {
+    if (!isMobile || !isMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isMobile, isMenuOpen]);
 
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isMenuOpen && buttonRef.current) {
+    if (!isMenuOpen && buttonRef.current && !isMobile) {
       const rect = buttonRef.current.getBoundingClientRect();
       setMenuCoords({
         top: rect.bottom + 8,
-        left: rect.right - 220,
+        left: Math.max(8, rect.right - 220),
       });
     }
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleMenuAction = (e: React.MouseEvent, action: string) => {
-    e.stopPropagation();
+  const runAction = (action: string) => {
     setIsMenuOpen(false);
     switch (action) {
       case 'applicantProfile':
         onOpenProfile(application);
         break;
-      case 'petProfile':
+      case 'petProfile': {
         const petId = application.pet?.id;
         if (petId) router.push(`/shelter/pets/${petId}`);
         break;
+      }
       case 'allDocuments': onOpenDocuments(application); break;
       case 'viewApplication': onOpenDetail(application); break;
       case 'flagApplicant': setIsFlagOpen(true); break;
-      case 'removeTicket':
-        onRemove(application);
-        break;
+      case 'removeTicket': onRemove(application); break;
     }
   };
 
+  const handleMenuAction = (e: React.MouseEvent, action: string) => {
+    e.stopPropagation();
+    runAction(action);
+  };
+
+  const entries: MenuEntry[] = [
+    { key: 'applicantProfile', label: 'Hồ sơ người nhận nuôi', Icon: User },
+    { key: 'viewApplication', label: 'Xem đơn đăng ký', Icon: FileText },
+    { key: 'allDocuments', label: 'Tất cả tài liệu', Icon: Folder },
+    ...(isAdmin
+      ? [{ key: 'flagApplicant', label: flag ? 'Sửa / gỡ đánh dấu' : 'Đánh dấu hành vi xấu', Icon: AlertTriangle, danger: true }]
+      : []),
+    ...(isAdmin && application.status !== 'ADOPTION_COMPLETED'
+      ? [{ key: 'removeTicket', label: 'Xoá đơn', Icon: X, danger: true }]
+      : []),
+  ];
+
+  const applicantName = application.fullName || application.user?.name || 'Maria Garcia';
+  const petName = application.pet?.name || 'Luna';
+
   return (
     <div className="flex flex-col w-full relative group/content">
-      <div className="absolute top-[-2px] right-[-2px] z- opacity-0 group-hover/content:opacity-100 transition-opacity">
+      {/* Nút "..." — mobile luôn hiện (không có hover), vùng chạm 36px; desktop hiện khi hover */}
+      <div className="absolute top-[-6px] right-[-6px] z-10 opacity-100 md:top-[-2px] md:right-[-2px] md:opacity-0 md:group-hover/content:opacity-100 transition-opacity">
         <button
           ref={buttonRef}
-          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-all"
+          type="button"
+          aria-label="Tuỳ chọn"
+          aria-haspopup="menu"
+          aria-expanded={isMenuOpen}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-all active:bg-gray-100 md:h-auto md:w-auto md:rounded-md md:p-1 md:hover:bg-gray-100 md:hover:text-gray-800"
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={toggleMenu}
         >
-          <MoreVertical size={15} strokeWidth={2} />
+          <MoreVertical size={isMobile ? 18 : 15} strokeWidth={2} />
         </button>
-        {mounted && isMenuOpen && createPortal(
-          <div ref={menuRef} style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }} className="w-[220px] bg-white rounded-[16px] shadow-xl border border-gray-100 py-2.5 flex flex-col origin-top-right">
-            <button onClick={(e) => handleMenuAction(e, 'applicantProfile')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><User size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Hồ sơ người nhận nuôi</span></button>
-            <button onClick={(e) => handleMenuAction(e, 'viewApplication')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><FileText size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Xem đơn đăng ký</span></button>
-            <button onClick={(e) => handleMenuAction(e, 'allDocuments')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-gray-50 w-full text-left"><Folder size={18} className="text-gray-800" /> <span className="text-[15px] font-medium text-gray-900">Tất cả tài liệu</span></button>
-            {isAdmin && (
-              <button onClick={(e) => handleMenuAction(e, 'flagApplicant')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left">
-                <AlertTriangle size={18} className="text-red-600" />
-                <span className="text-[15px] font-medium text-red-600">{flag ? 'Sửa / gỡ đánh dấu' : 'Đánh dấu hành vi xấu'}</span>
+
+        {/* Desktop: dropdown */}
+        {mounted && isMenuOpen && !isMobile && createPortal(
+          <div
+            ref={menuRef}
+            {...stopBubbling}
+            style={{ position: 'fixed', top: `${menuCoords.top}px`, left: `${menuCoords.left}px`, zIndex: 99999 }}
+            className="w-[220px] bg-white rounded-[16px] shadow-xl border border-gray-100 py-2.5 flex flex-col origin-top-right"
+          >
+            {entries.map((entry, i) => {
+              const prev = entries[i - 1];
+              const needDivider = entry.danger && prev && !prev.danger;
+              return (
+                <React.Fragment key={entry.key}>
+                  {needDivider && <div className="h-[1px] w-full bg-gray-100 my-1" />}
+                  <button
+                    onClick={(e) => handleMenuAction(e, entry.key)}
+                    className={`flex items-center gap-3.5 px-4 py-2.5 w-full text-left ${entry.danger ? 'hover:bg-red-50' : 'hover:bg-gray-50'}`}
+                  >
+                    <entry.Icon size={18} className={entry.danger ? 'text-red-600' : 'text-gray-800'} />
+                    <span className={`text-[15px] font-medium ${entry.danger ? 'text-red-600' : 'text-gray-900'}`}>{entry.label}</span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+
+        {/* Mobile: bottom sheet */}
+        {mounted && isMenuOpen && isMobile && createPortal(
+          <div
+            {...stopBubbling}
+            className="fixed inset-0 z-[99999] flex items-end bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-150"
+            onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Tuỳ chọn đơn nhận nuôi"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full rounded-t-[28px] bg-[#F5F5F7] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-10px_40px_rgba(0,0,0,0.18)] animate-in slide-in-from-bottom-8 duration-250"
+            >
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black/15" />
+
+              <div className="mb-3 px-1">
+                <p className="truncate text-[17px] font-semibold tracking-[-0.01em] text-[#0D062D]">{applicantName}</p>
+                <p className="truncate text-[14px] text-[#787486]">Đăng ký nhận nuôi {petName}</p>
+              </div>
+
+              <div className="overflow-hidden rounded-[20px] bg-white">
+                {entries.filter((e) => !e.danger).map((entry, i, arr) => (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    onClick={(e) => handleMenuAction(e, entry.key)}
+                    className={`flex min-h-[54px] w-full items-center gap-3 px-4 text-left transition-colors active:bg-black/[0.04] ${i < arr.length - 1 ? 'border-b border-black/[0.06]' : ''}`}
+                  >
+                    <entry.Icon size={20} className="text-[#0D062D]" />
+                    <span className="flex-1 text-[16px] text-[#0D062D]">{entry.label}</span>
+                    <ChevronRight size={18} className="text-gray-300" />
+                  </button>
+                ))}
+              </div>
+
+              {entries.some((e) => e.danger) && (
+                <div className="mt-3 overflow-hidden rounded-[20px] bg-white">
+                  {entries.filter((e) => e.danger).map((entry, i, arr) => (
+                    <button
+                      key={entry.key}
+                      type="button"
+                      onClick={(e) => handleMenuAction(e, entry.key)}
+                      className={`flex min-h-[54px] w-full items-center gap-3 px-4 text-left transition-colors active:bg-red-50 ${i < arr.length - 1 ? 'border-b border-black/[0.06]' : ''}`}
+                    >
+                      <entry.Icon size={20} className="text-red-600" />
+                      <span className="flex-1 text-[16px] font-medium text-red-600">{entry.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); }}
+                className="mt-3 h-[52px] w-full rounded-[16px] bg-white text-[16px] font-semibold text-[#0D062D] transition-transform active:scale-[0.98]"
+              >
+                Đóng
               </button>
-            )}
-            <div className="h-[1px] w-full bg-gray-100 my-1"></div>
-            {isAdmin && application.status !== 'ADOPTION_COMPLETED' && (
-              <>
-                <div className="h-[1px] w-full bg-gray-100 my-1"></div>
-                <button onClick={(e) => handleMenuAction(e, 'removeTicket')} className="flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-50 w-full text-left">
-                  <X size={18} className="text-red-600" />
-                  <span className="text-[15px] font-medium text-red-600">Xoá đơn</span>
-                </button>
-              </>
-            )}
+            </div>
           </div>,
           document.body
         )}
       </div>
 
-      {/* 1. Ảnh đại diện & Tên — nén lại: avatar nhỏ hơn, margin bottom giảm */}
-      <div className="flex items-center gap-2.5 w-full mb-2.5">
+      {/* 1. Ảnh đại diện & Tên */}
+      <div className="flex items-center gap-2.5 w-full mb-2.5 pr-8 md:pr-0">
         <img
-          className="w-[34px] h-[34px] rounded-full object-cover bg-gray-100 border border-gray-200 shrink-0"
-          src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100"}
-          alt={application.fullName || application.user?.name || "Maria Garcia"}
+          className="w-[38px] h-[38px] md:w-[34px] md:h-[34px] rounded-full object-cover bg-gray-100 border border-gray-200 shrink-0"
+          src={application.pet?.avatarUrl || application.pet?.images?.[0]?.url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=100'}
+          alt={applicantName}
         />
         <div className="flex flex-col justify-center min-w-0">
           <div className="flex items-center gap-1.5">
             <span
-              className="font-sans text-[14px] leading-tight text-[#111111] font-semibold truncate hover:text-[#E89B5A] cursor-pointer transition-colors"
+              className="font-sans text-[15px] md:text-[14px] leading-tight text-[#111111] font-semibold truncate md:hover:text-[#E89B5A] cursor-pointer transition-colors"
               onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onOpenProfile(application); }}
             >
-              {application.fullName || application.user?.name || "Maria Garcia"}
+              {applicantName}
             </span>
             {shouldShowDot && (
-              <span className="w-[6px] h-[6px] bg-[#FF6B6B] rounded-full shrink-0" />
+              <span className="w-[7px] h-[7px] md:w-[6px] md:h-[6px] bg-[#FF6B6B] rounded-full shrink-0" />
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-            <span className="font-sans text-[12px] leading-tight text-[#888888] truncate">
-              Nhận nuôi <span className="font-semibold text-[#111111]">{application.pet?.name || "Luna"}</span>
+            <span className="font-sans text-[13px] md:text-[12px] leading-tight text-[#888888] truncate">
+              Nhận nuôi <span className="font-semibold text-[#111111]">{petName}</span>
             </span>
             <RelatedApplicationsBadge application={application} />
           </div>
         </div>
       </div>
+
       {flag && (
         <div
           className="flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg bg-[#FEF2F2] border border-[#FECACA] w-fit max-w-full"
@@ -217,26 +359,26 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
           </span>
         </div>
       )}
+
       <div className="flex flex-col gap-1.5 mb-2.5">
         <div className="flex items-center gap-2 w-full">
-          <Phone size={12} className="text-[#888888] shrink-0" strokeWidth={2} />
-          <span className="font-sans text-[12px] text-[#555555] font-semibold tracking-wide truncate">
-            {application.phone || "0912345678"}
+          <Phone size={13} className="text-[#888888] shrink-0" strokeWidth={2} />
+          <span className="font-sans text-[13px] md:text-[12px] text-[#555555] font-semibold tracking-wide truncate">
+            {application.phone || '0912345678'}
           </span>
         </div>
         <div className="flex items-center gap-2 w-full">
-          <Mail size={12} className="text-[#888888] shrink-0" strokeWidth={2} />
-          <span className="font-sans text-[12px] text-[#888888] font-normal truncate">
-            {application.user?.email || application.zalo || "mariagarcia@email.com"}
+          <Mail size={13} className="text-[#888888] shrink-0" strokeWidth={2} />
+          <span className="font-sans text-[13px] md:text-[12px] text-[#888888] font-normal truncate">
+            {application.user?.email || application.zalo || 'mariagarcia@email.com'}
           </span>
         </div>
       </div>
 
-      {/* 3. Nhãn — chỉ chiếm khoảng trống khi có tag, không còn min-h cố định to */}
       {/* 3. Nhãn — badge trạng thái thay thế tags khi phỏng vấn xong / đã nhận nuôi */}
       {isAdopted || isInterviewCompleted ? (
         <div
-          className="w-full mb-2.5 px-3 py-1.5 rounded-[10px] border text-center text-[11px] font-semibold tracking-tight leading-tight"
+          className="w-full mb-2.5 px-3 py-1.5 rounded-[10px] border text-center text-[12px] md:text-[11px] font-semibold tracking-tight leading-tight"
           style={
             isAdopted
               ? { backgroundColor: '#F3F4F6', borderColor: '#6B728040', color: '#6B7280' }
@@ -255,7 +397,7 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             return (
               <div
                 key={tag.id || idx}
-                className="px-2 py-[2px] rounded-full border text-[10.5px] font-semibold tracking-tight transition-colors leading-tight"
+                className="px-2.5 py-[3px] md:px-2 md:py-[2px] rounded-full border text-[11.5px] md:text-[10.5px] font-semibold tracking-tight transition-colors leading-tight"
                 style={{
                   backgroundColor: `${activeColor}15`,
                   borderColor: `${activeColor}40`,
@@ -271,13 +413,11 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
 
       {showDocsBadge && (
         <div
-          className={`flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'
-            }`}
+          className={`flex items-center gap-1.5 mb-2.5 px-2 py-1 rounded-lg w-fit ${allDocsAccepted ? 'bg-[#E7F8ED]' : 'bg-[#FFF8E6]'}`}
         >
           <File size={12} className={allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'} strokeWidth={2} />
           <span
-            className={`font-sans text-[11px] font-semibold ${allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'
-              }`}
+            className={`font-sans text-[11px] font-semibold ${allDocsAccepted ? 'text-[#16A34A]' : 'text-[#E89B5A]'}`}
           >
             {acceptedDocs}/{totalDocs} tài liệu đã duyệt
             {allDocsAccepted ? ' — sẵn sàng chuyển bước' : ''}
@@ -285,27 +425,27 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
         </div>
       )}
 
-      {/* 4. Đường kẻ phân cách — margin giảm */}
+      {/* 4. Đường kẻ phân cách */}
       <div className="w-full h-px bg-[#EEEEEE] mb-2" />
 
       {/* 5. Chân thẻ */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1.5">
           <Calendar size={12} className="text-[#888888]" strokeWidth={1.8} />
-          <span className="font-sans text-[11px] text-[#888888] font-medium tracking-wide">
+          <span className="font-sans text-[12px] md:text-[11px] text-[#888888] font-medium tracking-wide">
             {formatSubmittedAt(application.createdAt)}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1" title="Số ghi chú">
             <MessageCircle size={12} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[11px] text-[#888888] font-semibold">
+            <span className="font-sans text-[12px] md:text-[11px] text-[#888888] font-semibold">
               {application.notes?.length || 0}
             </span>
           </div>
           <div className="flex items-center gap-1" title="Số nhãn">
             <File size={12} className="text-[#888888]" strokeWidth={1.8} />
-            <span className="font-sans text-[11px] text-[#888888] font-semibold">
+            <span className="font-sans text-[12px] md:text-[11px] text-[#888888] font-semibold">
               {displayTags.length}
             </span>
           </div>
@@ -313,11 +453,13 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
       </div>
 
       {mounted && isFlagOpen && (
-        <ApplicantFlagModal
-          application={application}
-          onClose={() => setIsFlagOpen(false)}
-          onDone={fetchApplications}
-        />
+        <div {...stopBubbling}>
+          <ApplicantFlagModal
+            application={application}
+            onClose={() => setIsFlagOpen(false)}
+            onDone={fetchApplications}
+          />
+        </div>
       )}
     </div>
   );
@@ -340,14 +482,12 @@ interface ApplicationCardProps {
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   application,
   isMoving,
-  showRedDot,
   showMenu,
   onOpenProfile,
   onOpenDetail,
   onCardClick,
   onRemove,
   onOpenDocuments,
-  onOpenQuickView
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: application.id,
@@ -379,29 +519,42 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   }, [hoverRect]);
 
   useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); }, []);
+
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
     forcedColorAdjust: 'none' as const,
-    touchAction: 'none',
+    // QUAN TRỌNG: trước đây là 'none' → ngón tay đặt lên thẻ sẽ không cuộn được
+    // bảng/cột. 'manipulation' cho phép cuộn; kéo thẻ kích hoạt bằng nhấn giữ.
+    touchAction: 'manipulation',
+    WebkitTouchCallout: 'none',
     ...(highlighted && applicantId ? { boxShadow: `0 0 0 2px ${getApplicantColor(applicantId)}` } : {}),
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} tabIndex={-1}
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      tabIndex={-1}
       onClick={() => onCardClick(application)}
-      onMouseEnter={(e) => {
+      // Chỉ phản ứng với chuột thật — trên cảm ứng, mouseenter bị giả lập khi chạm
+      // và sẽ bật popup hover rồi đè lên modal.
+      onPointerEnter={(e) => {
+        if (e.pointerType !== 'mouse') return;
         if (hasRelated) setHoveredApplicant(applicantId!);
         if (showHoverInfo && !isDragging) {
           const el = e.currentTarget;
           hoverTimer.current = setTimeout(() => setHoverRect(el.getBoundingClientRect()), 200);
         }
       }}
-      onMouseLeave={() => {
+      onPointerLeave={(e) => {
+        if (e.pointerType !== 'mouse') return;
         if (hasRelated) setHoveredApplicant(null);
         clearHover();
       }}
-      className={`group bg-white rounded-[14px] w-full p-3 border border-[#EAEAEA] cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      className={`group bg-white rounded-[16px] md:rounded-[14px] w-full p-3.5 md:p-3 border border-[#EAEAEA] shadow-[0_1px_2px_rgba(16,16,24,0.04)] md:shadow-none cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 md:hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.92, y: 8 }}
