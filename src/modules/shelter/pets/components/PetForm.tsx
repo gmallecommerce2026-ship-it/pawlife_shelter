@@ -1088,13 +1088,13 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
         <div className="flex-1 min-w-0 flex flex-col gap-5 px-2 py-1">
           {/* Actions */}
           <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-40 flex items-center gap-3 border-t border-black/5 bg-white/85 px-4 py-3 backdrop-blur-xl md:static md:z-auto md:justify-end md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-            <button
+            {/* <button
               type="button"
               onClick={() => setShow3DModal(true)}
               className="h-11 flex-1 md:h-[38px] md:flex-none px-4 rounded-lg border border-orange-200 text-[#E89B5A] bg-white text-sm font-semibold flex items-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
             >
               <SparklesIcon size={14} /> Live Preview (3D)
-            </button>
+            </button> */}
 
             <button
               type="button"
