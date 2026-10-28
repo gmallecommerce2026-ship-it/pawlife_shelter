@@ -74,7 +74,8 @@ export type ApplicationNoteType =
   | 'CONCERN'
   | 'REJECTION'
   | 'REFERENCE_CHECK'
-  | 'BACKGROUND_CHECK';
+  | 'BACKGROUND_CHECK'
+  | 'ADOPTER_QUESTION'; 
 
 export const NOTE_TYPE_OPTIONS: { value: ApplicationNoteType; label: string; color: string }[] = [
   { value: 'HOME_VISIT', label: 'Thăm nhà', color: '#1B8A44' },

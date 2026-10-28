@@ -32,10 +32,24 @@ const SectionCard = ({ title, children }: { title: string; children: React.React
   </div>
 );
 
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
+const Field = ({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value?: string | null;
+  multiline?: boolean;
+}) => (
   <div className="flex flex-col">
     <span className="text-[11px] text-gray-400 mb-0.5">{label}</span>
-    <span className="text-[12.5px] text-gray-800 font-medium leading-snug">{value || '-'}</span>
+    <span
+      className={`text-[12.5px] text-gray-800 font-medium leading-snug break-words ${
+        multiline ? 'whitespace-pre-line' : ''
+      }`}
+    >
+      {value || '-'}
+    </span>
   </div>
 );
 
@@ -48,7 +62,16 @@ const CommitmentRow = ({ label, ok }: { label: string; ok: boolean }) => (
   </div>
 );
 
-export const ApplicationDetailBody: React.FC<{ application: AdoptionApplication }> = ({ application }) => {
+interface ApplicationDetailBodyProps {
+  application: AdoptionApplication;
+  /** Câu hỏi của người nhận nuôi (đã bỏ tiền tố "Câu hỏi từ người nhận nuôi:") */
+  adopterQuestion?: string;
+}
+
+export const ApplicationDetailBody: React.FC<ApplicationDetailBodyProps> = ({
+  application,
+  adopterQuestion,
+}) => {
   const tr = buildPdfTranslated(application);
   const location = application.location?.trim() || 'Chưa cập nhật';
 
@@ -87,6 +110,13 @@ export const ApplicationDetailBody: React.FC<{ application: AdoptionApplication 
             />
           ))}
         </div>
+
+        {adopterQuestion?.trim() && (
+          <>
+            <div className="w-full h-px bg-gray-200 my-3" />
+            <Field label="Câu hỏi từ người nhận nuôi" value={adopterQuestion} multiline />
+          </>
+        )}
       </SectionCard>
     </div>
   );

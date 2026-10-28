@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X,
   Phone,
@@ -39,6 +39,14 @@ import ApplicationDetailBody from './ApplicationDetailBody';
 // ============================================================================
 // 1. CÁC HÀM TIỆN ÍCH DỊCH THUẬT SANG TIẾNG VIỆT
 // ============================================================================
+const ADOPTER_QUESTION_PREFIX = /^\s*câu hỏi từ người nhận nuôi\s*:?\s*/i;
+
+export const isAdopterQuestionNote = (note: ApplicationNote): boolean =>
+  (note as any)?.type === 'ADOPTER_QUESTION' ||
+  ADOPTER_QUESTION_PREFIX.test(note?.content || '');
+
+export const getAdopterQuestionText = (note?: ApplicationNote): string =>
+  (note?.content || '').replace(ADOPTER_QUESTION_PREFIX, '').trim();
 
 export const isCommitmentAgreed = (val: unknown): boolean => {
   if (val === true || val === 1) return true;
@@ -125,6 +133,15 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const [tags, setTags] = useState<ApplicationTag[]>(() => normalizeTags(application.tags || []));
   const addTagBtnRef = useRef<HTMLButtonElement>(null);
   const [notes, setNotes] = useState<ApplicationNote[]>(application.notes || []);
+  const adopterQuestionNote = useMemo(
+    () => notes.find(isAdopterQuestionNote),
+    [notes]
+  );
+  const adopterQuestion = getAdopterQuestionText(adopterQuestionNote);
+  const staffNotes = useMemo(
+    () => notes.filter((n) => !isAdopterQuestionNote(n)),
+    [notes]
+  );
   const [noteInput, setNoteInput] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
@@ -412,7 +429,12 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 strokeWidth={2}
               />
             </div>
-            {isAppOpen && <ApplicationDetailBody application={application} />}
+            {isAppOpen && (
+              <ApplicationDetailBody
+                application={application}
+                adopterQuestion={adopterQuestion}
+              />
+            )}
           </div>
 
           {/* Ghi chú */}
@@ -430,7 +452,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             </div>
             {isNotesOpen && (
               <div className="flex flex-col gap-3 mt-3 animate-in fade-in duration-200">
-                {notes.map((note) => (
+                {staffNotes.map((note) => (
                   <NoteItem key={note.id} note={note} />
                 ))}
                 <div className="relative w-full mt-1">

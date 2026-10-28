@@ -23,13 +23,13 @@ interface ApplicantProfileModalProps {
 }
 
 const NOTE_TYPE_OPTIONS: { value: ApplicationNoteType; label: string }[] = [
-  { value: 'HOME_VISIT', label: 'Home Visit' },
-  { value: 'VET_RECORDS', label: 'Vet Records' },
-  { value: 'FOLLOW_UP', label: 'Follow-up' },
-  { value: 'CONCERN', label: 'Concern' },
-  { value: 'REJECTION', label: 'Rejection' },
-  { value: 'REFERENCE_CHECK', label: 'Reference Check' },
-  { value: 'BACKGROUND_CHECK', label: 'Background Check' },
+  { value: 'HOME_VISIT', label: 'Thăm nhà' },
+  { value: 'VET_RECORDS', label: 'Hồ sơ thú y' },
+  { value: 'FOLLOW_UP', label: 'Theo dõi sau' },
+  { value: 'CONCERN', label: 'Lưu ý / Quan ngại' },
+  { value: 'REJECTION', label: 'Từ chối' },
+  { value: 'REFERENCE_CHECK', label: 'Kiểm tra người tham chiếu' },
+  { value: 'BACKGROUND_CHECK', label: 'Xác minh lý lịch' },
 ];
 
 const NOTE_TYPE_STYLE: Record<ApplicationNoteType, { label: string; color: string }> = {
