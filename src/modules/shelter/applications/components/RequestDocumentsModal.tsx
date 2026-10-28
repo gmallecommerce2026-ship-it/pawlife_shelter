@@ -183,11 +183,11 @@ export const RequestDocumentsModal: React.FC<RequestDocumentsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
+      className="m-overlay fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[28px] shadow-2xl w-full max-w-[480px] max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-5"
+        className="m-sheet bg-white rounded-[28px] shadow-2xl w-full max-w-[480px] max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

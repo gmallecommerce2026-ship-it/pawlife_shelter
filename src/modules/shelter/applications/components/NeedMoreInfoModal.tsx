@@ -416,11 +416,11 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[460px] max-h-[92vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
+        className="m-sheet bg-white w-full max-w-[460px] max-h-[92vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Nút đóng modal */}
@@ -431,7 +431,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
           <X size={18} strokeWidth={2} />
         </button>
 
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
+        <div className="flex-1 overflow-y-auto px-5 pt-9 pb-6 sm:p-6 scrollbar-thin scrollbar-thumb-gray-200">
           <RelatedApplicationsNotice application={application} className="mb-4" />
           {/* 1. Header & Thông tin người đăng ký */}
           <div className="flex gap-4 mb-5 items-start">
@@ -440,7 +440,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                 application.user?.avatarUrl ||
                 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=140'
               }
-              className="w-[92px] h-[92px] rounded-full object-cover shrink-0 border border-gray-100"
+              className="w-[68px] h-[68px] sm:w-[92px] sm:h-[92px] rounded-full object-cover shrink-0 border border-gray-100"
               alt={application.fullName || application.user?.name || 'Applicant'}
             />
             <div className="flex flex-col flex-1 pt-0.5">
@@ -654,7 +654,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                       const isRejected = doc.requested && doc.submitted && doc.reviewStatus === 'rejected';
 
                       return (
-                        <div key={doc.key} className="flex items-start justify-between gap-3 py-1">
+                        <div key={doc.key} className="flex flex-col min-[420px]:flex-row min-[420px]:items-start justify-between gap-3 py-1">
                           {/* Bên trái: Tên + Badge + Mô tả */}
                           <div className="flex-1 min-w-0 pr-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -697,7 +697,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
                           </div>
 
                           {/* Bên phải: Nút hành động */}
-                          <div className="shrink-0 flex flex-col items-end min-w-[84px]">
+                          <div className="shrink-0 flex flex-col min-[420px]:items-end min-w-[84px] [&>div]:flex-row [&>div]:w-full min-[420px]:[&>div]:flex-col min-[420px]:[&>div]:w-[84px]">
                             {/* Trạng thái 1: Missing (Chưa yêu cầu) */}
                             {isNotRequested && (
                               <div className="flex flex-col gap-1.5 w-[84px]">
@@ -825,7 +825,7 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         </div>
 
         {/* Nút hành động cố định ở chân Modal */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0">
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-gray-100 bg-white/90 backdrop-blur-xl shrink-0">
           <button
             type="button"
             onClick={onMoveToInterview}

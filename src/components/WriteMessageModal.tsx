@@ -71,11 +71,11 @@ export const WriteMessageModal: React.FC<WriteMessageModalProps> = ({ onClose })
     return createPortal(
 
         <div
-            className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+            className="m-overlay fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
             onClick={onClose}
         >
             <div
-                className="bg-white w-full max-w-[440px] rounded-[20px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
+                className="m-sheet bg-white w-full max-w-[440px] rounded-[20px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 <button

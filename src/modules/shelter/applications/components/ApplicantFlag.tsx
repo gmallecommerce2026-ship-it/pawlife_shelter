@@ -62,12 +62,12 @@ export const ApplicantFlagModal: React.FC<ApplicantFlagModalProps> = ({
   // Portal + stopPropagation: tránh click/pointer lọt xuống thẻ Kanban (mở modal / kích hoạt kéo thả)
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={(e) => { e.stopPropagation(); onClose(); }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="w-full max-w-[420px] rounded-[18px] bg-white p-5 shadow-2xl"
+        className="m-sheet w-full max-w-[420px] rounded-[18px] bg-white p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="mb-1 text-[16px] font-bold text-gray-900">Đánh dấu hành vi không tốt</h3>

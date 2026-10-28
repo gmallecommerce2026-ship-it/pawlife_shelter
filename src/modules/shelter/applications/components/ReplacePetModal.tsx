@@ -76,11 +76,11 @@ export const ReplacePetModal: React.FC<Props> = ({ application, onClose, onDone 
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[460px] max-h-[88vh] rounded-[22px] shadow-2xl flex flex-col overflow-hidden"
+        className="m-sheet bg-white w-full max-w-[460px] max-h-[88vh] rounded-[22px] shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3 shrink-0">

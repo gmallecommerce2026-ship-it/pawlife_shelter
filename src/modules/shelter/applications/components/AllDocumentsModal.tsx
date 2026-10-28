@@ -133,9 +133,9 @@ export const AllDocumentsModal: React.FC<AllDocumentsModalProps> = ({ applicatio
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] bg-[#00000040] flex justify-center items-center backdrop-blur-[2px] transition-opacity">
+    <div className="m-overlay fixed inset-0 z-[99999] bg-[#00000040] flex justify-center items-center backdrop-blur-[2px] transition-opacity">
       <div
-        className="bg-white rounded-[16px] w-[540px] max-w-[95vw] h-[85vh] max-h-[750px] shadow-2xl flex flex-col relative animate-in fade-in zoom-in-95 duration-200"
+        className="m-sheet bg-white rounded-[16px] w-[540px] max-w-[95vw] h-[85vh] max-h-[750px] shadow-2xl flex flex-col relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -145,7 +145,7 @@ export const AllDocumentsModal: React.FC<AllDocumentsModalProps> = ({ applicatio
           <X size={20} strokeWidth={2} />
         </button>
 
-        <div className="px-7 pt-7 pb-4 border-b border-gray-100 flex-shrink-0">
+        <div className="px-5 sm:px-7 pt-9 sm:pt-7 pb-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-['Be_Vietnam_Pro',_sans-serif] text-[24px] font-bold text-gray-900 leading-tight">
             All Documents
           </h2>
@@ -158,7 +158,7 @@ export const AllDocumentsModal: React.FC<AllDocumentsModalProps> = ({ applicatio
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-7 py-6 flex flex-col gap-8 bg-[#FAFAFA] rounded-b-[16px]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-7 py-5 sm:py-6 flex flex-col gap-6 sm:gap-8 bg-[#FAFAFA] rounded-b-[16px]">
           {isLoading && (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-gray-400 py-20">
               <Loader2 size={28} className="animate-spin" />
@@ -220,7 +220,7 @@ export const AllDocumentsModal: React.FC<AllDocumentsModalProps> = ({ applicatio
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 shrink-0 pl-4">
+                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 sm:pl-4">
                           <div className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-full ${statusMeta.className}`}>
                             {statusMeta.icon}
                             <span className="font-['Be_Vietnam_Pro',_sans-serif] text-[12px] font-bold">

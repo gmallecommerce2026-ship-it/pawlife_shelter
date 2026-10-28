@@ -11,6 +11,7 @@ import {
   useSensor,
   useSensors,
   MeasuringStrategy,
+  useDroppable,
   defaultDropAnimationSideEffects,
   type DropAnimation,
   type CollisionDetection,
@@ -52,6 +53,23 @@ import { ResponsiveModal } from '@/components/ResponsiveModal';
 
 const isColumnId = (id: string | number) =>
   KANBAN_COLUMNS.some((c) => c.status === id);
+
+const resolveOverId = (id: string | number) =>
+  String(id).startsWith('dock-') ? String(id).slice(5) : String(id);
+
+const DockChip: React.FC<{ status: ApplicationStatus; label: string; count: number }> = ({ status, label, count }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: `dock-${status}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition-all duration-150 ${isOver ? 'scale-110 bg-[#E89B5A] text-white shadow-lg' : 'bg-white text-[#0D062D]'
+        }`}
+    >
+      {label}
+      <span className="text-[11px] opacity-60">{count}</span>
+    </div>
+  );
+};
 const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
   status === 'ADOPTION_COMPLETED' ? 'APPROVED' : status;
 const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
@@ -61,8 +79,8 @@ const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   APPROVED: 'APPROVED',
 };
 const dropAnimation: DropAnimation = {
-  duration: 250,
-  easing: 'cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+  duration: 160,
+  easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
   sideEffects: defaultDropAnimationSideEffects({
     styles: { active: { opacity: '0.4' } },
   }),
@@ -120,9 +138,8 @@ const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
           return (
             <label
               key={r}
-              className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${
-                checked ? 'bg-white shadow-sm' : ''
-              }`}
+              className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${checked ? 'bg-white shadow-sm' : ''
+                }`}
             >
               <input
                 type="radio"
@@ -139,9 +156,8 @@ const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
           );
         })}
         <label
-          className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${
-            isCustom ? 'bg-white shadow-sm' : ''
-          }`}
+          className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl px-3 text-[16px] text-gray-800 transition-colors sm:min-h-[36px] sm:text-[12px] ${isCustom ? 'bg-white shadow-sm' : ''
+            }`}
         >
           <input
             type="radio"
@@ -271,12 +287,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       ...app,
       tags: app.tags
         ? app.tags.map((t: any) => {
-            const base = t && typeof t === 'object' && t.tag
-              ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
-              : t;
-            const syncedColor = getTagColor(base?.name) || base?.color;
-            return { ...base, color: syncedColor };
-          })
+          const base = t && typeof t === 'object' && t.tag
+            ? { ...t.tag, id: t.tag.id || t.id, color: t.tag.color || t.color }
+            : t;
+          const syncedColor = getTagColor(base?.name) || base?.color;
+          return { ...base, color: syncedColor };
+        })
         : [],
     }));
   }, [localItems, getTagColor]);
@@ -319,6 +335,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
   const collisionDetection: CollisionDetection = (args) => {
     const pointerCollisions = pointerWithin(args);
+    const dock = pointerCollisions.find((c) => String(c.id).startsWith('dock-'));
+    if (dock) return [dock];
     if (pointerCollisions.length > 0) {
       const cardCollision = pointerCollisions.find((c) => !isColumnId(c.id));
       if (cardCollision) return [cardCollision];
@@ -436,7 +454,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
 
     const activeId = active.id as string;
-    const overId = over.id as string;
+    const overId = resolveOverId(over.id);
     if (activeId === overId) return;
 
     const activeItem = localItems.find((a) => a.id === activeId);
@@ -626,15 +644,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
                   role="tab"
                   aria-selected={active}
                   onClick={() => scrollToColumn(i)}
-                  className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-all duration-200 active:scale-95 ${
-                    active ? 'bg-[#0D062D] text-white shadow-sm' : 'bg-black/[0.05] text-[#6B6B70]'
-                  }`}
+                  className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-all duration-200 active:scale-95 ${active ? 'bg-[#0D062D] text-white shadow-sm' : 'bg-black/[0.05] text-[#6B6B70]'
+                    }`}
                 >
                   {col.label}
                   <span
-                    className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-[18px] ${
-                      active ? 'bg-white/20 text-white' : 'bg-black/[0.06] text-[#6B6B70]'
-                    }`}
+                    className={`min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-[18px] ${active ? 'bg-white/20 text-white' : 'bg-black/[0.06] text-[#6B6B70]'
+                      }`}
                   >
                     {col.applications.length}
                   </span>
@@ -660,7 +676,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
           <DndContext
             sensors={sensors}
             collisionDetection={collisionDetection}
-            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+            measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}
+            autoScroll={{ acceleration: 30, interval: 4, threshold: { x: 0.24, y: 0.12 } }}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
@@ -669,9 +686,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
             <div
               ref={scrollContainerRef}
               onScroll={handleBoardScroll}
-              className={`relative flex gap-3 sm:gap-3.5 overflow-x-auto items-stretch h-full w-full px-4 md:px-0 pb-1 scroll-smooth custom-board-scroll overscroll-x-contain ${
-                activeApp ? '' : 'snap-x snap-mandatory'
-              } md:snap-none`}
+              className={`relative flex gap-3 sm:gap-3.5 overflow-x-auto items-stretch h-full w-full px-4 md:px-0 pb-1 custom-board-scroll overscroll-x-contain ${activeApp ? '' : 'snap-x snap-mandatory'
+                } md:snap-none`}
             >
               {columns.map((col) => (
                 <div
@@ -699,7 +715,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
             <DragOverlay dropAnimation={dropAnimation}>
               {activeApp ? (
-                <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[calc(100vw-4.5rem)] max-w-[300px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none">
+                <div className="bg-white border border-gray-200 rounded-[12px] shadow-2xl w-[calc(100vw-4.5rem)] max-w-[300px] sm:w-[290px] p-2.5 rotate-[1.5deg] scale-[1.02] cursor-grabbing pointer-events-none will-change-transform">
                   <ApplicationCardContent
                     application={activeApp}
                     onOpenProfile={() => { }}
@@ -710,6 +726,17 @@ export const ApplicationKanbanBoard: React.FC = () => {
                 </div>
               ) : null}
             </DragOverlay>
+            {activeApp && (
+              <div className="md:hidden fixed inset-x-0 z-[70] px-3 bottom-[calc(var(--tabbar-h,56px)+env(safe-area-inset-bottom)+8px)] animate-in fade-in slide-in-from-bottom-4 duration-150">
+                <div className="flex flex-wrap justify-center gap-2 rounded-[28px] bg-black/70 p-2.5 backdrop-blur-xl">
+                  {columns
+                    .filter((c) => c.status !== mergeAdoptionIntoApproved(activeApp.status))
+                    .map((c) => (
+                      <DockChip key={c.status} status={c.status} label={c.label} count={c.applications.length} />
+                    ))}
+                </div>
+              </div>
+            )}
           </DndContext>
         )}
       </div>

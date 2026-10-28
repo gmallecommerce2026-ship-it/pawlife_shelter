@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag, 
-  Loader2, MoreVertical, Pencil, Trash2, 
+import {
+  X, Phone, Mail, ChevronDown, ChevronUp, Check, MessageSquare, Flag,
+  Loader2, MoreVertical, Pencil, Trash2,
   Cake, QrCode, Home, Syringe, Stethoscope, User, HeartHandshake, Smile,
   PawPrint // Import thêm PawPrint để làm icon giống React Native
 } from 'lucide-react';
@@ -243,28 +243,28 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
   const avatar = profile?.applicant.avatarUrl || application.pet?.avatarUrl || application.pet?.images?.[0]?.url || '/images/placeholder-avatar.png';
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="m-overlay fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-[#F8F9FA] w-full max-w-[900px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="m-sheet bg-[#F8F9FA] w-full max-w-[900px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white px-8 py-6 border-b border-gray-200 relative shrink-0">
+        <div className="bg-white px-5 sm:px-8 pt-8 pb-5 sm:py-6 border-b border-gray-200 relative shrink-0">
           <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} strokeWidth={1.5} />
           </button>
 
-          <div className="flex gap-5 items-start">
+          <div className="flex gap-4 sm:gap-5 items-start pr-8 sm:pr-0">
             <img
               src={avatar}
               alt={fullName}
-              className="w-[84px] h-[84px] rounded-[20px] object-cover bg-gray-100 border border-gray-200"
+              className="w-[60px] h-[60px] sm:w-[84px] sm:h-[84px] rounded-[16px] sm:rounded-[20px] object-cover bg-gray-100 border border-gray-200 shrink-0"
             />
-            <div className="flex flex-col">
-              <h2 className="font-['Be_Vietnam_Pro',_sans-serif] text-[24px] font-bold text-gray-900 leading-tight mb-2">
+            <div className="flex flex-col min-w-0">
+              <h2 className="font-['Be_Vietnam_Pro',_sans-serif] text-[19px] sm:text-[24px] font-bold text-gray-900 leading-tight mb-2">
                 {fullName || '—'}
               </h2>
-              <div className="flex items-center gap-6 mb-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 mb-4 sm:mb-5 min-w-0 [&_span]:truncate">
                 <div className="flex items-center gap-2 text-gray-500">
                   <Phone size={14} />
                   <span className="text-[13px] font-medium">{phone || '—'}</span>
@@ -275,7 +275,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                 </div>
               </div>
 
-              <div className="flex items-center gap-10">
+              <div className="flex items-center gap-4 sm:gap-10 -ml-[76px] sm:ml-0 mt-1 sm:mt-0">
                 <div className="flex flex-col border-r border-gray-200 pr-10">
                   <span className="text-[22px] font-bold text-gray-900 leading-none mb-1">
                     {profile ? profile.stats.activeApplications : '–'}
@@ -313,10 +313,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-6 flex gap-6">
-            {/* Left Column */}
-            <div className="w-1/2 flex flex-col gap-4">
-
-              {/* Active Applications */}
+            <div className="w-full lg:w-1/2 flex flex-col gap-4">
               <div className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-[16px] text-gray-900">
@@ -411,22 +408,22 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       );
 
                       return (
-                        <div 
-                          key={pet.id} 
+                        <div
+                          key={pet.id}
                           className="bg-white rounded-[16px] border border-[#FFF9F0] p-[12px] mb-[21px] last:mb-0 flex flex-col transition-all shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
                         >
                           {/* Pet Info Row (Clickable) */}
-                          <div 
+                          <div
                             className="flex flex-row items-center cursor-pointer"
                             onClick={() => setExpandedPawHistoryId(isExpanded ? null : pet.id)}
                           >
                             <img
                               src={pet.avatarUrl || '/images/dog-placeholder.png'}
                               alt={pet.name}
-                              className="w-[92px] h-[108px] rounded-[16px] object-cover bg-gray-100 shrink-0"
+                              className="w-[76px] h-[92px] sm:w-[92px] sm:h-[108px] rounded-[14px] sm:rounded-[16px] object-cover bg-gray-100 shrink-0"
                             />
-                            
-                            <div className="flex-1 ml-6 flex flex-col min-w-0 justify-center">
+
+                            <div className="flex-1 ml-3.5 sm:ml-6 flex flex-col min-w-0 justify-center">
                               {/* Title & Badge */}
                               <div className="flex flex-row justify-between items-start mb-2">
                                 <span className="font-semibold text-gray-900 text-lg truncate flex-1 mr-2 leading-tight">
@@ -455,13 +452,12 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
 
                               {/* Expand Button */}
                               <div className="mt-3 flex items-center gap-1 text-[12px] font-semibold text-[#E89B5A] hover:underline w-fit">
-                                Xem PawHistory 
+                                Xem PawHistory
                                 {isExpanded ? <ChevronUp size={14} strokeWidth={2.5} /> : <ChevronDown size={14} strokeWidth={2.5} />}
                               </div>
                             </div>
                           </div>
 
-                          {/* PawHistory Timeline (Dropdown) */}
                           {isExpanded && (
                             <div className="mt-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
                               <div className="flex flex-col pl-[10px]">
@@ -508,7 +504,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
             </div>
 
             {/* Right Column — Notes */}
-            <div className="w-1/2 flex flex-col h-full">
+            <div className="w-full lg:w-1/2 flex flex-col lg:h-full">
               <div className="bg-white border border-gray-200 rounded-[16px] p-6 shadow-sm flex-1 flex flex-col">
                 <h3 className="font-bold text-[16px] text-gray-900 mb-6">
                   Ghi chú từ các trạm
@@ -523,7 +519,7 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                       const isLast = idx === profile!.notes.length - 1;
                       const isEditingThis = editingNoteId === note.id;
                       const isDeletingThis = deletingNoteId === note.id;
-                      
+
                       const authorRole = (note.author as any)?.role || (note as any).authorRole;
 
                       return (
@@ -532,10 +528,10 @@ export const ApplicantProfileModal: React.FC<ApplicantProfileModalProps> = ({ ap
                             className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
                             style={{ borderColor: style.color, backgroundColor: `${style.color}10` }}
                           >
-                            <img 
-                               src={note.author?.avatarUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100"} 
-                               className="w-full h-full rounded-full object-cover"
-                               alt="Trạm"
+                            <img
+                              src={note.author?.avatarUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=100"}
+                              className="w-full h-full rounded-full object-cover"
+                              alt="Trạm"
                             />
                           </div>
                           <div className={`flex flex-col flex-1 ${!isLast ? 'border-b border-gray-100 pb-5' : ''}`}>

@@ -25,9 +25,9 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ onClose })
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="m-overlay fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-[420px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
+        className="m-sheet bg-white w-full max-w-[420px] rounded-[20px] shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600">

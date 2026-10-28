@@ -1518,7 +1518,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chi tiết</label>
                           {medicalType === 'VACCINATION' ? (
@@ -1616,7 +1616,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
                             <ToggleSwitch checked={medicalHasReminder} onChange={setMedicalHasReminder} />
                           </div>
                           {medicalHasReminder && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                               <input
                                 type="text"
                                 value={medicalNextDueDetail}

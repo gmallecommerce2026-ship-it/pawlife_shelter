@@ -342,15 +342,15 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[560px] max-h-[90vh] rounded-[22px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
+        className="m-sheet bg-white w-full max-w-[560px] max-h-[90vh] rounded-[22px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 sm:px-7 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-7 pt-8 sm:pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-[20px] font-bold text-gray-900 leading-tight">
               {existingAppointment ? 'Cập nhật lịch phỏng vấn' : 'Lên lịch phỏng vấn'}
@@ -368,10 +368,10 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 sm:px-7 py-6 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-7 py-5 sm:py-6 space-y-5 sm:space-y-6">
           <RelatedApplicationsNotice application={application} className="" />
           {/* Adopter & Pet summary */}
-          <div className="border border-gray-200 rounded-[16px] p-4 shadow-sm bg-[#FAFAFA] flex items-center justify-between gap-3">
+          <div className="border border-gray-200 rounded-[16px] p-4 shadow-sm bg-[#FAFAFA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <img
                 src={application.user?.avatarUrl || '/default-avatar.png'}
@@ -393,7 +393,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
 
             </div>
 
-            <ArrowRight size={16} className="text-gray-300 shrink-0" />
+            <ArrowRight size={16} className="text-gray-300 shrink-0 rotate-90 self-center sm:rotate-0" />
 
             <div className="flex items-center gap-3">
               <PetCardActions
@@ -444,7 +444,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
               <div>
                 <label className="text-[12px] font-medium text-gray-600 mb-1.5 block">Hình thức</label>
                 <div className="flex items-center gap-2">
@@ -605,7 +605,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
 
             {members.map((member) => (
               <div key={member.id} className="border border-gray-100 rounded-[10px] p-3 space-y-2.5">
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
                   <div>
                     <label className="text-[11px] font-medium text-gray-500 mb-1 block">Tên nhân viên</label>
                     <input
@@ -617,7 +617,9 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-gray-500 mb-1 block">Vai trò / Ghi chú</label>
+                    <div className="col-span-2 sm:col-span-1 order-last sm:order-none">
+                      <label className="text-[11px] font-medium text-gray-500 mb-1 block">Vai trò / Ghi chú</label>
+                    </div>
                     <input
                       type="text"
                       placeholder="VD: Phỏng vấn chính"
@@ -669,7 +671,7 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-[#FAFAFA] flex items-center justify-end gap-3 shrink-0">
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-gray-100 bg-white/90 backdrop-blur-xl sm:bg-[#FAFAFA] flex items-center justify-end gap-3 shrink-0 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:h-12 sm:[&>button]:h-auto">
           <button
             type="button"
             onClick={onClose}

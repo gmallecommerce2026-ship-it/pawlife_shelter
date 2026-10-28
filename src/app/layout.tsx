@@ -17,11 +17,7 @@ export const metadata: Metadata = {
   title: "PawLife Shelter Admin",
   description: "PawLife Shelter Admin",
 };
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover', // thiếu dòng này thì env(safe-area-inset-*) luôn = 0
-};
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 export default function RootLayout({
   children,
 }: {

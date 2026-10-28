@@ -136,7 +136,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const petBreedFormatted = formatBreed(application.pet?.breed as MaybeBilingual) || 'Giống lai';
   const petAgeFormatted = formatPetAge(application.pet?.dob);
 
-  
+
 
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
@@ -254,11 +254,11 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[440px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
+        className="m-sheet bg-white w-full max-w-[440px] max-h-[90vh] rounded-[24px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -268,10 +268,10 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
           <X size={18} strokeWidth={2} />
         </button>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 pt-8 pb-6 sm:p-6">
           {/* Header */}
-          <div className="flex items-start gap-4 mb-5">
-            <div className="relative w-[94px] h-[94px] rounded-full border-[2.5px] border-[#F3A571] p-[2px] shrink-0">
+          <div className="flex items-start gap-3 sm:gap-4 mb-5">
+            <div className="relative w-[68px] h-[68px] sm:w-[94px] sm:h-[94px] rounded-full border-[2.5px] border-[#F3A571] p-[2px] shrink-0">
               <img
                 src={
                   application.user?.avatarUrl ||
@@ -369,7 +369,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 )}
               </div>
             </div>
-          
+
             <div className="flex flex-wrap gap-2">
               {tags.length === 0 ? (
                 <span className="text-[12px] text-gray-400 italic">Chưa có thẻ nào</span>
@@ -456,7 +456,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
           </div>
 
           {!isAlreadyPending && (
-            <div className="mt-2">
+            <div className="mt-2 sticky bottom-0 -mx-5 px-5 pt-3 pb-2 bg-white/85 backdrop-blur-xl sm:static sm:m-0 sm:p-0 sm:bg-transparent sm:backdrop-blur-none">
               <button
                 type="button"
                 onClick={handleSubmit}

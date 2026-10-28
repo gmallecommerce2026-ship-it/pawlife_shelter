@@ -118,13 +118,13 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="m-overlay fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-[680px] max-h-[88vh] rounded-[16px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="m-sheet bg-white w-full max-w-[680px] max-h-[88vh] rounded-[16px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white flex justify-between items-start px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
+        <div className="bg-white flex justify-between items-start px-5 sm:px-6 pt-7 sm:pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="font-['Be_Vietnam_Pro',_sans-serif] text-[20px] font-bold text-gray-900 leading-none">
@@ -139,7 +139,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 <Download size={16} strokeWidth={2.5} />
               </button>
             </div>
-            <div className="flex items-center gap-4 text-[12px] text-gray-500 font-medium mt-1.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-gray-500 font-medium mt-1.5">
               <span className="flex items-center gap-1.5">
                 <Calendar size={13} /> Ngày nộp: {submitDate}
               </span>
@@ -157,10 +157,10 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 bg-white space-y-3">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 bg-white space-y-3">
           {/* Section A */}
           <SectionCard title="A - Thông tin liên hệ">
-            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-y-3 gap-x-4">
               <Field label="Họ và tên" value={application.fullName || application.user?.name || 'Người nhận nuôi'} />
               <Field label="Số điện thoại" value={application.phone} />
               <Field label="Email / Zalo" value={application.user?.email || application.zalo || 'Chưa cập nhật'} />
@@ -170,7 +170,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
           {/* Section B */}
           <SectionCard title="B - Điều kiện sinh sống">
-            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-y-3 gap-x-4">
               <Field label="Khu vực sinh sống" value={application.location || 'Chưa cập nhật'} />
               <Field label="Loại nhà ở" value={translateHousing(application.housing)} />
               <Field label="Trẻ em trong nhà" value={translateChildren(application.children)} />

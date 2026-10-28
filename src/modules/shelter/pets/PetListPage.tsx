@@ -64,7 +64,7 @@ export const PetListPage = () => {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-48 sm:h-64 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
@@ -77,7 +77,7 @@ export const PetListPage = () => {
           </Link>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {items.map((pet) => (
             <PetCard
               key={pet.id}

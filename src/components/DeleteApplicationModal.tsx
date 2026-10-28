@@ -34,11 +34,11 @@ export const DeleteApplicationModal: React.FC<Props> = ({ application, onClose, 
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"
+      className="m-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={() => !isDeleting && onClose()}
     >
       <div
-        className="bg-white w-full max-w-[420px] rounded-[18px] shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150"
+        className="m-sheet bg-white w-full max-w-[420px] rounded-[18px] shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-2">

@@ -431,11 +431,11 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-[2px]"
+      className="m-overlay fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-3 sm:p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150 font-sans"
+        className="m-sheet bg-white w-full max-w-[490px] max-h-[92vh] rounded-[28px] shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-150 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Nút đóng */}
@@ -447,13 +447,13 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
         </button>
 
         {/* Thân Modal cuộn */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-7 pb-6 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 pt-9 sm:pt-7 pb-6 space-y-5 sm:space-y-6">
           <RelatedApplicationsNotice application={application} className="" />
           {/* Header Thông tin Người nhận nuôi & Pet Card */}
           <div className="flex gap-4 items-start">
             <img
               src={application.user?.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200'}
-              className="w-[102px] h-[102px] rounded-full object-cover border border-gray-100 shrink-0"
+              className="w-[72px] h-[72px] sm:w-[102px] sm:h-[102px] rounded-full object-cover border border-gray-100 shrink-0"
               alt={applicantName}
             />
 
@@ -658,8 +658,9 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                       </div>
                     </div>
 
-                    <div className="text-gray-300 px-2">
-                      <span className="text-[12px]">─────────▶</span>
+                    <div className="text-gray-300 px-1 sm:px-2">
+                      <span className="text-[12px] hidden min-[400px]:inline">─────────▶</span>
+                      <span className="text-[14px] min-[400px]:hidden">→</span>
                     </div>
 
                     <div className="flex items-center gap-2.5 justify-end">
@@ -691,7 +692,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   <div className="w-full border-t border-dashed border-gray-200 my-2" />
 
                   {/* 2 Cột Form input */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                     <div>
                       <label className="text-[11px] text-gray-500 mb-1 block">Tiêu đề</label>
                       <input
@@ -810,7 +811,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
                   <div className="border border-gray-200 rounded-[18px] p-4 bg-white space-y-2.5 shadow-sm">
                     {members.map((member) => (
                       <div key={member.id} className="space-y-2.5 pb-2.5 border-b border-gray-100 last:border-0 last:pb-0">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                           <div>
                             <label className="text-[11px] text-gray-400 mb-1 block">Tên thành viên</label>
                             <input
@@ -947,7 +948,7 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
           </div>
         )}
         {/* Nút to dưới cùng */}
-        <div className="p-5 pt-3 border-t border-gray-100 bg-white">
+        <div className="p-4 sm:p-5 pt-3 border-t border-gray-100 bg-white/90 backdrop-blur-xl">
           <button
             type="button"
             onClick={handleAdvance}
