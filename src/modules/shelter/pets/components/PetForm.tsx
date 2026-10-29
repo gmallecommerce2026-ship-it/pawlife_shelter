@@ -465,7 +465,7 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
       const normalizedImages = Array.isArray(initialPet.images)
         ? initialPet.images.map((img: any) => (typeof img === 'string' ? img : img.url)).filter(Boolean)
         : [];
-      setImages(normalizedImages);
+      setImages(Array.from(new Set(normalizedImages)));
       setSelectedTags(
         Array.isArray(initialPet.traits)
           ? initialPet.traits
@@ -548,14 +548,15 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
   // Dùng cho PetImageManager (xóa / đặt ảnh chính)
   const handleImagesChange = (next: string[]) => {
+    const unique = Array.from(new Set(next));
     // dọn blob của ảnh đã bị xóa
     images.forEach((u) => {
-      if (u.startsWith('blob:') && !next.includes(u)) {
+      if (u.startsWith('blob:') && !unique.includes(u)) {
         blobFileMap.current.delete(u);
         URL.revokeObjectURL(u);
       }
     });
-    setImages(next);
+    setImages(unique);
     setCurrentImageIndex(0); // preview nhảy về ảnh chính
   };
   const refetchApplications = async () => {
@@ -853,8 +854,8 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
           <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col bg-white">
             {/* Main Pet Image / Slider */}
             <div
-              className="relative w-full h-[260px] sm:h-[320px] xl:h-[340px] bg-gray-100 group cursor-pointer overflow-hidden"
-              onClick={() => isEditing && fileInputRef.current?.click()}
+              className={`relative w-full h-[260px] sm:h-[320px] xl:h-[340px] bg-gray-100 group overflow-hidden ${images.length === 0 ? 'cursor-pointer' : ''}`}
+              onClick={() => isEditing && images.length === 0 && fileInputRef.current?.click()}
             >
               {images.length > 0 ? (
                 <Image
@@ -917,27 +918,12 @@ export const PetForm: React.FC<{ mode: 'create' | 'edit'; initialPet?: any }> = 
 
             <div className="p-5 flex flex-col gap-4">
               {images.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#8E8E93]">
-                      Ảnh ({images.length}) · ảnh đầu tiên là ảnh hiển thị trên app
-                    </span>
-                    {isEditing && (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-[11px] font-semibold text-[#E89B5A] hover:underline"
-                      >
-                        + Thêm ảnh
-                      </button>
-                    )}
-                  </div>
-                  <PetImageManager
-                    images={images}
-                    onChange={handleImagesChange}
-                    disabled={!isEditing || isSubmitting}
-                  />
-                </div>
+                <PetImageManager
+                  images={images}
+                  onChange={handleImagesChange}
+                  onAdd={() => fileInputRef.current?.click()}
+                  disabled={!isEditing || isSubmitting}
+                />
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-[#F9F9F9] border border-gray-200 rounded-2xl px-4 py-3">
