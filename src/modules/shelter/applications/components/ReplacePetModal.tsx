@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, Search, Mars, Venus, Loader2 } from 'lucide-react';
 import { AdoptionApplication } from '@/types/application';
 import { applicationService } from '@/services/applicationService';
@@ -27,32 +27,53 @@ interface Props {
   onDone: () => void | Promise<void>;
 }
 
+// Chuẩn hoá để tìm không phân biệt dấu, hoa/thường: "Bấc" ↔ "bac", "Bé Bự" ↔ "be bu", "Đốm" ↔ "dom"
+const normalizeText = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+
 export const ReplacePetModal: React.FC<Props> = ({ application, onClose, onDone }) => {
   const [search, setSearch] = useState('');
-  const [pets, setPets] = useState<ReplacementPet[]>([]);
+  const [allPets, setAllPets] = useState<ReplacementPet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<ReplacementPet | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Tải toàn bộ bé một lần khi mở modal
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const list = await applicationService.getReplacementPets(application.id, search.trim() || undefined);
-        if (!cancelled) setPets(list as ReplacementPet[]);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.response?.data?.message || e?.message || 'Không tải được danh sách bé.');
-      } finally {
+    setError(null);
+    applicationService
+      .getReplacementPets(application.id)
+      .then((list) => {
+        if (!cancelled) setAllPets(list as ReplacementPet[]);
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          setError(e?.response?.data?.message || e?.message || 'Không tải được danh sách bé.');
+        }
+      })
+      .finally(() => {
         if (!cancelled) setIsLoading(false);
-      }
-    }, 300);
+      });
     return () => {
       cancelled = true;
-      clearTimeout(t);
     };
-  }, [application.id, search]);
+  }, [application.id]);
+
+  // Lọc phía client, không gọi lại server khi gõ
+  const filteredPets = useMemo(() => {
+    const q = normalizeText(search);
+    if (!q) return allPets;
+    return allPets.filter((p) => normalizeText(p.name).includes(q));
+  }, [allPets, search]);
 
   const handleConfirm = async () => {
     if (!selected || isSubmitting) return;
@@ -106,6 +127,13 @@ export const ReplacePetModal: React.FC<Props> = ({ application, onClose, onDone 
               className="w-full bg-[#F6F6F6] rounded-[12px] pl-9 pr-3 py-2.5 text-[13px] outline-none border border-transparent focus:border-[#E89B5A]"
             />
           </div>
+          {!isLoading && allPets.length > 0 && (
+            <p className="text-[11px] text-gray-400 mt-2">
+              {search.trim()
+                ? `Tìm thấy ${filteredPets.length}/${allPets.length} bé`
+                : `Tổng ${allPets.length} bé có thể đổi`}
+            </p>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-3 flex flex-col gap-2 min-h-[160px]">
@@ -113,12 +141,16 @@ export const ReplacePetModal: React.FC<Props> = ({ application, onClose, onDone 
             <div className="flex items-center justify-center py-10 text-gray-400">
               <Loader2 size={18} className="animate-spin" />
             </div>
-          ) : pets.length === 0 ? (
+          ) : allPets.length === 0 ? (
             <p className="text-center text-[12.5px] text-gray-400 italic py-10">
               Không có bé nào phù hợp (người này đã có đơn cho các bé còn lại).
             </p>
+          ) : filteredPets.length === 0 ? (
+            <p className="text-center text-[12.5px] text-gray-400 italic py-10">
+              Không tìm thấy bé nào có tên "{search.trim()}".
+            </p>
           ) : (
-            pets.map((p) => {
+            filteredPets.map((p) => {
               const code = getPetCode(p);
               const sub = [p.dob ? formatPetAge(p.dob) : '', p.breed ? formatBreed(p.breed as MaybeBilingual) : '']
                 .filter(Boolean)

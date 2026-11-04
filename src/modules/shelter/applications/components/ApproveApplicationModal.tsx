@@ -448,7 +448,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
 
         {/* Thân Modal cuộn */}
         <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 pt-9 sm:pt-7 pb-6 space-y-5 sm:space-y-6">
-          <RelatedApplicationsNotice application={application} className="" />
           {/* Header Thông tin Người nhận nuôi & Pet Card */}
           <div className="flex gap-4 items-start">
             <img

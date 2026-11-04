@@ -50,10 +50,8 @@ export const applicationService = {
     const res = await apiClient.delete(`/applications/${applicationId}/notes/${noteId}`);
     return unwrapItem(res);
   },
-  getReplacementPets: async (applicationId: string, search?: string) => {
-    const res = await apiClient.get(`/applications/${applicationId}/replacement-pets`, {
-      params: { search },
-    });
+  getReplacementPets: async (applicationId: string) => {
+    const res = await apiClient.get(`/applications/${applicationId}/replacement-pets`);
     return unwrapList(res);
   },
 

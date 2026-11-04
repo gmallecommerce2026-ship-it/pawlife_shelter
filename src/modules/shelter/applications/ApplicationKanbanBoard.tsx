@@ -78,6 +78,16 @@ const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   INTERVIEW_SCHEDULED: 'APPROVED',
   APPROVED: 'APPROVED',
 };
+
+// Các trạng thái mà khi bấm vào thẻ sẽ mở MoveToPendingModal
+const PENDING_STYLE_MODAL_STATUSES: ApplicationStatus[] = [
+  'SUBMITTED',
+  'PENDING',
+  'APPROVED',
+  'ADOPTION_COMPLETED', // cùng cột với APPROVED
+  'CLOSED',
+];
+
 const dropAnimation: DropAnimation = {
   duration: 160,
   easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -562,7 +572,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
-    if (app.status === 'SUBMITTED' || app.status === 'PENDING') {
+    // Cột mới nộp / đang xem xét / đã duyệt / đóng → cùng một modal
+    if (PENDING_STYLE_MODAL_STATUSES.includes(app.status)) {
       setPendingApp(app);
       return;
     }

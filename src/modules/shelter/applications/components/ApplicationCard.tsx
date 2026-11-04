@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import {
   Phone,
   Mail,
+  Cake,
   Calendar,
   MessageCircle,
   FileText,
@@ -43,6 +44,14 @@ const formatSubmittedAt = (iso: string) => {
   } catch {
     return '13/02/2026';
   }
+};
+
+/** Ngày sinh người nhận nuôi → dd/MM/yyyy. Trả về null nếu không có / không hợp lệ (đơn cũ chưa có dob). */
+const formatDob = (iso?: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
 };
 
 /** true khi viewport < 768px (khớp breakpoint `md` của Tailwind) */
@@ -120,6 +129,8 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const acceptedDocs = documents?.filter((d) => d.status === 'ACCEPTED').length ?? 0;
   const showDocsBadge = application.status === 'NEED_MORE_INFO' && totalDocs > 0;
   const allDocsAccepted = showDocsBadge && acceptedDocs === totalDocs;
+  // Ngày sinh người nhận nuôi (app mobile mới gửi lên; đơn cũ có thể không có)
+  const applicantDob = formatDob((application as any).dob);
 
   useEffect(() => {
     setMounted(true);
@@ -367,6 +378,15 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
             {application.phone || '0912345678'}
           </span>
         </div>
+        {/* Ngày sinh — chỉ hiện khi đơn có dob */}
+        {applicantDob && (
+          <div className="flex items-center gap-2 w-full" title="Ngày sinh">
+            <Cake size={13} className="text-[#888888] shrink-0" strokeWidth={2} />
+            <span className="font-sans text-[13px] md:text-[12px] text-[#555555] font-normal truncate">
+              {applicantDob}
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-2 w-full">
           <Mail size={13} className="text-[#888888] shrink-0" strokeWidth={2} />
           <span className="font-sans text-[13px] md:text-[12px] text-[#888888] font-normal truncate">

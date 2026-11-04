@@ -432,7 +432,6 @@ export const NeedMoreInfoModal: React.FC<NeedMoreInfoModalProps> = ({
         </button>
 
         <div className="flex-1 overflow-y-auto px-5 pt-9 pb-6 sm:p-6 scrollbar-thin scrollbar-thumb-gray-200">
-          <RelatedApplicationsNotice application={application} className="mb-4" />
           {/* 1. Header & Thông tin người đăng ký */}
           <div className="flex gap-4 mb-5 items-start">
             <img

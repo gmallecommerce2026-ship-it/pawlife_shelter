@@ -146,7 +146,17 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isOtherPetsOpen, setIsOtherPetsOpen] = useState(false);
   const isMale = application.pet?.gender !== 'FEMALE';
-  const isAlreadyPending = application.status === 'PENDING';
+
+  // Chỉ đơn mới nộp (SUBMITTED) mới được bấm "Chuyển sang đang xem xét".
+  // PENDING / APPROVED / ADOPTION_COMPLETED / CLOSED chỉ xem + ghi chú + gắn thẻ.
+  const canMoveToPending = application.status === 'SUBMITTED';
+  const statusHint =
+    application.status === 'PENDING'
+      ? 'Đơn đang ở trạng thái đang xem xét'
+      : application.status === 'CLOSED'
+        ? 'Hồ sơ đã được đóng'
+        : 'Đơn đã được duyệt'; // APPROVED / ADOPTION_COMPLETED
+
   const petName = application.pet?.name || 'Bé';
   const applicantFullName = application.fullName || application.user?.name || 'Người đăng ký';
   const applicantFirstName = applicantFullName.split(' ')[0] || 'Người đăng ký';
@@ -261,7 +271,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
   };
 
   const handleSubmit = () => {
-    if (isAlreadyPending) return;
+    if (!canMoveToPending) return;
     onSubmit({
       reviewNote: noteInput || 'Đã chuyển sang Đang xem xét',
       tags,
@@ -360,7 +370,6 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             </div>
           </div>
           <ApplicantFlagBanner flag={application.applicantFlag} />
-          <RelatedApplicationsNotice application={application} />
 
           {/* Tags */}
           <div className="mb-6">
@@ -477,7 +486,7 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
             )}
           </div>
 
-          {!isAlreadyPending && (
+          {canMoveToPending ? (
             <div className="mt-2 sticky bottom-0 -mx-5 px-5 pt-3 pb-2 bg-white/85 backdrop-blur-xl sm:static sm:m-0 sm:p-0 sm:bg-transparent sm:backdrop-blur-none">
               <button
                 type="button"
@@ -488,10 +497,9 @@ export const MoveToPendingModal: React.FC<MoveToPendingModalProps> = ({
                 <ChevronRight size={16} strokeWidth={2.5} />
               </button>
             </div>
-          )}
-          {isAlreadyPending && (
+          ) : (
             <p className="mt-2 text-center text-[12.5px] text-gray-400 italic">
-              Đơn đang ở trạng thái đang xem xét
+              {statusHint}
             </p>
           )}
         </div>

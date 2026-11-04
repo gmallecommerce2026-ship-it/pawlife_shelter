@@ -369,7 +369,6 @@ export const InterviewScheduleModal: React.FC<InterviewScheduleModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-7 py-5 sm:py-6 space-y-5 sm:space-y-6">
-          <RelatedApplicationsNotice application={application} className="" />
           {/* Adopter & Pet summary */}
           <div className="border border-gray-200 rounded-[16px] p-4 shadow-sm bg-[#FAFAFA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
