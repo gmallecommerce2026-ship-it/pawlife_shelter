@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { formatPetAge } from '@/utils/petAge';
 import Image from 'next/image';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Mars, Venus, PawPrint } from 'lucide-react';
@@ -15,17 +16,7 @@ interface PetTableProps {
   onDelete?: (pet: Pet) => void;
 }
 
-const getAgeLabel = (dob?: string | null): string => {
-  if (!dob) return 'Chưa rõ tuổi';
-  const dobDate = new Date(dob);
-  if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ tuổi';
-  const ageDate = new Date(Date.now() - dobDate.getTime());
-  const years = Math.abs(ageDate.getUTCFullYear() - 1970);
-  const months = ageDate.getUTCMonth();
-  if (years > 0) return `${years} tuổi`;
-  if (months > 0) return `${months} tháng tuổi`;
-  return 'Sơ sinh';
-};
+const getAgeLabel = (dob?: string | null): string => formatPetAge(dob);
 
 const SPECIES_VI_LABEL: Record<string, string> = { DOG: 'Chó', CAT: 'Mèo' };
 

@@ -1,3 +1,4 @@
+import { formatPetAge } from '@/utils/petAge';
 // src/types/application.ts
 
 import { ApplicantFlag } from "@/constants/applicantFlag";
@@ -332,17 +333,7 @@ export function localizedText(value: LocalizedText, locale: 'vi' | 'en' = 'vi'):
 }
 
 export function getPetAgeLabel(dob?: string | null): string {
-  if (!dob) return 'Chưa rõ tuổi';
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return 'Chưa rõ tuổi';
-  const now = new Date();
-  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
-  if (now.getDate() < birth.getDate()) months -= 1;
-  if (months < 1) return 'Dưới 1 tháng tuổi';
-  if (months < 12) return `${months} tháng tuổi`;
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  return rest > 0 ? `${years} tuổi ${rest} tháng` : `${years} tuổi`;
+  return formatPetAge(dob);
 }
 
 export function getInitials(name?: string | null): string {

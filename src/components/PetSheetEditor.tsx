@@ -139,7 +139,12 @@ export const PetSheetEditor: React.FC = () => {
 
         chain.current = chain.current.then(async () => {
             let fresh: Row[] | null = null;
-            try { fresh = (await axiosClient.post<{ rows: Row[] }>(`${BASE}/grid/batch`, { items: valid })).data.rows; }
+            try {
+                const r = (await axiosClient.post<{ rows: Row[]; warnings?: string[] }>(`${BASE}/grid/batch`, { items: valid })).data;
+                fresh = r.rows;
+                // Đổi trạng thái vẫn được lưu, nhưng báo cho người dùng nếu pet còn đơn đang xử lý
+                r.warnings?.forEach((w) => toast(w, { icon: '⚠️', duration: 8000 }));
+            }
             catch (e) { toast.error(errMsg(e)); }
             const fm = new Map((fresh ?? []).map((r) => [r.id, r]));
             const bm = new Map(before.map((b) => [b.id, b.patch]));
@@ -391,6 +396,8 @@ export const PetSheetEditor: React.FC = () => {
         const { data } = await axiosClient.post(`${BASE}/upload`, fd);
         await load(species, false);
         toast.success(`Đã nhập: ${data.created} mới, ${data.updated} cập nhật, ${data.unchanged} không đổi.`);
+        if (data.invalid?.length) toast.error(`Bỏ qua ${data.invalid.length} dòng: ${data.invalid.slice(0, 3).join('; ')}`, { duration: 10000 });
+        (data.warnings as string[] | undefined)?.forEach((w) => toast(w, { icon: '⚠️', duration: 8000 }));
     });
     const replaceAll = () => {
         if (!find.text) return;

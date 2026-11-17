@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { formatPetAge } from '@/utils/petAge';
 import Image from 'next/image';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Mars, Venus, PawPrint } from 'lucide-react';
@@ -18,20 +19,7 @@ import { PetStatusBadge } from '@/components/PetStatusBadge';
 
 // Tính tuổi từ ngày sinh — mirror getAge() bên mobile search.tsx, chỉ giữ bản
 // tiếng Việt vì trang quản lý shelter hiện tại chưa có toggle ngôn ngữ.
-const getAgeLabel = (dob?: string | null): string => {
-  if (!dob) return 'Chưa rõ tuổi';
-  const dobDate = new Date(dob);
-  if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ tuổi';
-
-  const diffMs = Date.now() - dobDate.getTime();
-  const ageDate = new Date(diffMs);
-  const years = Math.abs(ageDate.getUTCFullYear() - 1970);
-  const months = ageDate.getUTCMonth();
-
-  if (years > 0) return `${years} tuổi`;
-  if (months > 0) return `${months} tháng tuổi`;
-  return 'Sơ sinh';
-};
+const getAgeLabel = (dob?: string | null): string => formatPetAge(dob);
 
 // ⚠️ Màu badge trạng thái dưới đây là suy đoán hợp lý theo tên field PetStatus
 // (AVAILABLE/ADOPTED/PENDING/LOST...) — nếu enum thật của bạn khác, chỉ cần sửa

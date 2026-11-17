@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { formatPetAge } from '@/utils/petAge';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -91,18 +92,7 @@ const isAgeOnlyDob = (dob?: string | null): boolean => {
   if (Number.isNaN(d.getTime())) return false;
   return d.getUTCMonth() === 0 && d.getUTCDate() === 1;
 };
-const getAgeLabel = (dob?: string | null): string => {
-  if (!dob) return 'Chưa rõ';
-  const dobDate = new Date(dob);
-  if (Number.isNaN(dobDate.getTime())) return 'Chưa rõ';
-  const diffMs = Date.now() - dobDate.getTime();
-  const ageDate = new Date(diffMs);
-  const years = Math.abs(ageDate.getUTCFullYear() - 1970);
-  const months = ageDate.getUTCMonth();
-  if (years > 0) return `${years} tuổi`;
-  if (months > 0) return `${months} tháng tuổi`;
-  return 'Sơ sinh';
-};
+const getAgeLabel = (dob?: string | null): string => formatPetAge(dob);
 
 
 const TRAIT_STYLES = [
