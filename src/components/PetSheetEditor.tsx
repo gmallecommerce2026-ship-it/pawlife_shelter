@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import axiosClient from '@/lib/api/axiosClient';
+import { runPetStatusSync, toastConflicts } from '@/lib/petStatusSync';
 
 type Species = 'DOG' | 'CAT';
 type ColType = 'text' | 'suggest' | 'select' | 'readonly';
@@ -398,6 +399,8 @@ export const PetSheetEditor: React.FC = () => {
         toast.success(`Đã nhập: ${data.created} mới, ${data.updated} cập nhật, ${data.unchanged} không đổi.`);
         if (data.invalid?.length) toast.error(`Bỏ qua ${data.invalid.length} dòng: ${data.invalid.slice(0, 3).join('; ')}`, { duration: 10000 });
         (data.warnings as string[] | undefined)?.forEach((w) => toast(w, { icon: '⚠️', duration: 8000 }));
+        if (data.statusSync?.changed) toast(`Đã tự đồng bộ trạng thái ${data.statusSync.changed} pet theo hồ sơ nhận nuôi.`, { icon: '🔄', duration: 8000 });
+        toastConflicts(data.statusSync);
     });
     const replaceAll = () => {
         if (!find.text) return;
@@ -468,7 +471,7 @@ export const PetSheetEditor: React.FC = () => {
         'Xem': [['Bật/tắt bộ lọc', () => setShowFilter((v) => !v)], ['Bật/tắt thống kê', () => setShowStats((v) => !v)], ['Thu phóng 100%', () => setZoom(100)]],
         'Chèn': [['Thêm dòng ở cuối', addRow]],
         'Định dạng': [['Đậm', () => fmtSel('b'), 'Ctrl+B'], ['Nghiêng', () => fmtSel('i'), 'Ctrl+I'], ['Căn trái', () => fmtSel('al', 'left')], ['Căn giữa', () => fmtSel('al', 'center')], ['Căn phải', () => fmtSel('al', 'right')], ['Xoá định dạng', clearFmt]],
-        'Dữ liệu': [['Sắp xếp A → Z theo cột', () => sortCol(1)], ['Gộp pet trùng ID / tên', () => run(async () => {
+        'Dữ liệu': [['Đồng bộ trạng thái với hồ sơ nhận nuôi', () => run(async () => { if (await runPetStatusSync()) await load(species, false); })], ['Sắp xếp A → Z theo cột', () => sortCol(1)], ['Gộp pet trùng ID / tên', () => run(async () => {
             const pre = (await axiosClient.post(`${BASE}/merge`)).data;
             if (!pre.extra) { toast.success('Không có pet nào trùng.'); return; }
             const ex = pre.preview.slice(0, 5).map((g: any) => `• ${g.keep} ← ${g.merge.join(', ')}`).join('\n');

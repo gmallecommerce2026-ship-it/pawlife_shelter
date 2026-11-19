@@ -534,6 +534,17 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     try {
       const res = await axiosClient.get(`/shelter-dashboard/pets/${pet.id}`);
       setApplications(Array.isArray(res.data?.applications) ? res.data.applications : []);
+      // Backend có thể đã tự đổi trạng thái pet theo đơn (giữ chỗ, bàn giao, nhả pet), nên cập nhật badge luôn
+      setPet((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: res.data?.status ?? prev.status,
+              ownerId: res.data?.ownerId ?? prev.ownerId,
+              adoptedAt: res.data?.adoptedAt ?? prev.adoptedAt,
+            }
+          : prev,
+      );
     } catch (err) {
       console.error('[PetDetailPage] Lỗi tải lại đơn nhận nuôi:', err);
     }

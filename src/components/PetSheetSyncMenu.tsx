@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { FiDownload, FiEdit3, FiFileText, FiUpload } from 'react-icons/fi';
+import { FiDownload, FiEdit3, FiFileText, FiRefreshCw, FiUpload } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import axiosClient from '@/lib/api/axiosClient';
 import { usePetActions } from '@/stores/usePetStore';
+import { runPetStatusSync, toastConflicts } from '@/lib/petStatusSync';
 
 const BASE = '/shelter-dashboard/pet-sheet';
 const saveBlob = (blob: Blob, name: string) => {
@@ -45,6 +46,11 @@ export const PetSheetSyncMenu: React.FC = () => {
         const { data } = await axiosClient.post(`${BASE}/upload`, fd);
         await fetchPets();
         toast.success(`Đã nhập: ${data.created} mới, ${data.updated} cập nhật, ${data.unchanged} không đổi.`);
+        if (data.statusSync?.changed) toast(`Đã tự đồng bộ trạng thái ${data.statusSync.changed} pet theo hồ sơ nhận nuôi.`, { icon: '🔄', duration: 8000 });
+        toastConflicts(data.statusSync);
+    });
+    const syncStatus = () => run('status', async () => {
+        if (await runPetStatusSync()) await fetchPets();
     });
     const syncImages = () => run('images', async () => {
         const { data } = await axiosClient.post(`${BASE}/images`);
@@ -63,6 +69,9 @@ export const PetSheetSyncMenu: React.FC = () => {
                     <Link href="/shelter/pets/sheet" className={cls}><FiEdit3 size={14} /> Mở bảng chỉnh sửa</Link>
                     <button className={cls} disabled={!!busy} onClick={() => fileRef.current?.click()}>
                         <FiUpload size={14} /> {busy === 'upload' ? 'Đang nhập...' : 'Nhập từ file Excel'}
+                    </button>
+                    <button className={cls} disabled={!!busy} onClick={syncStatus}>
+                        <FiRefreshCw size={14} /> {busy === 'status' ? 'Đang kiểm tra...' : 'Đồng bộ trạng thái với hồ sơ'}
                     </button>
                     <button className={cls} disabled={!!busy} onClick={() => download('export', 'pawlife-pets.xlsx')}><FiDownload size={14} /> Xuất Excel (.xlsx)</button>
                     <button className={cls} disabled={!!busy} onClick={syncImages}><FiDownload size={14} /> {busy === 'images' ? 'Đang gắn ảnh...' : 'Lấy ảnh từ Drive'}</button>
