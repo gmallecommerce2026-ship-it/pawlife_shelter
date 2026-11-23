@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import { FiLogOut, FiChevronDown } from 'react-icons/fi';
 import classNames from 'classnames';
 import { logout } from '@/actions/logout';
-import { Lightbulb, ChevronRight } from 'lucide-react';
+import { Lightbulb, ChevronRight, Nfc } from 'lucide-react';
 import { WriteMessageModal } from '@/components/WriteMessageModal';
 import { getUserFromToken } from '@/utils/getUserFromToken';
 
@@ -53,6 +53,14 @@ const SHELTER_MENU: MenuItem[] = [
     mobileLabel: 'Hồ sơ',
     icon: <Image src="/images/dang-ky-nhan-nuoi.png" alt="" width={22} height={22} />,
     path: '/shelter/applications',
+    disabled: false,
+  },
+  {
+    id: 'nfc-cards',
+    label: 'Thẻ NFC',
+    mobileLabel: 'Thẻ NFC',
+    icon: <Nfc size={22} strokeWidth={1.8} />,
+    path: '/shelter/nfc-cards',
     disabled: false,
   },
   // {

@@ -1,12 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PawPrint, FileText, Settings, LayoutDashboard } from 'lucide-react';
+import { PawPrint, FileText, Settings, LayoutDashboard, Nfc } from 'lucide-react';
 
 const TABS = [
   { href: '/shelter/dashboard', label: 'Trang chủ', Icon: LayoutDashboard },
   { href: '/shelter/pets', label: 'Thú cưng', Icon: PawPrint },
   { href: '/shelter/applications', label: 'Hồ sơ', Icon: FileText },
+  { href: '/shelter/nfc-cards', label: 'Thẻ NFC', Icon: Nfc },
   { href: '/shelter/profile', label: 'Cài đặt', Icon: Settings },
 ];
 
