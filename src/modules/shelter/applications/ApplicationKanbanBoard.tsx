@@ -52,7 +52,7 @@ import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
 import { HandoverCodeModal } from './components/HandoverCodeModal';
 import { HandoverMethodModal } from './components/HandoverMethodModal';
 import { HandoverActionModal } from './components/HandoverActionModal';
-import { resendHandoverRequest } from '@/services/handoverService';
+import { recallApplicationPet, resendHandoverRequest } from '@/services/handoverService';
 import { toast } from 'react-hot-toast';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
@@ -99,38 +99,42 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
-/* Kéo đơn ra khỏi cột Hoàn thành: cần xác nhận vì sẽ huỷ yêu cầu nhận hồ sơ đã gửi cho adopter */
-const MoveOutOfCompletedDialog: React.FC<{
+/* Kéo đơn ra khỏi cột Bàn giao = thu hồi pet: trả bé về trạng thái trước khi nhận nuôi */
+const RecallPetDialog: React.FC<{
   application: AdoptionApplication;
   targetLabel: string;
+  isRecalling: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-}> = ({ application, targetLabel, onCancel, onConfirm }) => (
+}> = ({ application, targetLabel, isRecalling, onCancel, onConfirm }) => (
   <ResponsiveModal onClose={onCancel} maxWidth="sm:max-w-[420px]">
     <div className="px-5 pb-5 pt-2 sm:p-5">
       <h3 className="mb-1.5 text-[20px] font-bold tracking-tight text-gray-900 sm:text-[16px]">
-        Đưa đơn ra khỏi Hoàn thành?
+        Thu hồi pet về?
       </h3>
       <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:text-[13px]">
-        Yêu cầu nhận hồ sơ bé <strong className="text-gray-900">{application.pet?.name}</strong> đã gửi cho{' '}
-        <strong className="text-gray-900">{application.fullName || application.user?.name}</strong> sẽ bị huỷ,
-        popup trên app của họ sẽ biến mất. Đơn sẽ chuyển sang{' '}
+        Bạn có chắc chắn muốn thu hồi bé <strong className="text-gray-900">{application.pet?.name}</strong> không?
+        Bé sẽ trở lại trạng thái trước khi nhận nuôi. Nếu{' '}
+        <strong className="text-gray-900">{application.fullName || application.user?.name}</strong> đã nhận bé,
+        bé sẽ được gỡ khỏi tài khoản của họ. Đơn sẽ chuyển sang{' '}
         <strong className="text-gray-900">{targetLabel}</strong>.
       </p>
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
         <button
           type="button"
           onClick={onCancel}
-          className="h-12 rounded-xl bg-gray-100 text-[16px] font-semibold text-gray-700 active:bg-gray-200 sm:h-auto sm:rounded-md sm:px-3.5 sm:py-1.5 sm:text-[12px] sm:hover:bg-gray-200"
+          disabled={isRecalling}
+          className="h-12 rounded-xl bg-gray-100 text-[16px] font-semibold text-gray-700 active:bg-gray-200 disabled:opacity-60 sm:h-auto sm:rounded-md sm:px-3.5 sm:py-1.5 sm:text-[12px] sm:hover:bg-gray-200"
         >
           Hủy
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className="h-12 rounded-xl bg-[#E89B5A] text-[16px] font-bold text-white active:bg-[#D98744] sm:h-auto sm:rounded-md sm:px-4 sm:py-1.5 sm:text-[12px] sm:hover:bg-[#D98744]"
+          disabled={isRecalling}
+          className="h-12 rounded-xl bg-red-600 text-[16px] font-bold text-white active:bg-red-700 disabled:opacity-60 sm:h-auto sm:rounded-md sm:px-4 sm:py-1.5 sm:text-[12px] sm:hover:bg-red-700"
         >
-          Xác nhận
+          {isRecalling ? 'Đang thu hồi...' : 'Thu hồi pet'}
         </button>
       </div>
     </div>
@@ -155,6 +159,7 @@ interface CloseApplicationDialogProps {
   reason: string;
   isCustom: boolean;
   isClosing: boolean;
+  isRecall: boolean;
   onReasonChange: (v: string) => void;
   onCustomChange: (v: boolean) => void;
   onCancel: () => void;
@@ -166,6 +171,7 @@ const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
   reason,
   isCustom,
   isClosing,
+  isRecall,
   onReasonChange,
   onCustomChange,
   onCancel,
@@ -174,7 +180,7 @@ const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
   <ResponsiveModal onClose={onCancel} maxWidth="sm:max-w-[420px]">
     <div className="px-5 pb-5 pt-2 sm:p-5">
       <h3 className="mb-1.5 text-[20px] font-bold tracking-tight text-gray-900 sm:text-[16px]">
-        Đóng hồ sơ nhận nuôi?
+        {isRecall ? 'Thu hồi pet và từ chối đơn?' : 'Đóng hồ sơ nhận nuôi?'}
       </h3>
       <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:text-[13px]">
         Bạn có chắc chắn muốn đóng đơn của{' '}
@@ -250,7 +256,7 @@ const CloseApplicationDialog: React.FC<CloseApplicationDialogProps> = ({
           disabled={isClosing || !reason.trim()}
           className="h-12 rounded-xl bg-red-600 text-[16px] font-bold text-white transition-colors active:bg-red-700 disabled:opacity-60 sm:h-auto sm:rounded-md sm:px-4 sm:py-1.5 sm:text-[12px] sm:hover:bg-red-700"
         >
-          {isClosing ? 'Đang đóng...' : 'Xác nhận đóng'}
+          {isClosing ? 'Đang xử lý...' : isRecall ? 'Thu hồi & từ chối' : 'Xác nhận đóng'}
         </button>
       </div>
     </div>
@@ -297,6 +303,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [closeReason, setCloseReason] = useState('');
   const [isClosingApp, setIsClosingApp] = useState(false);
   const [isCustomCloseReason, setIsCustomCloseReason] = useState(false);
+  const [closeIsRecall, setCloseIsRecall] = useState(false);
+  const [isRecalling, setIsRecalling] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -509,6 +517,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
         setLocalItems(items);
         return;
       }
+      setCloseIsRecall(false);
       setCloseAppTarget(app);
       return;
     }
@@ -604,12 +613,21 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
-    // Kéo ra khỏi cột Hoàn thành: huỷ yêu cầu nhận hồ sơ đang chờ, hỏi xác nhận trước
+    // Đơn đã từ chối của bé đã có người nhận nuôi: khoá, không cho kéo sang cột khác
+    if (originalItem.status === 'CLOSED' && originalItem.pet?.status === 'ADOPTED') {
+      setLocalItems(items);
+      toast.error('Bé đã được nhận nuôi, không thể chuyển đơn đã từ chối.');
+      return;
+    }
+
+    // Kéo ra khỏi cột Bàn giao = thu hồi pet, hỏi xác nhận trước
     if (originalItem.status === 'ADOPTION_COMPLETED') {
       setLocalItems(items);
-      if (!(REQUIRES_CONFIRM.includes(finalStatus) && !isAdmin)) {
-        setMoveOutTarget({ app: originalItem, status: finalStatus });
+      if (finalStatus === 'CLOSED' && !isAdmin) {
+        toast.error('Chỉ quản trị viên của trạm mới được từ chối đơn.');
+        return;
       }
+      setMoveOutTarget({ app: originalItem, status: finalStatus });
       return;
     }
 
@@ -664,13 +682,52 @@ export const ApplicationKanbanBoard: React.FC = () => {
     }
   };
 
+  // Xác nhận thu hồi pet: đơn chuyển sang cột đích, pet trở lại trạng thái trước khi nhận nuôi
+  const handleConfirmRecall = async () => {
+    if (!moveOutTarget) return;
+    const { app, status } = moveOutTarget;
+
+    // Từ chối cần lý do: mở popup đóng hồ sơ trước, thu hồi chỉ thực hiện khi có lý do
+    if (status === 'CLOSED') {
+      setMoveOutTarget(null);
+      setCloseIsRecall(true);
+      setCloseAppTarget(app);
+      return;
+    }
+
+    setIsRecalling(true);
+    try {
+      await recallApplicationPet(app.id, status);
+      setMoveOutTarget(null);
+      toast.success('Đã thu hồi pet');
+      await fetchApplications();
+      // Các cột cần thêm bước thì mở đúng modal; đơn đã ở cột đích từ bước thu hồi
+      const moved = { ...app, status };
+      if (status === 'NEED_MORE_INFO') setRequestDocsApp(moved);
+      if (status === 'INTERVIEW_SCHEDULED') setInterviewApp(moved);
+    } catch (error) {
+      console.error('Lỗi khi thu hồi pet:', error);
+      toast.error('Không thể thu hồi pet. Vui lòng thử lại.');
+      setMoveOutTarget(null);
+      await fetchApplications();
+    } finally {
+      setIsRecalling(false);
+    }
+  };
+
   const handleConfirmClose = async () => {
     if (!closeAppTarget) return;
     try {
       setIsClosingApp(true);
-      await moveApplication(closeAppTarget.id, 'CLOSED', closeReason.trim() || 'Trạm đã đóng hồ sơ.');
+      const reason = closeReason.trim() || 'Trạm đã đóng hồ sơ.';
+      if (closeIsRecall) {
+        await recallApplicationPet(closeAppTarget.id, 'CLOSED', reason);
+      } else {
+        await moveApplication(closeAppTarget.id, 'CLOSED', reason);
+      }
       await fetchApplications();
       setCloseAppTarget(null);
+      setCloseIsRecall(false);
       setCloseReason('');
     } catch (error) {
       console.error('Lỗi khi đóng hồ sơ:', error);
@@ -844,7 +901,8 @@ export const ApplicationKanbanBoard: React.FC = () => {
           isClosing={isClosingApp}
           onReasonChange={setCloseReason}
           onCustomChange={setIsCustomCloseReason}
-          onCancel={() => setCloseAppTarget(null)}
+          isRecall={closeIsRecall}
+          onCancel={() => { setCloseAppTarget(null); setCloseIsRecall(false); }}
           onConfirm={handleConfirmClose}
         />
       )}
@@ -905,15 +963,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
         />
       )}
       {moveOutTarget && (
-        <MoveOutOfCompletedDialog
+        <RecallPetDialog
           application={moveOutTarget.app}
           targetLabel={KANBAN_COLUMNS.find((c) => c.status === moveOutTarget.status)?.label ?? ''}
+          isRecalling={isRecalling}
           onCancel={() => setMoveOutTarget(null)}
-          onConfirm={() => {
-            const target = moveOutTarget;
-            setMoveOutTarget(null);
-            routeApplicationMove(target.app, target.status);
-          }}
+          onConfirm={handleConfirmRecall}
         />
       )}
       {handoverApp && (

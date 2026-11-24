@@ -120,10 +120,10 @@ export const ApplicationCardContent: React.FC<ApplicationCardContentProps> = ({
   const flag = application.applicantFlag;
   // Bóc tách danh sách tags động từ application (hỗ trợ cả dạng nested t.tag lẫn dạng phẳng)
   const displayTags = application.tags ? application.tags.map((t: any) => t.tag || t) : [];
-  const isAdopted =
-    application.status === 'ADOPTION_COMPLETED' ||
-    (application.pet as any)?.status === 'ADOPTED'; // fallback: pet bị đổi trạng thái qua dropdown ở Pet Detail
-  const isInterviewCompleted = application.appointment?.status === 'COMPLETED';
+  // Badge chỉ bám theo cột hiện tại: ra khỏi cột Bàn giao thì không còn "Đã nhận nuôi"
+  const isAdopted = application.status === 'ADOPTION_COMPLETED';
+  const isInterviewCompleted =
+    application.status === 'INTERVIEW_SCHEDULED' && application.appointment?.status === 'COMPLETED';
   const documents = (application as any).documents as { status: string }[] | undefined;
   const totalDocs = documents?.length ?? 0;
   const acceptedDocs = documents?.filter((d) => d.status === 'ACCEPTED').length ?? 0;
@@ -509,8 +509,11 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   onRemove,
   onOpenDocuments,
 }) => {
+  // Đơn đã từ chối của bé đã có người nhận nuôi: khoá, không cho kéo đi
+  const isLocked = application.status === 'CLOSED' && application.pet?.status === 'ADOPTED';
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: application.id,
+    disabled: isLocked,
   });
 
   const applicantId = getApplicantId(application);
@@ -574,7 +577,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         if (hasRelated) setHoveredApplicant(null);
         clearHover();
       }}
-      className={`group bg-white rounded-[16px] md:rounded-[14px] w-full p-3.5 md:p-3 border border-[#EAEAEA] shadow-[0_1px_2px_rgba(16,16,24,0.04)] md:shadow-none cursor-grab active:cursor-grabbing select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 md:hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
+      className={`group bg-white rounded-[16px] md:rounded-[14px] w-full p-3.5 md:p-3 border border-[#EAEAEA] shadow-[0_1px_2px_rgba(16,16,24,0.04)] md:shadow-none ${isLocked ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'} select-none focus:outline-none relative ${isDragging ? 'opacity-40 shadow-xl z-50' : 'z-10 md:hover:border-[#D1D1D1]'} ${isMoving ? 'pointer-events-none opacity-60' : ''}`}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.92, y: 8 }}

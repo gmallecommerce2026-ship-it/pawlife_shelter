@@ -63,7 +63,7 @@ export const KANBAN_COLUMNS: { status: ApplicationStatus; label: string }[] = [
   { status: 'NEED_MORE_INFO', label: 'Cần bổ sung' },
   { status: 'INTERVIEW_SCHEDULED', label: 'Hẹn phỏng vấn' },
   { status: 'APPROVED', label: 'Đã duyệt' },
-  { status: 'ADOPTION_COMPLETED', label: 'Hoàn thành' },
+  { status: 'ADOPTION_COMPLETED', label: 'Bàn giao' },
   { status: 'CLOSED', label: 'Từ chối' },
 ];
 

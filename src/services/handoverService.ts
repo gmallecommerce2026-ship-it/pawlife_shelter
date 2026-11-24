@@ -8,6 +8,13 @@ export type HandoverMethodsInput = { qr: boolean; nfc: boolean };
 export const confirmHandoverCode = (code: string) =>
   apiClient.post('/handovers/shelter/confirm', { code }) as unknown as Promise<{ success: boolean; petId: string }>;
 
+/** Thu hồi pet từ đơn ở cột Bàn giao: trả pet về trạng thái trước đó và chuyển đơn sang cột đích */
+export const recallApplicationPet = (applicationId: string, status: string, reviewNote?: string) =>
+  apiClient.post(`/shelter-dashboard/applications/${applicationId}/recall`, { status, reviewNote }) as unknown as Promise<{
+    success: boolean;
+    status: string;
+  }>;
+
 export const resendHandoverRequest = (applicationId: string, handoverMethods: HandoverMethodsInput) =>
   apiClient.post(`/shelter-dashboard/applications/${applicationId}/handover/resend`, { handoverMethods }) as unknown as Promise<{
     success: boolean;
