@@ -17,6 +17,8 @@ export interface ShelterNfcCard {
   petStatus?: NfcCardPetStatus | null;
   /** false: pet của khách hàng — chỉ xem thông tin thẻ, không có hồ sơ trên web shelter */
   isShelterPet: boolean;
+  /** Người trực tiếp gán thẻ (có thể là thành viên được shelter cấp quyền) */
+  linkedByName?: string | null;
   chipType: 'NTAG213' | 'NTAG215' | 'NTAG216';
   /** Thời điểm thẻ được gán cho pet hiện tại */
   linkedAt: string | null;

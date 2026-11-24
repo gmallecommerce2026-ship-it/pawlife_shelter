@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2 } from 'lucide-react';
+import { X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2, User } from 'lucide-react';
 import { ShelterNfcCard, fmtDateTime, timeAgo } from '@/types/nfcCard';
 import { unlinkShelterNfcCard } from '@/services/nfcShelterService';
 import { apiErrorMessage } from '@/services/nfcPermissionService';
@@ -89,6 +89,7 @@ export const NfcCardDetailDrawer = ({
             <Row Icon={ScanLine} label="Lượt quét" value={card.scanCount} />
             <Row Icon={Clock} label="Lần quét cuối" value={fmtDateTime(card.lastScannedAt)} />
             <Row Icon={Calendar} label="Ngày gán" value={fmtDateTime(card.linkedAt)} />
+            <Row Icon={User} label="Người gán" value={card.linkedByName ?? '—'} />
             <Row Icon={Cpu} label="Loại chip" value={card.chipType} />
           </div>
         </div>
