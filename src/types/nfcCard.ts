@@ -55,8 +55,11 @@ export interface ShelterNfcStats {
   total: number;
   active: number;
   disabled: number;
+  /** Đang hoạt động nhưng chưa được quét trong 90 ngày */
+  stale: number;
   scansToday: number;
   scans7d: number;
+  scansByDay: { date: string; count: number }[];
 }
 
 export interface ShelterNfcScan {

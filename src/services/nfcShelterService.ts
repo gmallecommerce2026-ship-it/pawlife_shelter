@@ -21,13 +21,15 @@ export interface ShelterNfcQuery {
   q?: string;
   sort?: 'recent' | 'scans' | 'name';
   petId?: string;
+  /** Chỉ xuất các thẻ có id trong danh sách */
+  ids?: string[];
 }
 
 const toQueryString = (query: ShelterNfcQuery) => {
   const qs = new URLSearchParams();
   Object.entries(query).forEach(([k, v]) => {
     if (v === undefined || v === null || v === '' || v === 'ALL') return;
-    qs.set(k, String(v));
+    qs.set(k, Array.isArray(v) ? v.join(',') : String(v));
   });
   return qs.toString();
 };

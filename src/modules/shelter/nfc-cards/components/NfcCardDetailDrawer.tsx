@@ -4,7 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2, User, Power, History, MapPin, ListChecks } from 'lucide-react';
+import {
+  X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2, User, Power, History, ListChecks,
+  ChevronLeft, ChevronRight, Copy, Printer,
+} from 'lucide-react';
 import { NFC_EVENT_META, SCAN_OUTCOME_LABEL, ShelterNfcCard, ShelterNfcEvent, ShelterNfcScan, fmtDateTime, timeAgo } from '@/types/nfcCard';
 import { getShelterNfcEvents, getShelterNfcScans, setShelterNfcCardState, unlinkShelterNfcCard } from '@/services/nfcShelterService';
 import { apiErrorMessage } from '@/services/nfcPermissionService';
@@ -19,8 +22,41 @@ const Row = ({ Icon, label, value }: { Icon: React.ElementType; label: string; v
   </div>
 );
 
+const escapeHtml = (t: string) => t.replace(/[&<>"']/g, (c) => (
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c]
+));
+
+/** Mở cửa sổ in thẻ với cùng bố cục thẻ mẫu của app */
+const printCard = (card: ShelterNfcCard) => {
+  const w = window.open('', '_blank', 'width=460,height=700');
+  if (!w) { toast.error('Trình duyệt đang chặn cửa sổ in'); return; }
+  const off = card.state === 'DISABLED';
+  const petImg = `${window.location.origin}/images/nfc/nfc-pet.png`;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(card.code)}</title><style>
+    @page { size: auto; margin: 14mm; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; color: #0D062D; }
+    .card { width: 200px; height: 319px; border-radius: 24px; position: relative; overflow: hidden; background: linear-gradient(160deg, #F0A862 0%, #F3B873 50%, #F6C78C 100%); box-shadow: 0 12px 20px rgba(195,102,22,.35), inset 0 0 0 .6px #fff; }
+    .off .card { background: linear-gradient(160deg, #A3A1AD 0%, #8E8C99 50%, #B9B7C4 100%); box-shadow: none; }
+    .halo { position: absolute; left: 50%; top: 45%; width: 106px; height: 106px; margin: -53px 0 0 -53px; border-radius: 50%; background: rgba(255,236,205,.3); box-shadow: 0 0 36px 10px rgba(255,236,205,.45); }
+    .pet { position: absolute; left: 50%; top: 45%; width: 106px; height: 106px; margin: -53px 0 0 -53px; object-fit: contain; }
+    .brand { position: absolute; left: 0; right: 0; bottom: 44px; text-align: center; color: rgba(255,246,230,.96); letter-spacing: .27em; font-weight: 300; font-size: 16px; }
+    .line { position: absolute; left: 50%; bottom: 36px; width: 20px; height: 1px; margin-left: -10px; background: rgba(255,246,230,.75); }
+    .meta { text-align: center; }
+    .name { font-size: 18px; font-weight: 600; }
+    .code { margin-top: 4px; font-family: ui-monospace, Menlo, monospace; letter-spacing: .2em; font-size: 14px; }
+    .state { margin-top: 6px; font-size: 12px; color: #6B6880; }
+  </style></head><body class="${off ? 'off' : ''}">
+    <div class="card"><div class="halo"></div><img class="pet" src="${petImg}" alt="" /><div class="brand">PawLife</div><div class="line"></div></div>
+    <div class="meta"><div class="name">${escapeHtml(card.petName ?? 'Chưa gán pet')}</div><div class="code">${escapeHtml(card.code)}</div>
+    <div class="state">${off ? 'Thẻ đã vô hiệu hoá' : 'Thẻ đang hoạt động'}</div></div>
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 350);
+};
+
 export const NfcCardDetailDrawer = ({
-  card, onClose, onChanged, canLink = false, canUnlink = false,
+  card, onClose, onChanged, canLink = false, canUnlink = false, onPrev, onNext, position,
 }: {
   card: ShelterNfcCard | null;
   onClose: () => void;
@@ -28,6 +64,11 @@ export const NfcCardDetailDrawer = ({
   onChanged: () => void | Promise<void>;
   canLink?: boolean;
   canUnlink?: boolean;
+  /** Điều hướng sang thẻ trước / sau trong danh sách hiện tại */
+  onPrev?: () => void;
+  onNext?: () => void;
+  /** Vị trí hiển thị, ví dụ "3 / 20" */
+  position?: string;
 }) => {
   const [confirming, setConfirming] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
@@ -38,7 +79,7 @@ export const NfcCardDetailDrawer = ({
   // Đổi thẻ khác thì reset trạng thái cục bộ
   useEffect(() => { setConfirming(false); setScans(null); setEvents(null); }, [card?.id]);
 
-  // Lịch sử quét: tải khi mở thẻ
+  // Lịch sử quét: tải lại khi có lượt quét mới
   useEffect(() => {
     if (!card) return;
     let alive = true;
@@ -58,16 +99,32 @@ export const NfcCardDetailDrawer = ({
     return () => { alive = false; };
   }, [card?.id, card?.state, card?.linkedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Esc đóng, ← → chuyển thẻ (bỏ qua khi đang gõ)
   useEffect(() => {
     if (!card) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !unlinking && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (/INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
+      if (e.key === 'Escape' && !unlinking) onClose();
+      if (e.key === 'ArrowLeft' && onPrev) onPrev();
+      if (e.key === 'ArrowRight' && onNext) onNext();
+    };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [card, onClose, unlinking]);
+  }, [card, onClose, onPrev, onNext, unlinking]);
 
   if (!card || typeof document === 'undefined') return null;
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(card.code);
+      toast.success('Đã sao chép mã thẻ');
+    } catch {
+      toast.error('Không sao chép được mã thẻ');
+    }
+  };
 
   const doUnlink = async () => {
     setUnlinking(true);
@@ -105,10 +162,21 @@ export const NfcCardDetailDrawer = ({
       <div className="absolute inset-0 animate-in fade-in bg-[#0D062D]/40 backdrop-blur-[2px] duration-200" onClick={() => !unlinking && onClose()} />
       <aside className="relative flex max-h-[92dvh] w-full animate-in slide-in-from-bottom flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl duration-300 sm:max-h-none sm:w-[420px] sm:slide-in-from-right sm:rounded-none sm:[border-top-left-radius:28px] sm:[border-bottom-left-radius:28px]">
         <div className="flex items-center justify-between px-5 pb-2 pt-5">
-          <h3 className="text-[18px] font-semibold text-[#0D062D]">Chi tiết thẻ NFC</h3>
-          <button type="button" onClick={onClose} disabled={unlinking} aria-label="Đóng" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-40">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {onPrev && (
+              <button type="button" onClick={onPrev} aria-label="Thẻ trước" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"><ChevronLeft size={18} /></button>
+            )}
+            {onNext && (
+              <button type="button" onClick={onNext} aria-label="Thẻ sau" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"><ChevronRight size={18} /></button>
+            )}
+            {position && <span className="ml-1 text-[12px] text-gray-400">{position}</span>}
+          </div>
+          <div className="flex items-center gap-1">
+            <h3 className="mr-2 text-[16px] font-semibold text-[#0D062D]">Chi tiết thẻ</h3>
+            <button type="button" onClick={onClose} disabled={unlinking} aria-label="Đóng" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-40">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-6">
@@ -117,6 +185,17 @@ export const NfcCardDetailDrawer = ({
           <div className="mt-4 flex items-center justify-between">
             <NfcStateBadge state={card.state} />
             <span className="text-[12px] text-gray-400">Quét gần nhất: {timeAgo(card.lastScannedAt)}</span>
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={copyCode}
+              className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-[#F5F5F7] text-[13px] font-semibold text-gray-700 hover:bg-gray-200">
+              <Copy size={14} /> Sao chép mã
+            </button>
+            <button type="button" onClick={() => printCard(card)}
+              className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-[#F5F5F7] text-[13px] font-semibold text-gray-700 hover:bg-gray-200">
+              <Printer size={14} /> In thẻ
+            </button>
           </div>
 
           {card.petId && !card.isShelterPet && (
@@ -145,20 +224,13 @@ export const NfcCardDetailDrawer = ({
                 {scans.map((s, i) => (
                   <li key={i} className="flex items-center justify-between px-4 py-2.5 text-[13px]">
                     <span className="text-gray-700">{SCAN_OUTCOME_LABEL[s.outcome]}</span>
-                    <span className="flex items-center gap-3">
-                      {s.latitude != null && s.longitude != null && (
-                        <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[12px] font-medium text-[#E89B5A] hover:underline">
-                          <MapPin size={12} /> Bản đồ
-                        </a>
-                      )}
-                      <span className="text-gray-400">{fmtDateTime(s.createdAt)}</span>
-                    </span>
+                    <span className="text-gray-400">{fmtDateTime(s.createdAt)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
           <div className="mt-5">
             <p className="mb-2 flex items-center gap-2 text-[14px] font-semibold text-[#0D062D]"><ListChecks size={15} /> Lịch sử thao tác</p>
             {events === null ? (
@@ -173,9 +245,7 @@ export const NfcCardDetailDrawer = ({
                     <li key={i} className="relative">
                       <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white" style={{ background: m.dot }} />
                       <p className="text-[13px] font-semibold" style={{ color: m.color }}>{m.label}</p>
-                      <p className="text-[12px] text-gray-500">
-                        {e.actorName ?? 'Không rõ người thực hiện'} · {fmtDateTime(e.createdAt)}
-                      </p>
+                      <p className="text-[12px] text-gray-500">{e.actorName ?? 'Không rõ người thực hiện'} · {fmtDateTime(e.createdAt)}</p>
                     </li>
                   );
                 })}
