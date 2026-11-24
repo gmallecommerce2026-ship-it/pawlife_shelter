@@ -49,6 +49,7 @@ import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
+import { HandoverCodeModal } from './components/HandoverCodeModal';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
 const isColumnId = (id: string | number) =>
@@ -244,6 +245,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
+  const [handoverApp, setHandoverApp] = useState<AdoptionApplication | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
@@ -572,6 +574,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
+    // Đã hoàn tất nhận nuôi: nhập mã bàn giao adopter đọc từ app (chi tiết vẫn mở qua menu "Xem đơn đăng ký")
+    if (app.status === 'ADOPTION_COMPLETED') {
+      setHandoverApp(app);
+      return;
+    }
+
     // Cột mới nộp / đang xem xét / đã duyệt / đóng → cùng một modal
     if (PENDING_STYLE_MODAL_STATUSES.includes(app.status)) {
       setPendingApp(app);
@@ -793,6 +801,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
       )}
       {profileApp && <ApplicantProfileModal application={profileApp} onClose={() => setProfileApp(null)} />}
       {documentsApp && <AllDocumentsModal application={documentsApp} onClose={() => setDocumentsApp(null)} />}
+      {handoverApp && (
+        <HandoverCodeModal
+          application={handoverApp}
+          onClose={() => setHandoverApp(null)}
+          onDone={() => { fetchApplications(); }}
+        />
+      )}
       {pendingApp && (
         <MoveToPendingModal
           application={pendingApp}
