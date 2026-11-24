@@ -12,7 +12,7 @@ import {
   DateRangePreset,
 } from '@/types/application';
 
-const KANBAN_STATUSES = [...KANBAN_COLUMNS.map((c) => c.status), 'ADOPTION_COMPLETED'];
+const KANBAN_STATUSES = KANBAN_COLUMNS.map((c) => c.status);
 
 interface ApplicationState {
   items: AdoptionApplication[];
@@ -24,7 +24,7 @@ interface ApplicationState {
 interface ApplicationActions {
   fetchApplications: () => Promise<void>;
   setFilter: (patch: Partial<ApplicationFilter>) => void;
-  moveApplication: (id: string, status: ApplicationStatus, reviewNote?: string) => Promise<boolean>;
+  moveApplication: (id: string, status: ApplicationStatus, reviewNote?: string, extra?: Record<string, unknown>) => Promise<boolean>;
 }
 
 const useApplicationStoreBase = create<ApplicationState & ApplicationActions>()((set, get) => ({
@@ -51,7 +51,7 @@ const useApplicationStoreBase = create<ApplicationState & ApplicationActions>()(
     }
   },
 
-  moveApplication: async (id, status, reviewNote) => {
+  moveApplication: async (id, status, reviewNote, extra) => {
     const prevItems = get().items;
     if (!prevItems.find((a) => a.id === id)) return false;
 
@@ -62,7 +62,7 @@ const useApplicationStoreBase = create<ApplicationState & ApplicationActions>()(
     });
 
     try {
-      await apiClient.patch(`/shelter-dashboard/applications/${id}/status`, { status, reviewNote });
+      await apiClient.patch(`/shelter-dashboard/applications/${id}/status`, { status, reviewNote, ...extra });
       toast.success('Cập nhật trạng thái thành công!');
       return true;
     } catch (error) {

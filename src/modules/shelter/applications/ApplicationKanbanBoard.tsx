@@ -50,6 +50,7 @@ import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamSto
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
 import { HandoverCodeModal } from './components/HandoverCodeModal';
+import { HandoverMethodModal } from './components/HandoverMethodModal';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
 const isColumnId = (id: string | number) =>
@@ -71,8 +72,6 @@ const DockChip: React.FC<{ status: ApplicationStatus; label: string; count: numb
     </div>
   );
 };
-const mergeAdoptionIntoApproved = (status: ApplicationStatus): ApplicationStatus =>
-  status === 'ADOPTION_COMPLETED' ? 'APPROVED' : status;
 const NEXT_STATUS_MAP: Partial<Record<ApplicationStatus, ApplicationStatus>> = {
   SUBMITTED: 'PENDING',
   PENDING: 'INTERVIEW_SCHEDULED',
@@ -246,6 +245,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
   const [handoverApp, setHandoverApp] = useState<AdoptionApplication | null>(null);
+  const [completeApp, setCompleteApp] = useState<AdoptionApplication | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
@@ -361,7 +361,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const filtered = selectFilteredApplications(formattedItems, filter.search, filter.noteTypes, filter.datePreset);
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
-      applications: filtered.filter((a) => mergeAdoptionIntoApproved(a.status) === col.status),
+      applications: filtered.filter((a) => a.status === col.status),
     }));
   }, [formattedItems, filter.search, filter.noteTypes, filter.datePreset]);
 
@@ -476,7 +476,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
     const overItem = localItems.find((a) => a.id === overId);
     const targetStatus = overIsColumn
       ? (overId as ApplicationStatus)
-      : (overItem ? mergeAdoptionIntoApproved(overItem.status) : undefined);
+      : (overItem ? overItem.status : undefined);
     if (!targetStatus) return;
 
     setOverColumn(targetStatus);
@@ -484,13 +484,13 @@ export const ApplicationKanbanBoard: React.FC = () => {
       const oldIndex = prev.findIndex((a) => a.id === activeId);
       if (oldIndex === -1) return prev;
 
-      if (mergeAdoptionIntoApproved(activeItem.status) === targetStatus && !overIsColumn && overItem) {
+      if (activeItem.status === targetStatus && !overIsColumn && overItem) {
         const newIndex = prev.findIndex((a) => a.id === overId);
         if (newIndex === -1 || newIndex === oldIndex) return prev;
         return arrayMove(prev, oldIndex, newIndex);
       }
 
-      if (mergeAdoptionIntoApproved(activeItem.status) !== targetStatus) {
+      if (activeItem.status !== targetStatus) {
         const next = [...prev];
         next[oldIndex] = { ...next[oldIndex], status: targetStatus };
         if (!overIsColumn && overItem) {
@@ -525,14 +525,27 @@ export const ApplicationKanbanBoard: React.FC = () => {
         const overItem = items.find((a) => a.id === overId);
         finalStatus = overIsColumn
           ? (overId as ApplicationStatus)
-          : (overItem ? mergeAdoptionIntoApproved(overItem.status) : undefined);
+          : (overItem ? overItem.status : undefined);
       }
     }
 
     setOverColumn(null);
 
-    if (!over || !originalItem || !finalStatus || finalStatus === mergeAdoptionIntoApproved(originalItem.status)) {
+    if (!over || !originalItem || !finalStatus || finalStatus === originalItem.status) {
       setLocalItems(items);
+      return;
+    }
+
+    // Đã hoàn thành (bàn giao) thì không kéo ngược lại được
+    if (originalItem.status === 'ADOPTION_COMPLETED') {
+      setLocalItems(items);
+      return;
+    }
+
+    // Kéo vào cột Hoàn thành: mở popup chọn cách gán thẻ (QR / NFC) rồi mới đổi trạng thái
+    if (finalStatus === 'ADOPTION_COMPLETED') {
+      setLocalItems(items);
+      setCompleteApp(originalItem);
       return;
     }
 
@@ -622,15 +635,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
     setDeleteAppTarget(null);
     fetchApplications();
   };
+  // Từ modal duyệt: chuyển sang popup chọn cách gán thẻ, không hoàn tất ngay
   const handleCompleteAdoption = async (applicationId: string) => {
-    try {
-      await applicationService.updateStatus(applicationId, 'ADOPTION_COMPLETED');
-      await fetchApplications();
-      setApproveApp(null);
-    } catch (error) {
-      console.error('Lỗi khi hoàn tất nhận nuôi:', error);
-      alert('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
-    }
+    const app = items.find((a) => a.id === applicationId) ?? approveApp;
+    if (!app) return;
+    setApproveApp(null);
+    setCompleteApp(app);
   };
 
   return (
@@ -749,7 +759,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
               <div className="md:hidden fixed inset-x-0 z-[70] px-3 bottom-[calc(var(--tabbar-h,56px)+env(safe-area-inset-bottom)+8px)] animate-in fade-in slide-in-from-bottom-4 duration-150">
                 <div className="flex flex-wrap justify-center gap-2 rounded-[28px] bg-black/70 p-2.5 backdrop-blur-xl">
                   {columns
-                    .filter((c) => c.status !== mergeAdoptionIntoApproved(activeApp.status))
+                    .filter((c) => c.status !== activeApp.status)
                     .map((c) => (
                       <DockChip key={c.status} status={c.status} label={c.label} count={c.applications.length} />
                     ))}
@@ -801,6 +811,20 @@ export const ApplicationKanbanBoard: React.FC = () => {
       )}
       {profileApp && <ApplicantProfileModal application={profileApp} onClose={() => setProfileApp(null)} />}
       {documentsApp && <AllDocumentsModal application={documentsApp} onClose={() => setDocumentsApp(null)} />}
+      {completeApp && (
+        <HandoverMethodModal
+          application={completeApp}
+          onClose={() => setCompleteApp(null)}
+          onSubmit={async (methods) => {
+            const ok = await moveApplication(completeApp.id, 'ADOPTION_COMPLETED', undefined, {
+              handoverMethods: methods,
+            });
+            await fetchApplications();
+            if (ok) setCompleteApp(null);
+            return ok;
+          }}
+        />
+      )}
       {handoverApp && (
         <HandoverCodeModal
           application={handoverApp}

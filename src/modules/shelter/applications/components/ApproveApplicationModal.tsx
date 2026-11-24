@@ -376,11 +376,6 @@ export const ApproveApplicationModal: React.FC<ApproveApplicationModalProps> = (
   };
   const handleCompleteAdoption = async () => {
     if (!onCompleteAdoption || isCompletingAdoption) return;
-    const confirmed = window.confirm(
-      `Xác nhận ${application.pet?.name || 'thú cưng'} đã được bàn giao cho ${applicantName}? Hành động này sẽ hoàn tất hồ sơ nhận nuôi.`
-    );
-    if (!confirmed) return;
-
     try {
       setIsCompletingAdoption(true);
       await onCompleteAdoption(application.id);
