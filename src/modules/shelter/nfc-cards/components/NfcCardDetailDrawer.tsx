@@ -78,6 +78,12 @@ export const NfcCardDetailDrawer = ({
             <span className="text-[12px] text-gray-400">Quét gần nhất: {timeAgo(card.lastScannedAt)}</span>
           </div>
 
+          {card.petId && !card.isShelterPet && (
+            <p className="mt-3 rounded-2xl bg-[#F7F7FA] px-4 py-3 text-[13px] leading-relaxed text-gray-600">
+              Thẻ gắn với pet của khách hàng. Hồ sơ pet thuộc về khách, shelter chỉ xem được thông tin thẻ.
+            </p>
+          )}
+
           <div className="mt-3 divide-y divide-gray-100">
             <Row Icon={PawPrint} label="Pet" value={card.petName ? `${card.petName}${card.petBreed ? ` · ${card.petBreed}` : ''}` : 'Chưa gán'} />
             <Row Icon={ScanLine} label="Lượt quét" value={card.scanCount} />
@@ -104,7 +110,7 @@ export const NfcCardDetailDrawer = ({
             </div>
           ) : (
             <div className="flex gap-2">
-              {card.petId && (
+              {card.petId && card.isShelterPet && (
                 <Link href={`/shelter/pets/${card.petId}`}
                   className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[#E89B5A] text-[14px] font-semibold text-white transition-colors hover:bg-[#D98744]">
                   <PawPrint size={16} /> Xem hồ sơ pet
