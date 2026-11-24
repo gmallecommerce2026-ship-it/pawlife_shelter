@@ -13,7 +13,7 @@ import { apiClient } from '@/lib/api/ApiClient';
  * ⚠️ FE chỉ ẩn/hiện UI, BE kiểm tra lại mọi rule.
  *
  * Endpoint dùng chung với app: GET /nfc/permissions/me, GET|POST /nfc/permissions, DELETE /nfc/permissions/:userId
- * Mock mode (mặc định bật cho tới khi nối API): đặt NEXT_PUBLIC_NFC_MOCK=false để gọi API thật.
+ * Mock mode: chỉ bật khi NEXT_PUBLIC_NFC_MOCK=true (mặc định gọi API thật).
  */
 export type NfcLevel = 'LINKER' | 'GRANTER' | 'MANAGER';
 
@@ -53,7 +53,8 @@ export const permissionTitle = (p: NfcMyPermission) =>
   p.isRoot ? 'Quản trị viên (Root)' : p.level ? NFC_LEVEL_META[p.level].label : 'Chỉ xem';
 
 // ---------- Mock (in-memory) ----------
-export const NFC_MOCK = process.env.NEXT_PUBLIC_NFC_MOCK !== 'false';
+// Mặc định gọi API thật. Chỉ bật mock khi cần xem thử UI: NEXT_PUBLIC_NFC_MOCK=true
+export const NFC_MOCK = process.env.NEXT_PUBLIC_NFC_MOCK === 'true';
 
 const ago = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 let mockGrants: NfcGrant[] = [

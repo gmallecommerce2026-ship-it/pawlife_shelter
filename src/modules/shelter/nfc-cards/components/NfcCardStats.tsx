@@ -7,13 +7,13 @@ import { ShelterNfcCard } from '@/types/nfcCard';
 export const NfcCardStats = ({ cards }: { cards: ShelterNfcCard[] }) => {
   const total = cards.length;
   const active = cards.filter((c) => c.state === 'ACTIVE').length;
-  const free = cards.filter((c) => c.state === 'UNASSIGNED').length;
+  const disabled = cards.filter((c) => c.state === 'DISABLED').length;
   const scans = cards.reduce((s, c) => s + c.scanCount, 0);
 
   const items = [
-    { label: 'Tổng thẻ đã cấp', value: total, Icon: Nfc, color: 'text-[#E89B5A]', bg: 'bg-[#FFF4EA]' },
+    { label: 'Thẻ đã gán', value: total, Icon: Nfc, color: 'text-[#E89B5A]', bg: 'bg-[#FFF4EA]' },
     { label: 'Đang hoạt động', value: active, Icon: CheckCircle2, color: 'text-[#00AC47]', bg: 'bg-[#E8F9EE]' },
-    { label: 'Chưa gán pet', value: free, Icon: CircleSlash, color: 'text-[#6B6880]', bg: 'bg-[#F1F1F4]' },
+    { label: 'Đã vô hiệu', value: disabled, Icon: CircleSlash, color: 'text-[#C23030]', bg: 'bg-[#FFE9E9]' },
     { label: 'Lượt quét', value: scans, Icon: ScanLine, color: 'text-[#A855F7]', bg: 'bg-[#FAF5FF]' },
   ];
 

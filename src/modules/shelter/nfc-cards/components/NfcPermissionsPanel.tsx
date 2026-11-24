@@ -18,7 +18,7 @@ export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermis
   const levels = grantableLevels(perm);
   const [grants, setGrants] = useState<NfcGrant[] | null>(null);
   const [email, setEmail] = useState('');
-  const [level, setLevel] = useState<NfcLevel | null>(levels[levels.length - 1] ?? null);
+  const [level, setLevel] = useState<NfcLevel | null>(levels[0] ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [toRevoke, setToRevoke] = useState<NfcGrant | null>(null);
   const [revoking, setRevoking] = useState(false);
@@ -29,7 +29,7 @@ export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermis
   }, []);
   useEffect(() => { load(); }, [load, perm.isRoot, perm.level]);
   // đổi vai trò (mock) -> chọn lại level hợp lệ
-  useEffect(() => { if (!level || !levels.includes(level)) setLevel(levels[levels.length - 1] ?? null); /* eslint-disable-next-line */ }, [perm.isRoot, perm.level]);
+  useEffect(() => { if (!level || !levels.includes(level)) setLevel(levels[0] ?? null); /* eslint-disable-next-line */ }, [perm.isRoot, perm.level]);
 
   const canSubmit = EMAIL_RE.test(email.trim()) && !!level && !submitting;
 

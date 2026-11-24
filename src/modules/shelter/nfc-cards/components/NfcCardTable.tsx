@@ -26,7 +26,7 @@ export const NfcCardTable = ({ cards, onSelect }: { cards: ShelterNfcCard[]; onS
     {/* DESKTOP */}
     <div className="hidden w-full overflow-hidden rounded-[16px] border border-gray-200 bg-white md:block">
       <div className={`${COLS} border-b border-gray-200 bg-[#F9FAFB] px-6 py-4`}>
-        {['Pet', 'Mã thẻ', 'Trạng thái', 'Lượt quét', 'Quét gần nhất', 'Ngày cấp'].map((h) => (
+        {['Pet', 'Mã thẻ', 'Trạng thái', 'Lượt quét', 'Quét gần nhất', 'Ngày gán'].map((h) => (
           <span key={h} className="text-[14px] font-medium text-gray-500">{h}</span>
         ))}
         <span />
@@ -49,7 +49,7 @@ export const NfcCardTable = ({ cards, onSelect }: { cards: ShelterNfcCard[]; onS
           <div><NfcStateBadge state={c.state} /></div>
           <span className="text-[15px] font-medium text-gray-700">{c.scanCount}</span>
           <span className="truncate text-[14px] text-gray-500">{timeAgo(c.lastScannedAt)}</span>
-          <span className="truncate text-[14px] text-gray-500">{fmtDay(c.issuedAt)}</span>
+          <span className="truncate text-[14px] text-gray-500">{fmtDay(c.linkedAt)}</span>
           <ChevronRight size={18} className="text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-[#E89B5A]" />
         </button>
       ))}
