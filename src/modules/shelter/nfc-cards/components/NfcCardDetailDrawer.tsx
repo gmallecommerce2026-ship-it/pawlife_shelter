@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2, User, Power, History } from 'lucide-react';
-import { SCAN_OUTCOME_LABEL, ShelterNfcCard, ShelterNfcScan, fmtDateTime, timeAgo } from '@/types/nfcCard';
-import { getShelterNfcScans, setShelterNfcCardState, unlinkShelterNfcCard } from '@/services/nfcShelterService';
+import { X, PawPrint, ScanLine, Calendar, Cpu, Clock, Link2Off, Loader2, User, Power, History, MapPin, ListChecks } from 'lucide-react';
+import { NFC_EVENT_META, SCAN_OUTCOME_LABEL, ShelterNfcCard, ShelterNfcEvent, ShelterNfcScan, fmtDateTime, timeAgo } from '@/types/nfcCard';
+import { getShelterNfcEvents, getShelterNfcScans, setShelterNfcCardState, unlinkShelterNfcCard } from '@/services/nfcShelterService';
 import { apiErrorMessage } from '@/services/nfcPermissionService';
 import NfcCardVisual from './NfcCardVisual';
 import NfcStateBadge from './NfcStateBadge';
@@ -33,9 +33,10 @@ export const NfcCardDetailDrawer = ({
   const [unlinking, setUnlinking] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [scans, setScans] = useState<ShelterNfcScan[] | null>(null);
+  const [events, setEvents] = useState<ShelterNfcEvent[] | null>(null);
 
   // Đổi thẻ khác thì reset trạng thái cục bộ
-  useEffect(() => { setConfirming(false); setScans(null); }, [card?.id]);
+  useEffect(() => { setConfirming(false); setScans(null); setEvents(null); }, [card?.id]);
 
   // Lịch sử quét: tải khi mở thẻ
   useEffect(() => {
@@ -46,6 +47,16 @@ export const NfcCardDetailDrawer = ({
       .catch(() => { if (alive) setScans([]); });
     return () => { alive = false; };
   }, [card?.id, card?.scanCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lịch sử thao tác: tải lại khi gán / gỡ / đổi trạng thái
+  useEffect(() => {
+    if (!card) return;
+    let alive = true;
+    getShelterNfcEvents(card.id)
+      .then((list) => { if (alive) setEvents(list); })
+      .catch(() => { if (alive) setEvents([]); });
+    return () => { alive = false; };
+  }, [card?.id, card?.state, card?.linkedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!card) return;
@@ -134,10 +145,41 @@ export const NfcCardDetailDrawer = ({
                 {scans.map((s, i) => (
                   <li key={i} className="flex items-center justify-between px-4 py-2.5 text-[13px]">
                     <span className="text-gray-700">{SCAN_OUTCOME_LABEL[s.outcome]}</span>
-                    <span className="text-gray-400">{fmtDateTime(s.createdAt)}</span>
+                    <span className="flex items-center gap-3">
+                      {s.latitude != null && s.longitude != null && (
+                        <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[12px] font-medium text-[#E89B5A] hover:underline">
+                          <MapPin size={12} /> Bản đồ
+                        </a>
+                      )}
+                      <span className="text-gray-400">{fmtDateTime(s.createdAt)}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+          <div className="mt-5">
+            <p className="mb-2 flex items-center gap-2 text-[14px] font-semibold text-[#0D062D]"><ListChecks size={15} /> Lịch sử thao tác</p>
+            {events === null ? (
+              <div className="h-12 animate-pulse rounded-xl bg-gray-100" />
+            ) : events.length === 0 ? (
+              <p className="rounded-xl bg-[#F7F7FA] px-4 py-3 text-[13px] text-gray-500">Chưa có thao tác nào được ghi lại.</p>
+            ) : (
+              <ol className="relative space-y-3 border-l border-gray-200 pl-5">
+                {events.map((e, i) => {
+                  const m = NFC_EVENT_META[e.type];
+                  return (
+                    <li key={i} className="relative">
+                      <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white" style={{ background: m.dot }} />
+                      <p className="text-[13px] font-semibold" style={{ color: m.color }}>{m.label}</p>
+                      <p className="text-[12px] text-gray-500">
+                        {e.actorName ?? 'Không rõ người thực hiện'} · {fmtDateTime(e.createdAt)}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
             )}
           </div>
         </div>
