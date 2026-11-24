@@ -2,31 +2,35 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, CreditCard, Loader2, QrCode } from 'lucide-react';
+import { CheckCircle2, CreditCard, Loader2, QrCode, Send } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 import { AdoptionApplication } from '@/types/application';
 
 export type HandoverMethodSelection = { qr: boolean; nfc: boolean };
 
 /**
- * Popup khi kéo đơn vào cột Hoàn thành: trạm chọn cách gán thẻ người nhận nuôi được dùng
- * (QR tag và/hoặc thẻ NFC). Gửi xong -> app của người nhận nuôi hiện popup ngay (realtime)
- * với đúng các nút đã chọn.
+ * Popup chọn cách gán thẻ (QR tag và/hoặc thẻ NFC) cho người nhận nuôi.
+ *  - mode "complete": kéo đơn vào cột Hoàn thành -> đổi trạng thái + gửi yêu cầu nhận hồ sơ.
+ *  - mode "resend":   đơn đã ở Hoàn thành -> chỉ gửi lại yêu cầu nhận hồ sơ, không đổi trạng thái.
+ * Gửi xong -> app của người nhận nuôi hiện popup ngay (realtime) với đúng các nút đã chọn.
  */
 export const HandoverMethodModal = ({
   application,
   onClose,
   onSubmit,
+  mode = 'complete',
 }: {
   application: AdoptionApplication;
   onClose: () => void;
   onSubmit: (methods: HandoverMethodSelection) => Promise<boolean>;
+  mode?: 'complete' | 'resend';
 }) => {
   const [qr, setQr] = useState(true);
   const [nfc, setNfc] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  const isResend = mode === 'resend';
   const petName = application.pet?.name || 'bé';
   const applicantName = application.fullName || 'người nhận nuôi';
   const valid = qr || nfc;
@@ -37,9 +41,9 @@ export const HandoverMethodModal = ({
     setError('');
     try {
       const ok = await onSubmit({ qr, nfc });
-      if (!ok) setError('Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
+      if (!ok) setError(isResend ? 'Không thể gửi lại yêu cầu. Vui lòng thử lại.' : 'Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
+      setError(err?.response?.data?.message || (isResend ? 'Không thể gửi lại yêu cầu. Vui lòng thử lại.' : 'Không thể hoàn tất nhận nuôi. Vui lòng thử lại.'));
     } finally {
       setBusy(false);
     }
@@ -50,10 +54,12 @@ export const HandoverMethodModal = ({
       <div className="p-6">
         <div className="mb-5 flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF4EA] text-[#E89B5A]">
-            <CheckCircle2 size={22} />
+            {isResend ? <Send size={20} /> : <CheckCircle2 size={22} />}
           </div>
           <div className="min-w-0">
-            <h3 className="text-[17px] font-semibold text-[#0D062D]">Hoàn tất nhận nuôi</h3>
+            <h3 className="text-[17px] font-semibold text-[#0D062D]">
+              {isResend ? 'Gửi lại yêu cầu nhận hồ sơ' : 'Hoàn tất nhận nuôi'}
+            </h3>
             <p className="truncate text-[13px] text-gray-500">
               Bé {petName} · {applicantName}
             </p>
@@ -82,7 +88,9 @@ export const HandoverMethodModal = ({
         {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
 
         <p className="mt-4 text-[12px] text-gray-500">
-          Sau khi gửi, người nhận nuôi sẽ nhận popup trên app để gán thẻ cho bé.
+          {isResend
+            ? 'Người nhận nuôi sẽ nhận lại popup trên app để gán thẻ cho bé. Mã NFC cũ (nếu có) sẽ hết hiệu lực.'
+            : 'Sau khi gửi, người nhận nuôi sẽ nhận popup trên app để gán thẻ cho bé.'}
         </p>
 
         <div className="mt-6 flex gap-2.5">
@@ -100,7 +108,13 @@ export const HandoverMethodModal = ({
             disabled={!valid || busy}
             className="h-11 flex-[1.4] rounded-full bg-[#E89B5A] text-[14px] font-semibold text-white disabled:opacity-50"
           >
-            {busy ? <Loader2 size={18} className="mx-auto animate-spin" /> : 'Hoàn tất & gửi'}
+            {busy ? (
+              <Loader2 size={18} className="mx-auto animate-spin" />
+            ) : isResend ? (
+              'Gửi yêu cầu'
+            ) : (
+              'Hoàn tất & gửi'
+            )}
           </button>
         </div>
       </div>

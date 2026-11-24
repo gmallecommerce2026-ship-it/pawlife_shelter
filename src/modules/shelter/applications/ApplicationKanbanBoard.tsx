@@ -51,6 +51,9 @@ import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
 import { HandoverCodeModal } from './components/HandoverCodeModal';
 import { HandoverMethodModal } from './components/HandoverMethodModal';
+import { HandoverActionModal } from './components/HandoverActionModal';
+import { resendHandoverRequest } from '@/services/handoverService';
+import { toast } from 'react-hot-toast';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
 const isColumnId = (id: string | number) =>
@@ -95,6 +98,44 @@ const dropAnimation: DropAnimation = {
     styles: { active: { opacity: '0.4' } },
   }),
 };
+
+/* Kéo đơn ra khỏi cột Hoàn thành: cần xác nhận vì sẽ huỷ yêu cầu nhận hồ sơ đã gửi cho adopter */
+const MoveOutOfCompletedDialog: React.FC<{
+  application: AdoptionApplication;
+  targetLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}> = ({ application, targetLabel, onCancel, onConfirm }) => (
+  <ResponsiveModal onClose={onCancel} maxWidth="sm:max-w-[420px]">
+    <div className="px-5 pb-5 pt-2 sm:p-5">
+      <h3 className="mb-1.5 text-[20px] font-bold tracking-tight text-gray-900 sm:text-[16px]">
+        Đưa đơn ra khỏi Hoàn thành?
+      </h3>
+      <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:text-[13px]">
+        Yêu cầu nhận hồ sơ bé <strong className="text-gray-900">{application.pet?.name}</strong> đã gửi cho{' '}
+        <strong className="text-gray-900">{application.fullName || application.user?.name}</strong> sẽ bị huỷ,
+        popup trên app của họ sẽ biến mất. Đơn sẽ chuyển sang{' '}
+        <strong className="text-gray-900">{targetLabel}</strong>.
+      </p>
+      <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="h-12 rounded-xl bg-gray-100 text-[16px] font-semibold text-gray-700 active:bg-gray-200 sm:h-auto sm:rounded-md sm:px-3.5 sm:py-1.5 sm:text-[12px] sm:hover:bg-gray-200"
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="h-12 rounded-xl bg-[#E89B5A] text-[16px] font-bold text-white active:bg-[#D98744] sm:h-auto sm:rounded-md sm:px-4 sm:py-1.5 sm:text-[12px] sm:hover:bg-[#D98744]"
+        >
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </ResponsiveModal>
+);
 
 const CLOSE_REASONS = [
   'Không phù hợp',
@@ -246,6 +287,9 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
   const [handoverApp, setHandoverApp] = useState<AdoptionApplication | null>(null);
   const [completeApp, setCompleteApp] = useState<AdoptionApplication | null>(null);
+  const [completedActionApp, setCompletedActionApp] = useState<AdoptionApplication | null>(null);
+  const [resendApp, setResendApp] = useState<AdoptionApplication | null>(null);
+  const [moveOutTarget, setMoveOutTarget] = useState<{ app: AdoptionApplication; status: ApplicationStatus } | null>(null);
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
@@ -448,6 +492,30 @@ export const ApplicationKanbanBoard: React.FC = () => {
     if (fresh && fresh !== needInfoApp) setNeedInfoApp(fresh);
   }, [items, needInfoApp]);
 
+  // Đưa đơn sang cột đích: cột nào cần thêm bước (modal) thì mở modal, còn lại đổi trạng thái luôn
+  const routeApplicationMove = (app: AdoptionApplication, finalStatus: ApplicationStatus) => {
+    if (finalStatus === 'NEED_MORE_INFO') {
+      setRequestDocsApp(app);
+      return;
+    }
+
+    if (finalStatus === 'INTERVIEW_SCHEDULED') {
+      setInterviewApp(app);
+      return;
+    }
+
+    if (REQUIRES_CONFIRM.includes(finalStatus)) {
+      if (!isAdmin) {
+        setLocalItems(items);
+        return;
+      }
+      setCloseAppTarget(app);
+      return;
+    }
+
+    moveApplication(app.id, finalStatus);
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     isDraggingRef.current = true;
     // Rung nhẹ khi "nhấc" thẻ lên (Android; iOS Safari bỏ qua)
@@ -536,9 +604,12 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
-    // Đã hoàn thành (bàn giao) thì không kéo ngược lại được
+    // Kéo ra khỏi cột Hoàn thành: huỷ yêu cầu nhận hồ sơ đang chờ, hỏi xác nhận trước
     if (originalItem.status === 'ADOPTION_COMPLETED') {
       setLocalItems(items);
+      if (!(REQUIRES_CONFIRM.includes(finalStatus) && !isAdmin)) {
+        setMoveOutTarget({ app: originalItem, status: finalStatus });
+      }
       return;
     }
 
@@ -549,26 +620,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
-    if (finalStatus === 'NEED_MORE_INFO') {
-      setRequestDocsApp(originalItem);
-      return;
-    }
-
-    if (finalStatus === 'INTERVIEW_SCHEDULED') {
-      setInterviewApp(originalItem);
-      return;
-    }
-
-    if (REQUIRES_CONFIRM.includes(finalStatus)) {
-      if (!isAdmin) {
-        setLocalItems(items);
-        return;
-      }
-      setCloseAppTarget(originalItem);
-      return;
-    }
-
-    moveApplication(activeId, finalStatus);
+    routeApplicationMove(originalItem, finalStatus);
   };
 
   // Kéo bị huỷ (thả ra ngoài / hệ thống ngắt) → trả state về như cũ
@@ -589,7 +641,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
     // Đã hoàn tất nhận nuôi: nhập mã bàn giao adopter đọc từ app (chi tiết vẫn mở qua menu "Xem đơn đăng ký")
     if (app.status === 'ADOPTION_COMPLETED') {
-      setHandoverApp(app);
+      setCompletedActionApp(app);
       return;
     }
 
@@ -822,6 +874,45 @@ export const ApplicationKanbanBoard: React.FC = () => {
             await fetchApplications();
             if (ok) setCompleteApp(null);
             return ok;
+          }}
+        />
+      )}
+      {completedActionApp && (
+        <HandoverActionModal
+          application={completedActionApp}
+          onClose={() => setCompletedActionApp(null)}
+          onEnterCode={() => {
+            setHandoverApp(completedActionApp);
+            setCompletedActionApp(null);
+          }}
+          onResend={() => {
+            setResendApp(completedActionApp);
+            setCompletedActionApp(null);
+          }}
+        />
+      )}
+      {resendApp && (
+        <HandoverMethodModal
+          mode="resend"
+          application={resendApp}
+          onClose={() => setResendApp(null)}
+          onSubmit={async (methods) => {
+            await resendHandoverRequest(resendApp.id, methods);
+            toast.success('Đã gửi lại yêu cầu nhận hồ sơ cho người nhận nuôi');
+            setResendApp(null);
+            return true;
+          }}
+        />
+      )}
+      {moveOutTarget && (
+        <MoveOutOfCompletedDialog
+          application={moveOutTarget.app}
+          targetLabel={KANBAN_COLUMNS.find((c) => c.status === moveOutTarget.status)?.label ?? ''}
+          onCancel={() => setMoveOutTarget(null)}
+          onConfirm={() => {
+            const target = moveOutTarget;
+            setMoveOutTarget(null);
+            routeApplicationMove(target.app, target.status);
           }}
         />
       )}
