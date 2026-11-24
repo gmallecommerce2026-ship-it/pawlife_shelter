@@ -58,6 +58,7 @@ import {
 import { PET_STATUS_CONFIG, getPetStatusMeta } from '@/constants/petStatus';
 import type { PetStatus } from '@/types/pet';
 import { PetStatusDropdown } from '@/components/PetStatusBadge';
+import PetNfcTagCard from '@/modules/shelter/pets/components/PetNfcTagCard';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; border: string; text: string }> = {
   SUBMITTED: { label: 'Mới', bg: '#F3F4F6', border: '#E5E7EB', text: '#6B7280' },
@@ -679,6 +680,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
           </div>
+
+          <PetNfcTagCard petId={pet.id} />
         </div>
 
         {/* ================= CỘT PHẢI: ACTIONS + TABS + NỘI DUNG ================= */}
