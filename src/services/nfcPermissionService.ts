@@ -28,8 +28,20 @@ export interface NfcGrant {
   grantedAt?: string;
   /** Chỉ có khi người xem là root */
   grantedByName?: string | null;
+  /** Hạn quyền. Quá hạn thì BE tự thu hồi. */
+  expiresAt?: string | null;
   canRevoke: boolean;
 }
+
+/** Các mốc hạn cho người cấp chọn (ngày). BE giới hạn tối đa 365 ngày và không vượt hạn của chính người cấp. */
+export const NFC_EXPIRY_OPTIONS: { days: number; label: string }[] = [
+  { days: 7, label: '7 ngày' },
+  { days: 30, label: '30 ngày' },
+  { days: 90, label: '3 tháng' },
+  { days: 180, label: '6 tháng' },
+  { days: 365, label: '12 tháng' },
+];
+export const DEFAULT_NFC_EXPIRY_DAYS = 30;
 
 export const NO_NFC_PERMISSION: NfcMyPermission = { isRoot: false, level: null };
 export const NFC_LEVELS: NfcLevel[] = ['LINKER', 'GRANTER', 'MANAGER'];
@@ -57,11 +69,12 @@ export const permissionTitle = (p: NfcMyPermission) =>
 export const NFC_MOCK = process.env.NEXT_PUBLIC_NFC_MOCK === 'true';
 
 const ago = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
+const ahead = (d: number) => new Date(Date.now() + d * 86400000).toISOString();
 let mockGrants: NfcGrant[] = [
-  { userId: 'u1', email: 'ha.nguyen@tramcuuho.vn',   name: 'Nguyễn Thu Hà',  level: 'MANAGER', grantedAt: ago(40), grantedByName: 'PawLife Admin', canRevoke: true },
-  { userId: 'u2', email: 'minhanh@tramcuuho.vn',     name: 'Trần Minh Anh',  level: 'GRANTER', grantedAt: ago(22), grantedByName: 'Nguyễn Thu Hà', canRevoke: true },
-  { userId: 'u3', email: 'tuan.volunteer@gmail.com', name: 'Lê Quốc Tuấn',   level: 'LINKER',  grantedAt: ago(9),  grantedByName: 'Trần Minh Anh', canRevoke: true },
-  { userId: 'u4', email: 'lan.pham@gmail.com',       name: 'Phạm Ngọc Lan',  level: 'LINKER',  grantedAt: ago(3),  grantedByName: 'Trần Minh Anh', canRevoke: true },
+  { userId: 'u1', email: 'ha.nguyen@tramcuuho.vn',   name: 'Nguyễn Thu Hà',  level: 'MANAGER', grantedAt: ago(40), expiresAt: ahead(320), grantedByName: 'PawLife Admin', canRevoke: true },
+  { userId: 'u2', email: 'minhanh@tramcuuho.vn',     name: 'Trần Minh Anh',  level: 'GRANTER', grantedAt: ago(22), expiresAt: ahead(68),  grantedByName: 'Nguyễn Thu Hà', canRevoke: true },
+  { userId: 'u3', email: 'tuan.volunteer@gmail.com', name: 'Lê Quốc Tuấn',   level: 'LINKER',  grantedAt: ago(9),  expiresAt: ahead(2),   grantedByName: 'Trần Minh Anh', canRevoke: true },
+  { userId: 'u4', email: 'lan.pham@gmail.com',       name: 'Phạm Ngọc Lan',  level: 'LINKER',  grantedAt: ago(3),  expiresAt: ahead(27),  grantedByName: 'Trần Minh Anh', canRevoke: true },
 ];
 const wait = <T,>(v: T, ms = 350) => new Promise<T>((r) => setTimeout(() => r(v), ms));
 const mockErr = (m: string) => Object.assign(new Error(m), { response: { data: { message: m } } });
@@ -96,20 +109,22 @@ export const listNfcGrants = async (): Promise<NfcGrant[]> => {
   const rows: any[] = Array.isArray(data) ? data : data?.items ?? [];
   return rows.map((r) => ({
     userId: String(r.userId ?? r.id), email: String(r.email ?? ''), name: r.name ?? null, avatarUrl: r.avatarUrl ?? null,
-    level: r.level as NfcLevel, grantedAt: r.grantedAt, grantedByName: r.grantedByName ?? null, canRevoke: !!r.canRevoke,
+    level: r.level as NfcLevel, grantedAt: r.grantedAt, expiresAt: r.expiresAt ?? null,
+    grantedByName: r.grantedByName ?? null, canRevoke: !!r.canRevoke,
   }));
 };
 
-export const grantNfcPermission = async (email: string, level: NfcLevel) => {
+export const grantNfcPermission = async (email: string, level: NfcLevel, days: number = DEFAULT_NFC_EXPIRY_DAYS) => {
+  const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
   if (NFC_MOCK) {
     if (!grantableLevels(mockMyPermission).includes(level)) throw mockErr('Bạn không thể cấp quyền ở cấp độ này');
     const e = email.trim().toLowerCase();
     const old = mockGrants.find((g) => g.email === e);
-    if (old) mockGrants = mockGrants.map((g) => (g.email === e ? { ...g, level } : g));
-    else mockGrants = [{ userId: `u${Date.now()}`, email: e, name: e.split('@')[0], level, grantedAt: new Date().toISOString(), grantedByName: 'Bạn', canRevoke: true }, ...mockGrants];
+    if (old) mockGrants = mockGrants.map((g) => (g.email === e ? { ...g, level, expiresAt } : g));
+    else mockGrants = [{ userId: `u${Date.now()}`, email: e, name: e.split('@')[0], level, grantedAt: new Date().toISOString(), expiresAt, grantedByName: 'Bạn', canRevoke: true }, ...mockGrants];
     return wait({ success: true });
   }
-  return unwrap(await apiClient.post('/nfc/permissions', { email, level }));
+  return unwrap(await apiClient.post('/nfc/permissions', { email, level, expiresAt }));
 };
 
 export const revokeNfcPermission = async (userId: string) => {

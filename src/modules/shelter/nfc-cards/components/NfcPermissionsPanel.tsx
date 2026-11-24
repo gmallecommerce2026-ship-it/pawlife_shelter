@@ -5,20 +5,23 @@ import { toast } from 'react-hot-toast';
 import { Loader2, Trash2, UserPlus, Mail, Check, Info, Users } from 'lucide-react';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import {
-  NFC_LEVELS, NFC_LEVEL_META, NfcGrant, NfcLevel, NfcMyPermission, apiErrorMessage, canLinkTag, grantNfcPermission,
-  grantableLevels, listNfcGrants, revokeNfcPermission, permissionTitle,
+  DEFAULT_NFC_EXPIRY_DAYS, NFC_EXPIRY_OPTIONS, NFC_LEVELS, NFC_LEVEL_META, NfcGrant, NfcLevel, NfcMyPermission,
+  apiErrorMessage, grantNfcPermission, grantableLevels, listNfcGrants, revokeNfcPermission, permissionTitle,
 } from '@/services/nfcPermissionService';
 import { fmtDay } from '@/types/nfcCard';
 import { NfcLevelPill } from './NfcRoleBadge';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const initials = (g: NfcGrant) => (g.name || g.email).trim().slice(0, 1).toUpperCase();
+/** Số ngày còn lại tới hạn (làm tròn lên) */
+const daysLeft = (iso?: string | null) => (iso ? Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000) : null);
 
 export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermission; onPermChanged: () => void }) => {
   const levels = grantableLevels(perm);
   const [grants, setGrants] = useState<NfcGrant[] | null>(null);
   const [email, setEmail] = useState('');
   const [level, setLevel] = useState<NfcLevel | null>(levels[0] ?? null);
+  const [days, setDays] = useState<number>(DEFAULT_NFC_EXPIRY_DAYS);
   const [submitting, setSubmitting] = useState(false);
   const [toRevoke, setToRevoke] = useState<NfcGrant | null>(null);
   const [revoking, setRevoking] = useState(false);
@@ -37,8 +40,8 @@ export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermis
     if (!canSubmit || !level) return;
     setSubmitting(true);
     try {
-      await grantNfcPermission(email.trim(), level);
-      toast.success(`Đã cấp quyền "${NFC_LEVEL_META[level].label}" cho ${email.trim()}`);
+      await grantNfcPermission(email.trim(), level, days);
+      toast.success(`Đã cấp quyền "${NFC_LEVEL_META[level].label}" cho ${email.trim()} trong ${days} ngày`);
       setEmail('');
       await load();
     } catch (e) { toast.error(apiErrorMessage(e, 'Không cấp được quyền')); }
@@ -106,6 +109,21 @@ export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermis
             })}
           </div>
 
+          <label className="mb-1.5 mt-4 block text-[13px] font-medium text-gray-600">Hiệu lực trong</label>
+          <div className="flex flex-wrap gap-2">
+            {NFC_EXPIRY_OPTIONS.map((o) => (
+              <button
+                key={o.days} type="button" onClick={() => setDays(o.days)}
+                className={`h-9 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
+                  days === o.days ? 'border-[#E89B5A] bg-[#FFF9F3] text-[#D98744]' : 'border-gray-200 text-gray-600 hover:border-[#E89B5A]/60'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[12px] text-gray-500">Hết hạn sẽ tự thu hồi quyền. Không vượt quá hạn quyền của bạn.</p>
+
           <button
             type="button" onClick={submit} disabled={!canSubmit}
             className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#E89B5A] text-[14px] font-semibold text-white transition-colors hover:bg-[#D98744] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
@@ -159,6 +177,11 @@ export const NfcPermissionsPanel = ({ perm, onPermChanged }: { perm: NfcMyPermis
                   <p className="mt-0.5 truncate text-[12px] text-gray-400">
                     Cấp ngày {fmtDay(g.grantedAt)}{g.grantedByName ? ` · bởi ${g.grantedByName}` : ''}
                   </p>
+                  {g.expiresAt && (
+                    <p className={`mt-0.5 truncate text-[12px] ${(daysLeft(g.expiresAt) ?? 99) <= 7 ? 'font-medium text-[#D98744]' : 'text-gray-400'}`}>
+                      Hết hạn {fmtDay(g.expiresAt)}{daysLeft(g.expiresAt) != null ? ` · còn ${daysLeft(g.expiresAt)} ngày` : ''}
+                    </p>
+                  )}
                 </div>
                 <NfcLevelPill level={g.level} />
                 {g.canRevoke && (
