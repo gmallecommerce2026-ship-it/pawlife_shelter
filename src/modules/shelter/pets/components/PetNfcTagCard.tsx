@@ -21,8 +21,8 @@ export const PetNfcTagCard = ({ petId }: { petId: string }) => {
 
   const load = useCallback(async () => {
     try {
-      const list = await listShelterNfcCards();
-      setCard(list.find((c) => c.petId === petId) ?? null);
+      const { items } = await listShelterNfcCards({ petId, pageSize: 5 });
+      setCard(items.find((c) => c.petId === petId) ?? null);
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Không tải được thông tin thẻ NFC'));
       setCard(null);

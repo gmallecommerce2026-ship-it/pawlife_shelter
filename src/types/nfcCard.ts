@@ -49,3 +49,25 @@ export const timeAgo = (iso?: string | null): string => {
   if (d < 30) return `${d} ngày trước`;
   return fmtDay(iso);
 };
+
+// ---------- Thống kê, lịch sử quét (từ GET /nfc/shelter/stats và /tags/:id/scans) ----------
+export interface ShelterNfcStats {
+  total: number;
+  active: number;
+  disabled: number;
+  scansToday: number;
+  scans7d: number;
+}
+
+export interface ShelterNfcScan {
+  outcome: 'pet' | 'brand' | 'empty';
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+}
+
+export const SCAN_OUTCOME_LABEL: Record<ShelterNfcScan['outcome'], string> = {
+  pet: 'Quét hồ sơ pet',
+  brand: 'Thẻ thương hiệu',
+  empty: 'Thẻ chưa gán',
+};

@@ -2,19 +2,16 @@
 
 import React from 'react';
 import { Nfc, CheckCircle2, ScanLine, CircleSlash } from 'lucide-react';
-import { ShelterNfcCard } from '@/types/nfcCard';
+import { ShelterNfcStats } from '@/types/nfcCard';
 
-export const NfcCardStats = ({ cards }: { cards: ShelterNfcCard[] }) => {
-  const total = cards.length;
-  const active = cards.filter((c) => c.state === 'ACTIVE').length;
-  const disabled = cards.filter((c) => c.state === 'DISABLED').length;
-  const scans = cards.reduce((s, c) => s + c.scanCount, 0);
-
+/** Số liệu lấy từ server (GET /nfc/shelter/stats), không tính trên danh sách đang hiển thị */
+export const NfcCardStats = ({ stats }: { stats: ShelterNfcStats | null }) => {
+  const v = (n?: number) => (stats ? n ?? 0 : '…');
   const items = [
-    { label: 'Thẻ đã gán', value: total, Icon: Nfc, color: 'text-[#E89B5A]', bg: 'bg-[#FFF4EA]' },
-    { label: 'Đang hoạt động', value: active, Icon: CheckCircle2, color: 'text-[#00AC47]', bg: 'bg-[#E8F9EE]' },
-    { label: 'Đã vô hiệu', value: disabled, Icon: CircleSlash, color: 'text-[#C23030]', bg: 'bg-[#FFE9E9]' },
-    { label: 'Lượt quét', value: scans, Icon: ScanLine, color: 'text-[#A855F7]', bg: 'bg-[#FAF5FF]' },
+    { label: 'Thẻ đã gán', value: v(stats?.total), Icon: Nfc, color: 'text-[#E89B5A]', bg: 'bg-[#FFF4EA]' },
+    { label: 'Đang hoạt động', value: v(stats?.active), Icon: CheckCircle2, color: 'text-[#00AC47]', bg: 'bg-[#E8F9EE]' },
+    { label: 'Đã vô hiệu', value: v(stats?.disabled), Icon: CircleSlash, color: 'text-[#C23030]', bg: 'bg-[#FFE9E9]' },
+    { label: 'Lượt quét 7 ngày', value: v(stats?.scans7d), Icon: ScanLine, color: 'text-[#A855F7]', bg: 'bg-[#FAF5FF]' },
   ];
 
   return (
@@ -25,7 +22,9 @@ export const NfcCardStats = ({ cards }: { cards: ShelterNfcCard[] }) => {
             <Icon size={20} />
           </div>
           <div className="min-w-0">
-            <p className="text-[22px] font-semibold leading-none text-[#0D062D] sm:text-[26px]">{value.toLocaleString('vi-VN')}</p>
+            <p className="text-[22px] font-semibold leading-none text-[#0D062D] sm:text-[26px]">
+              {typeof value === 'number' ? value.toLocaleString('vi-VN') : value}
+            </p>
             <p className="mt-1 truncate text-[12px] text-gray-500 sm:text-[13px]">{label}</p>
           </div>
         </div>
