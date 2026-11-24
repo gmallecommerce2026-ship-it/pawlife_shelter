@@ -71,7 +71,7 @@ export const NfcCardDetailDrawer = ({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-6">
-          <NfcCardVisual code={card.code} state={card.state} petName={card.petName} />
+          <NfcCardVisual code={card.code} state={card.state} petName={card.petName} petImage={card.petImage} />
 
           <div className="mt-4 flex items-center justify-between">
             <NfcStateBadge state={card.state} />
