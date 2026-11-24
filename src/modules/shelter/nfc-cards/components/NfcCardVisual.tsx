@@ -19,10 +19,11 @@ const CARD_H = Math.round(262 * SCALE);
 const PET_SIZE = Math.round(CARD_H * 0.52);
 const PET_TOP = Math.round(CARD_H * 0.45 - PET_SIZE / 2);
 const RADIUS = Math.round(20 * SCALE);
-const FALLBACK_PET = '/images/nfc/nfc-pet.png'; // ảnh mẫu của app, copy vào public nếu muốn
+const FALLBACK_PET = '/images/nfc/nfc-pet.png'; // ảnh mẫu của app, nằm ở public/images/nfc/
 
+/** Luôn dùng ảnh mẫu nfc-pet.png như thẻ mẫu của app. petImage/petName/code chỉ để tương thích, không hiển thị trên thẻ. */
 export const NfcCardVisual = ({
-  state, petImage,
+  state,
 }: {
   code?: string;
   state: NfcCardState;
@@ -81,7 +82,7 @@ export const NfcCardVisual = ({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={petImage || FALLBACK_PET}
+            src={FALLBACK_PET}
             alt=""
             className="h-full w-full object-contain"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
