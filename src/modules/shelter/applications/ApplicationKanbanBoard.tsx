@@ -49,8 +49,6 @@ import { useViewedApplicationStore } from '@/stores/useViewedApplicationStore';
 import { useShelterTeam, useShelterTeamActions } from '@/store/useShelterTeamStore';
 import { useIsShelterAdmin } from '@/hooks/useIsShelterAdmin';
 import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
-import { NfcLinkScanModal } from './components/NfcLinkScanModal';
-import { useNfcPermission } from '@/hooks/useNfcPermission';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
 const isColumnId = (id: string | number) =>
@@ -246,8 +244,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const [interviewApp, setInterviewApp] = useState<AdoptionApplication | null>(null);
   const [needInfoApp, setNeedInfoApp] = useState<AdoptionApplication | null>(null);
   const [pendingApp, setPendingApp] = useState<AdoptionApplication | null>(null);
-  const [nfcApp, setNfcApp] = useState<AdoptionApplication | null>(null);
-  const { canLink: canLinkNfc } = useNfcPermission();
   const [requestDocsApp, setRequestDocsApp] = useState<AdoptionApplication | null>(null);
   const [pendingRequiredDocs, setPendingRequiredDocs] = useState<RequiredDocument[]>([]);
   const [closeAppTarget, setCloseAppTarget] = useState<AdoptionApplication | null>(null);
@@ -576,12 +572,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
-    // Cột đang xem xét: người có quyền gán thẻ -> quét NFC gán cho bé của đơn (giống màn đọc thẻ trong app)
-    if (app.status === 'PENDING' && canLinkNfc && app.pet?.id) {
-      setNfcApp(app);
-      return;
-    }
-
     // Cột mới nộp / đang xem xét / đã duyệt / đóng → cùng một modal
     if (PENDING_STYLE_MODAL_STATUSES.includes(app.status)) {
       setPendingApp(app);
@@ -803,13 +793,6 @@ export const ApplicationKanbanBoard: React.FC = () => {
       )}
       {profileApp && <ApplicantProfileModal application={profileApp} onClose={() => setProfileApp(null)} />}
       {documentsApp && <AllDocumentsModal application={documentsApp} onClose={() => setDocumentsApp(null)} />}
-      {nfcApp && (
-        <NfcLinkScanModal
-          application={nfcApp}
-          onClose={() => setNfcApp(null)}
-          onOpenStatus={() => { const a = nfcApp; setNfcApp(null); setPendingApp(a); }}
-        />
-      )}
       {pendingApp && (
         <MoveToPendingModal
           application={pendingApp}
