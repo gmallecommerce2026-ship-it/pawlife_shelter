@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bell, Nfc, ShieldCheck, RefreshCw, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import { FiSearch, FiChevronDown } from 'react-icons/fi';
+import { Bell, Nfc, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { NFC_STATE_META, NfcCardState, ShelterNfcCard, ShelterNfcStats } from '@/types/nfcCard';
 import {
@@ -14,6 +13,7 @@ import NfcCardStats from './components/NfcCardStats';
 import NfcCardTable from './components/NfcCardTable';
 import NfcCardDetailDrawer from './components/NfcCardDetailDrawer';
 import NfcPermissionsPanel from './components/NfcPermissionsPanel';
+import NfcToolbar from './components/NfcToolbar';
 import MockRoleSwitcher from './components/MockRoleSwitcher';
 import { NfcRoleBadge } from './components/NfcRoleBadge';
 import { useNfcPermission } from '@/hooks/useNfcPermission';
@@ -102,9 +102,6 @@ export const NfcCardsPage = () => {
     }
   };
 
-  const selectCls =
-    'appearance-none bg-[#F5F5F7] lg:bg-white border border-transparent lg:border-[#858585] rounded-full h-11 pl-4 pr-9 text-[16px] lg:text-sm text-gray-700 font-medium focus:border-[#E89B5A] focus:outline-none cursor-pointer';
-
   return (
     <div className="w-full">
       {/* Header */}
@@ -125,50 +122,20 @@ export const NfcCardsPage = () => {
 
         <div className="hidden flex-1 lg:block" />
 
-        {activeTab === 'cards' && (<>
-        <div className="relative w-full lg:max-w-[360px] lg:flex-1">
-          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo tên pet..."
-            className="h-11 w-full rounded-full border border-transparent bg-[#F5F5F7] pl-10 pr-4 text-[16px] text-gray-800 transition-all placeholder:text-gray-400 focus:border-[#E89B5A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#E89B5A]/20 lg:border-[#858585] lg:bg-white lg:text-sm"
+      </div>
+
+      {activeTab === 'cards' && (
+        <div className="mb-5">
+          <NfcToolbar
+            search={search} onSearch={setSearch}
+            state={state} onState={setState}
+            sort={sort} onSort={setSort}
+            onExport={exportCsv} exporting={exporting}
+            onRefresh={load} loading={cards === null}
+            stats={stats} live={!!socket?.connected}
           />
         </div>
-
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className="relative shrink-0">
-            <select value={state} onChange={(e) => setState(e.target.value as StateFilter)} className={selectCls}>
-              <option value="ALL">Toàn bộ trạng thái</option>
-              {(Object.keys(NFC_STATE_META) as NfcCardState[]).filter((k) => k !== 'UNASSIGNED').map((k) => (
-                <option key={k} value={k}>{NFC_STATE_META[k].label}</option>
-              ))}
-            </select>
-            <FiChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-          </div>
-          <div className="relative shrink-0">
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className={selectCls}>
-              <option value="recent">Mới gán nhất</option>
-              <option value="scans">Quét nhiều nhất</option>
-              <option value="name">Tên pet A–Z</option>
-            </select>
-            <FiChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-          </div>
-          <button
-            type="button" onClick={exportCsv} disabled={exporting} aria-label="Xuất CSV" title="Xuất CSV theo bộ lọc"
-            className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-[#F5F5F7] px-4 text-[14px] font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50 lg:bg-white lg:ring-1 lg:ring-[#858585]"
-          >
-            <Download size={16} /> <span className="hidden xl:inline">Xuất CSV</span>
-          </button>
-          <button
-            type="button" onClick={load} aria-label="Tải lại"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F5F5F7] text-gray-600 hover:bg-gray-200 lg:bg-white lg:ring-1 lg:ring-[#858585]"
-          >
-            <RefreshCw size={16} />
-          </button>
-        </div>
-        </>)}
-      </div>
+      )}
 
       <MockRoleSwitcher perm={perm} onChanged={refreshPerm} />
 
@@ -208,6 +175,9 @@ export const NfcCardsPage = () => {
         </div>
       ) : (
         <>
+          <p className="mb-3 text-[13px] text-gray-500">
+            Hiển thị {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} trong {total.toLocaleString('vi-VN')} thẻ
+          </p>
           <NfcCardTable cards={list} onSelect={setSelected} />
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between text-[14px] text-gray-600">
