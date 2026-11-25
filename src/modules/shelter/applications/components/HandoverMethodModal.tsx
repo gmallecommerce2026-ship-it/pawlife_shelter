@@ -2,17 +2,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, CreditCard, Loader2, QrCode, Send } from 'lucide-react';
+import { CheckCircle2, CreditCard, Loader2, Send } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 import { AdoptionApplication } from '@/types/application';
 
 export type HandoverMethodSelection = { qr: boolean; nfc: boolean };
 
+/** Bàn giao chỉ dùng thẻ NFC. Luôn gửi cố định, không cho chọn QR nữa. */
+const NFC_ONLY: HandoverMethodSelection = { qr: false, nfc: true };
+
 /**
- * Popup chọn cách gán thẻ (QR tag và/hoặc thẻ NFC) cho người nhận nuôi.
+ * Popup xác nhận yêu cầu nhận hồ sơ (thẻ NFC).
  *  - mode "complete": kéo đơn vào cột Hoàn thành -> đổi trạng thái + gửi yêu cầu nhận hồ sơ.
  *  - mode "resend":   đơn đã ở Hoàn thành -> chỉ gửi lại yêu cầu nhận hồ sơ, không đổi trạng thái.
- * Gửi xong -> app của người nhận nuôi hiện popup ngay (realtime) với đúng các nút đã chọn.
+ * Gửi xong -> app của người nhận nuôi hiện popup ngay (realtime) với nút gán thẻ NFC.
  */
 export const HandoverMethodModal = ({
   application,
@@ -25,22 +28,19 @@ export const HandoverMethodModal = ({
   onSubmit: (methods: HandoverMethodSelection) => Promise<boolean>;
   mode?: 'complete' | 'resend';
 }) => {
-  const [qr, setQr] = useState(true);
-  const [nfc, setNfc] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const isResend = mode === 'resend';
   const petName = application.pet?.name || 'bé';
   const applicantName = application.fullName || 'người nhận nuôi';
-  const valid = qr || nfc;
 
   const submit = async () => {
-    if (!valid || busy) return;
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
-      const ok = await onSubmit({ qr, nfc });
+      const ok = await onSubmit(NFC_ONLY);
       if (!ok) setError(isResend ? 'Không thể gửi lại yêu cầu. Vui lòng thử lại.' : 'Không thể hoàn tất nhận nuôi. Vui lòng thử lại.');
     } catch (err: any) {
       setError(err?.response?.data?.message || (isResend ? 'Không thể gửi lại yêu cầu. Vui lòng thử lại.' : 'Không thể hoàn tất nhận nuôi. Vui lòng thử lại.'));
@@ -66,31 +66,24 @@ export const HandoverMethodModal = ({
           </div>
         </div>
 
-        <p className="text-[13px] font-medium text-gray-700">Người nhận nuôi gán thẻ bằng cách nào?</p>
-        <div className="mt-2 flex flex-col gap-2.5">
-          <MethodOption
-            checked={qr}
-            onChange={setQr}
-            icon={<QrCode size={20} />}
-            title="Thẻ QR tag"
-            desc="Người nhận nuôi quét QR trên thẻ, bé về My Pets ngay."
-          />
-          <MethodOption
-            checked={nfc}
-            onChange={setNfc}
-            icon={<CreditCard size={20} />}
-            title="Thẻ NFC"
-            desc="Người nhận nuôi chạm thẻ, đọc mã 6 ký tự để trạm nhập trên web."
-          />
+        <div className="flex items-start gap-3 rounded-2xl border border-[#E89B5A] bg-[#FFF4EA] p-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E89B5A] text-white">
+            <CreditCard size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-[#0D062D]">Thẻ NFC</p>
+            <p className="text-[12px] leading-snug text-gray-500">
+              Người nhận nuôi chạm thẻ NFC, đọc mã 6 ký tự để trạm nhập trên web.
+            </p>
+          </div>
         </div>
 
-        {!valid && <p className="mt-3 text-[13px] text-red-500">Chọn ít nhất một cách gán thẻ.</p>}
         {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
 
         <p className="mt-4 text-[12px] text-gray-500">
           {isResend
-            ? 'Người nhận nuôi sẽ nhận lại popup trên app để gán thẻ cho bé. Mã NFC cũ (nếu có) sẽ hết hiệu lực.'
-            : 'Sau khi gửi, người nhận nuôi sẽ nhận popup trên app để gán thẻ cho bé.'}
+            ? 'Người nhận nuôi sẽ nhận lại popup trên app để gán thẻ NFC cho bé. Mã NFC cũ (nếu có) sẽ hết hiệu lực.'
+            : 'Sau khi gửi, người nhận nuôi sẽ nhận popup trên app để chạm thẻ NFC gán cho bé.'}
         </p>
 
         <div className="mt-6 flex gap-2.5">
@@ -105,7 +98,7 @@ export const HandoverMethodModal = ({
           <button
             type="button"
             onClick={submit}
-            disabled={!valid || busy}
+            disabled={busy}
             className="h-11 flex-[1.4] rounded-full bg-[#E89B5A] text-[14px] font-semibold text-white disabled:opacity-50"
           >
             {busy ? (
@@ -122,42 +115,4 @@ export const HandoverMethodModal = ({
   );
 };
 
-const MethodOption = ({
-  checked,
-  onChange,
-  icon,
-  title,
-  desc,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) => (
-  <button
-    type="button"
-    role="checkbox"
-    aria-checked={checked}
-    onClick={() => onChange(!checked)}
-    className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors ${checked ? 'border-[#E89B5A] bg-[#FFF4EA]' : 'border-gray-200 bg-white hover:bg-gray-50'
-      }`}
-  >
-    <div
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${checked ? 'bg-[#E89B5A] text-white' : 'bg-gray-100 text-gray-500'
-        }`}
-    >
-      {icon}
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="text-[14px] font-semibold text-[#0D062D]">{title}</p>
-      <p className="text-[12px] leading-snug text-gray-500">{desc}</p>
-    </div>
-    <div
-      className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? 'border-[#E89B5A] bg-[#E89B5A] text-white' : 'border-gray-300'
-        }`}
-    >
-      {checked && <CheckCircle2 size={14} />}
-    </div>
-  </button>
-);
+export default HandoverMethodModal;

@@ -1,6 +1,7 @@
 // services/handoverService.ts
 // Web shelter: nhập mã 6 ký tự adopter đọc (sau khi chạm thẻ NFC trên app) để hoàn tất bàn giao,
-// hoặc gửi lại yêu cầu nhận hồ sơ (kèm QR / NFC) cho adopter khi đơn đã ở cột Hoàn thành.
+// hoặc gửi lại yêu cầu nhận hồ sơ (thẻ NFC) cho adopter khi đơn đã ở cột Hoàn thành.
+// Bàn giao chỉ dùng NFC; backend luôn áp dụng NFC-only bất kể giá trị qr gửi lên.
 import { apiClient } from '@/lib/api/ApiClient';
 
 export type HandoverMethodsInput = { qr: boolean; nfc: boolean };

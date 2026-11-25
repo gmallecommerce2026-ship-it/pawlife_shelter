@@ -9,7 +9,7 @@ import { AdoptionApplication } from '@/types/application';
 /**
  * Bấm vào thẻ ở cột Hoàn thành: trạm chọn việc cần làm với bàn giao này.
  *  - Nhập mã NFC: adopter đã chạm thẻ và đọc mã 6 ký tự.
- *  - Gửi lại yêu cầu nhận hồ sơ: đẩy lại popup gán QR / NFC lên app của adopter.
+ *  - Gửi lại yêu cầu nhận hồ sơ: đẩy lại popup gán thẻ NFC lên app của adopter.
  */
 export const HandoverActionModal = ({
   application,
@@ -52,7 +52,7 @@ export const HandoverActionModal = ({
           <ActionOption
             icon={<Send size={20} />}
             title="Gửi lại yêu cầu nhận hồ sơ"
-            desc="Gửi lại popup gán thẻ QR / NFC lên app của người nhận nuôi."
+            desc="Gửi lại popup gán thẻ NFC lên app của người nhận nuôi."
             onClick={onResend}
           />
         </div>
