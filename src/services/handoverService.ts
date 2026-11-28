@@ -9,6 +9,10 @@ export type HandoverMethodsInput = { qr: boolean; nfc: boolean };
 export const confirmHandoverCode = (code: string) =>
   apiClient.post('/handovers/shelter/confirm', { code }) as unknown as Promise<{ success: boolean; petId: string }>;
 
+/** Trạm có bàn giao trực tiếp (không NFC/mã) hay không. Backend quyết định, FE chỉ ẩn bước gán thẻ. */
+export const getHandoverMode = () =>
+  apiClient.get('/shelter-dashboard/handover-mode') as unknown as Promise<{ directHandover: boolean }>;
+
 /** Thu hồi pet từ đơn ở cột Bàn giao: trả pet về trạng thái trước đó và chuyển đơn sang cột đích */
 export const recallApplicationPet = (applicationId: string, status: string, reviewNote?: string) =>
   apiClient.post(`/shelter-dashboard/applications/${applicationId}/recall`, { status, reviewNote }) as unknown as Promise<{

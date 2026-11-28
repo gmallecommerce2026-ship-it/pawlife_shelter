@@ -52,7 +52,7 @@ import { DeleteApplicationModal } from '@/components/DeleteApplicationModal';
 import { HandoverCodeModal } from './components/HandoverCodeModal';
 import { HandoverMethodModal } from './components/HandoverMethodModal';
 import { HandoverActionModal } from './components/HandoverActionModal';
-import { recallApplicationPet, resendHandoverRequest } from '@/services/handoverService';
+import { getHandoverMode, recallApplicationPet, resendHandoverRequest } from '@/services/handoverService';
 import { toast } from 'react-hot-toast';
 import { ResponsiveModal } from '@/components/ResponsiveModal';
 
@@ -270,6 +270,11 @@ export const ApplicationKanbanBoard: React.FC = () => {
   const { items, isLoading, movingIds } = useApplicationList();
   const { filter } = useApplicationFilter();
   const { fetchApplications, moveApplication } = useApplicationActions();
+  // Trạm bàn giao trực tiếp: không popup gán thẻ/mã, kéo vào Hoàn thành là hoàn tất luôn
+  const [directHandover, setDirectHandover] = useState(false);
+  useEffect(() => {
+    getHandoverMode().then((r) => setDirectHandover(!!r?.directHandover)).catch(() => setDirectHandover(false));
+  }, []);
   const { getTagColor, setTagColor } = useTagColorStore();
   const markViewed = useViewedApplicationStore((s) => s.markViewed);
   const { me } = useShelterTeam();
@@ -631,6 +636,16 @@ export const ApplicationKanbanBoard: React.FC = () => {
       return;
     }
 
+    // Trạm bàn giao trực tiếp: hoàn tất luôn, không mở popup gán thẻ
+    if (finalStatus === 'ADOPTION_COMPLETED' && directHandover) {
+      setLocalItems(items);
+      moveApplication(originalItem.id, 'ADOPTION_COMPLETED').then(async (ok) => {
+        await fetchApplications();
+        if (ok) toast.success(`Đã bàn giao ${originalItem.pet?.name ?? 'bé'} cho người nhận nuôi`);
+      });
+      return;
+    }
+
     // Kéo vào cột Hoàn thành: mở popup chọn cách gán thẻ (QR / NFC) rồi mới đổi trạng thái
     if (finalStatus === 'ADOPTION_COMPLETED') {
       setLocalItems(items);
@@ -659,6 +674,7 @@ export const ApplicationKanbanBoard: React.FC = () => {
 
     // Đã hoàn tất nhận nuôi: nhập mã bàn giao adopter đọc từ app (chi tiết vẫn mở qua menu "Xem đơn đăng ký")
     if (app.status === 'ADOPTION_COMPLETED') {
+      if (directHandover) return; // trạm trực tiếp: không có bước nhập mã / gửi lại
       setCompletedActionApp(app);
       return;
     }
